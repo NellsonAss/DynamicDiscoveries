@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Profile</h2>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h5>Email</h5>
+                        <p>{{ request.user.email }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h5>Account Created</h5>
+                        <p>{{ request.user.date_joined|date:"F j, Y" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h5>Last Login</h5>
+                        <p>{{ request.user.last_login|date:"F j, Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
