@@ -1,0 +1,11 @@
+Django>=4.2,<5.0
+python-dotenv>=1.0.0
+black>=23.0.0
+pylint>=3.0.0
+django-htmx>=1.17.0
+django-bootstrap5>=23.0
+django-allauth>=0.57.0
+django-environ>=0.11.0
+django-otp>=1.2.0  # For passwordless login
+django-otp-yubikey>=1.0.0  # For passwordless login
+azure-communication-email

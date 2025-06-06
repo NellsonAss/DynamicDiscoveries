@@ -1,0 +1,5 @@
+                <form id="verify-form" 
+                      method="post" 
+                      hx-post="{% url 'accounts:verify_code' %}"
+                      hx-target="body"
+                      hx-swap="outerHTML"> 

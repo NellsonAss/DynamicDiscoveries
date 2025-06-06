@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Dashboard</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Total Users</h5>
+                <p class="card-text display-4" id="total-users">
+                    {{ stats.total_users|default:"Loading..." }}
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Active Users</h5>
+                <p class="card-text display-4" id="active-users">
+                    {{ stats.active_users|default:"Loading..." }}
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">New Users Today</h5>
+                <p class="card-text display-4" id="new-users">
+                    {{ stats.new_users_today|default:"Loading..." }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Recent Activity</h5>
+                <div id="activity-feed"
+                     hx-get="{% url 'dashboard:activity' %}"
+                     hx-trigger="intersect once"
+                     hx-swap="afterend">
+                    Loading...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Refresh stats every 30 seconds
+    setInterval(() => {
+        htmx.ajax('GET', '{% url "dashboard:stats" %}', '#stats-container');
+    }, 30000);
+</script>
+{% endblock %} 

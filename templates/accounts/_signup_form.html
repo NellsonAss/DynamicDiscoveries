@@ -1,0 +1,31 @@
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form id="signup-form" 
+      method="post" 
+      hx-post="{% url 'accounts:signup' %}"
+      hx-target="#auth-card"
+      hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="email" class="form-label">Email address</label>
+        <input type="email" 
+               class="form-control" 
+               id="email" 
+               name="email" 
+               required>
+        <div id="email-indicator" class="htmx-indicator">
+            <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <div id="email-feedback" class="form-text"></div>
+    </div>
+    
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary">
+            Create Account
+        </button>
+    </div>
+</form> 
