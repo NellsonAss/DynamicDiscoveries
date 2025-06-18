@@ -35,6 +35,25 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.email
+    
+    @property
+    def is_app_admin(self):
+        """Check if user has admin role in the application."""
+        return self.groups.filter(name='Admin').exists()
+    
+    @property
+    def can_access_django_admin(self):
+        """Check if user can access Django admin interface."""
+        return self.is_staff or self.is_superuser
+    
+    @property
+    def can_manage_users(self):
+        """Check if user can manage other users in the application."""
+        return self.is_app_admin or self.is_superuser
+    
+    def get_role_names(self):
+        """Get a list of role names for the user."""
+        return [group.name for group in self.groups.all()]
 
 class Profile(models.Model):
     """Extended user profile with additional information."""

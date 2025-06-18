@@ -258,4 +258,19 @@ class UserRoleUpdateView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
                 'user_roles': user.groups.all(),
                 'available_roles': Group.objects.all()
             })
-        return redirect('accounts:user_role_update', pk=user.pk) 
+        return redirect('accounts:user_role_update', pk=user.pk)
+
+@login_required
+def debug_user(request):
+    """Debug view to check user permissions and context."""
+    context = {
+        'user_email': request.user.email,
+        'user_groups': [g.name for g in request.user.groups.all()],
+        'is_staff': request.user.is_staff,
+        'is_superuser': request.user.is_superuser,
+        'is_authenticated': request.user.is_authenticated,
+        'is_admin': getattr(request.user, 'is_app_admin', False),
+        'can_access_django_admin': getattr(request.user, 'can_access_django_admin', False),
+        'can_manage_users': getattr(request.user, 'can_manage_users', False),
+    }
+    return render(request, 'accounts/debug_user.html', context) 

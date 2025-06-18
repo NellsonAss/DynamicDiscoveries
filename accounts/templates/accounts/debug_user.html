@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Debug User Info{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Debug User Information</h2>
+                </div>
+                <div class="card-body">
+                    <h5>User Details</h5>
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item"><strong>Email:</strong> {{ user_email }}</li>
+                        <li class="list-group-item"><strong>Groups:</strong> {{ user_groups|join:", " }}</li>
+                        <li class="list-group-item"><strong>Is Staff:</strong> {{ is_staff }}</li>
+                        <li class="list-group-item"><strong>Is Superuser:</strong> {{ is_superuser }}</li>
+                        <li class="list-group-item"><strong>Is Authenticated:</strong> {{ is_authenticated }}</li>
+                    </ul>
+                    
+                    <h5>Custom Properties</h5>
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item"><strong>Is App Admin:</strong> {{ is_admin }}</li>
+                        <li class="list-group-item"><strong>Can Access Django Admin:</strong> {{ can_access_django_admin }}</li>
+                        <li class="list-group-item"><strong>Can Manage Users:</strong> {{ can_manage_users }}</li>
+                    </ul>
+                    
+                    <h5>Context Processor Variables</h5>
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item"><strong>Context is_admin:</strong> {{ is_admin }}</li>
+                        <li class="list-group-item"><strong>Context can_access_django_admin:</strong> {{ can_access_django_admin }}</li>
+                        <li class="list-group-item"><strong>Context can_manage_users:</strong> {{ can_manage_users }}</li>
+                    </ul>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'accounts:profile' %}" class="btn btn-primary">Back to Profile</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
