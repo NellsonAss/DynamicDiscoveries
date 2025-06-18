@@ -14,6 +14,16 @@
                         <p>{{ request.user.email }}</p>
                     </div>
                     <div class="mb-3">
+                        <h5>Roles</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for role in user_roles %}
+                            <span class="badge bg-primary">{{ role.name }}</span>
+                            {% empty %}
+                            <p class="text-muted">No roles assigned</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
                         <h5>Account Created</h5>
                         <p>{{ request.user.date_joined|date:"F j, Y" }}</p>
                     </div>
@@ -21,6 +31,19 @@
                         <h5>Last Login</h5>
                         <p>{{ request.user.last_login|date:"F j, Y H:i" }}</p>
                     </div>
+                    {% if user.is_superuser %}
+                    <div class="mt-4 pt-3 border-top">
+                        <h5>Admin Tools</h5>
+                        <div class="list-group">
+                            <a href="{% url 'admin:index' %}" class="list-group-item list-group-item-action">
+                                <i class="bi bi-gear-fill me-2"></i>Django Admin Interface
+                            </a>
+                            <a href="{% url 'accounts:user_list' %}" class="list-group-item list-group-item-action">
+                                <i class="bi bi-people-fill me-2"></i>User Management
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

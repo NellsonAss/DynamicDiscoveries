@@ -1,19 +1,23 @@
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django_otp import devices_for_user
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
+from django.contrib.auth.models import Group
+from django.http import HttpResponse
+from django.conf import settings
+from django.urls import reverse
+from .mixins import RoleRequiredMixin
+from django.views.generic import ListView, UpdateView
+from django.contrib.auth.mixins import LoginRequiredMixin
 import random
 import string
 import logging
 from communications.services import AzureEmailService
-from django.http import HttpResponse
-from django.conf import settings
-from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -107,6 +111,14 @@ def verify_code(request):
         if submitted_code == stored_code:
             # Get or create user
             user, created = User.objects.get_or_create(email=email)
+            
+            # Explicitly create profile if user was just created
+            if created:
+                Profile.objects.create(user=user)
+                # Add default 'User' role
+                user_group, _ = Group.objects.get_or_create(name='User')
+                user.groups.add(user_group)
+            
             # Specify the authentication backend
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             
@@ -134,7 +146,9 @@ def verify_code(request):
 @login_required
 def profile(request):
     """User profile view."""
-    return render(request, 'accounts/profile.html')
+    return render(request, 'accounts/profile.html', {
+        'user_roles': request.user.groups.all()
+    })
 
 def debug_env(request):
     return HttpResponse(f"AZURE_COMMUNICATION_CONNECTION_STRING: {getattr(settings, 'AZURE_COMMUNICATION_CONNECTION_STRING', 'NOT SET')}")
@@ -184,4 +198,64 @@ def signup(request):
                     })
                 messages.error(request, "Email service is currently unavailable. Please try again later.")
     
-    return render(request, 'accounts/signup.html') 
+    return render(request, 'accounts/signup.html')
+
+class UserListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
+    """View for listing users (admin only)."""
+    model = User
+    template_name = 'accounts/user_list.html'
+    context_object_name = 'users'
+    required_roles = ['Admin']
+    
+    def get_queryset(self):
+        return User.objects.all().prefetch_related('groups')
+
+class UserRoleUpdateView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
+    """View for updating user roles (admin only)."""
+    model = User
+    template_name = 'accounts/user_role_update.html'
+    fields = []
+    required_roles = ['Admin']
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Get all roles including Admin
+        context['available_roles'] = Group.objects.all()
+        context['user_roles'] = self.object.groups.all()
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        user = self.get_object()
+        role_id = request.POST.get('role_id')
+        action = request.POST.get('action')
+        
+        if role_id and action:
+            role = get_object_or_404(Group, id=role_id)
+            
+            # Prevent removing Admin role from the last admin
+            if role.name == 'Admin' and action == 'remove':
+                admin_count = User.objects.filter(groups__name='Admin').count()
+                if admin_count <= 1:
+                    messages.error(request, 'Cannot remove the last admin user')
+                    if request.headers.get('HX-Request'):
+                        return render(request, 'accounts/_user_roles.html', {
+                            'user': user,
+                            'user_roles': user.groups.all(),
+                            'available_roles': Group.objects.all()
+                        })
+                    return redirect('accounts:user_role_update', pk=user.pk)
+            
+            if action == 'add':
+                user.groups.add(role)
+                messages.success(request, f'Added {role.name} role to {user.email}')
+            elif action == 'remove':
+                user.groups.remove(role)
+                messages.success(request, f'Removed {role.name} role from {user.email}')
+        
+        if request.headers.get('HX-Request'):
+            return render(request, 'accounts/_user_roles.html', {
+                'user': user,
+                'user_roles': user.groups.all(),
+                'available_roles': Group.objects.all()
+            })
+        return redirect('accounts:user_role_update', pk=user.pk) 
