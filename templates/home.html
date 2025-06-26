@@ -1,59 +1,226 @@
 {% extends "base.html" %}
 
-{% block title %}Welcome{% endblock %}
+{% block title %}Jexida - Manage What Matters{% endblock %}
 
 {% block content %}
-<div class="text-center py-5">
-    <h1 class="display-4 mb-4">Welcome to Django HTMX Boilerplate</h1>
-    <p class="lead mb-4">
-        A modern Django application using HTMX for interactivity and Bootstrap for styling.
-    </p>
-    
-    {% if user.is_authenticated %}
-        <a href="{% url 'dashboard:dashboard' %}" class="btn btn-primary btn-lg">
-            Go to Dashboard
-        </a>
-    {% else %}
-        <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg">
-            Get Started
-        </a>
-    {% endif %}
-</div>
+<!-- Hero Section -->
+<section class="hero-section bg-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="display-3 fw-bold mb-4">Manage What Matters.</h1>
+                <p class="lead mb-5">
+                    Jexida gives you the tools to organize programs, track work, and collaborate—whether you're running a business or participating in one.
+                </p>
+                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                    <a href="{% url 'accounts:signup' %}" class="btn btn-light btn-lg px-4">
+                        Get Started
+                    </a>
+                    <a href="{% url 'accounts:login' %}" class="btn btn-outline-light btn-lg px-4">
+                        Log In
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-<div class="row mt-5">
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h3 class="card-title">HTMX</h3>
-                <p class="card-text">
-                    Modern interactivity without writing JavaScript. HTMX gives you access to AJAX, CSS Transitions,
-                    WebSockets and Server Sent Events directly in HTML.
+<!-- What Is Jexida Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="h3 mb-4">What Is Jexida?</h2>
+                <p class="lead mb-4">
+                    Jexida is a centralized platform created by Nellson Associates. It supports:
+                </p>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Role-based dashboards</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Program management</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Document sharing</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Financial and operational tools</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Contractor and team collaboration</li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="mt-4">
+                    Whether you're managing an organization or joining a program, Jexida adapts to fit your role.
                 </p>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h3 class="card-title">Bootstrap</h3>
-                <p class="card-text">
-                    Build responsive, mobile-first projects on the web with the world's most popular front-end component
-                    library.
-                </p>
+</section>
+
+<!-- Who Uses Jexida Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5">Who Uses Jexida?</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-shield-check text-primary" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <h5 class="card-title">Admins & Owners</h5>
+                        <p class="card-text">Oversee operations, teams, and finances</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-briefcase text-primary" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <h5 class="card-title">Consultants</h5>
+                        <p class="card-text">Manage programs and client relationships</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-tools text-primary" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <h5 class="card-title">Contractors</h5>
+                        <p class="card-text">Track assignments, submit documents, and get paid</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-people text-primary" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <h5 class="card-title">Customers</h5>
+                        <p class="card-text">Sign up for services or track their participation</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-person text-primary" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <h5 class="card-title">General Users</h5>
+                        <p class="card-text">Apply for roles, view offerings, and manage accounts</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h3 class="card-title">Django</h3>
-                <p class="card-text">
-                    A high-level Python Web framework that encourages rapid development and clean, pragmatic design.
-                </p>
+</section>
+
+<!-- Tools & Features Section -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Tools & Features</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-speedometer2 text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>Dashboards</h5>
+                    <p class="text-muted">Customized by role</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-kanban text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>Program & Project Tracking</h5>
+                    <p class="text-muted">Organize and monitor progress</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-receipt text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>Pay & Document History</h5>
+                    <p class="text-muted">Track finances and files</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-chat-dots text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>Messaging & Collaboration</h5>
+                    <p class="text-muted">Connect with your team</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-person-plus text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>Signup Workflows</h5>
+                    <p class="text-muted">Streamlined onboarding</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-person-circle text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>Profiles</h5>
+                    <p class="text-muted">Manage your information</p>
+                </div>
             </div>
         </div>
     </div>
-</div>
+</section>
+
+<!-- Getting Started Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="mb-4">Getting Started</h2>
+                <p class="lead mb-5">
+                    To access Jexida, create an account or log in using the secure portal. Your experience is personalized based on your role and assignments.
+                </p>
+                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                    <a href="{% url 'accounts:signup' %}" class="btn btn-primary btn-lg px-4">
+                        Create an Account
+                    </a>
+                    <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-lg px-4">
+                        Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-dark text-white py-4">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="d-flex gap-4">
+                    <a href="#" class="text-white text-decoration-none">About</a>
+                    <a href="#" class="text-white text-decoration-none">Privacy Policy</a>
+                    <a href="#" class="text-white text-decoration-none">Contact</a>
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p class="mb-0 text-muted">Powered by Nellson Associates</p>
+            </div>
+        </div>
+    </div>
+</footer>
 {% endblock %} 
