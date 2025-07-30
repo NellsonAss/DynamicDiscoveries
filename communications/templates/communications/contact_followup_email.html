@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>We're reaching out about your inquiry</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #17a2b8; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background-color: #f8f9fa; }
+        .footer { text-align: center; padding: 20px; color: #6c757d; font-size: 14px; }
+        .highlight { background-color: #d1ecf1; padding: 15px; border-left: 4px solid #17a2b8; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>We're Here to Help!</h1>
+            <p>Our team is ready to discuss your child's learning journey.</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ contact.parent_name }},</p>
+            
+            <p>Thank you for your interest in Dynamic Discoveries! Our team has reviewed your inquiry about {{ contact.get_interest_display }} and we're excited to help your child explore and learn.</p>
+            
+            <div class="highlight">
+                <strong>What's next?</strong><br>
+                A member of our team will be reaching out to you soon to discuss your child's specific needs and how our programs can support their learning adventure.
+            </div>
+            
+            <p><strong>Your inquiry details:</strong></p>
+            <ul>
+                <li><strong>Interest:</strong> {{ contact.get_interest_display }}</li>
+                <li><strong>Submitted:</strong> {{ contact.created_at|date:"F j, Y \a\t g:i A" }}</li>
+            </ul>
+            
+            <p>In the meantime, here are some resources you might find helpful:</p>
+            <ul>
+                <li>Visit our website to explore our programs in detail</li>
+                <li>Check out our testimonials from other families</li>
+                <li>Learn about our experienced educators and their backgrounds</li>
+            </ul>
+            
+            <p>We look forward to connecting with you and learning more about your child's interests and goals!</p>
+            
+            <p>Best regards,<br>
+            The Dynamic Discoveries Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>Dynamic Discoveries<br>
+            Creating hands-on learning adventures designed to inspire young minds.</p>
+            <p>Phone: (555) 123-4567<br>
+            Email: hello@dynamicdiscoveries.com</p>
+        </div>
+    </div>
+</body>
+</html> 

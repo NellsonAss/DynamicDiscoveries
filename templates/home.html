@@ -1,23 +1,34 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Jexida - Manage What Matters{% endblock %}
+{% block title %}Dynamic Discoveries - Where Curiosity Leads, Learning Follows{% endblock %}
+
+{% block extra_head %}
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Custom CSS -->
+<link rel="stylesheet" href="{% static 'css/dynamic_discoveries.css' %}">
+{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->
-<section class="hero-section bg-primary text-white py-5">
+<section class="hero-section text-white py-5">
     <div class="container">
-        <div class="row align-items-center">
+        <div class="row align-items-center min-vh-75">
             <div class="col-lg-8 mx-auto text-center">
-                <h1 class="display-3 fw-bold mb-4">Manage What Matters.</h1>
-                <p class="lead mb-5">
-                    Jexida gives you the tools to organize programs, track work, and collaborate—whether you're running a business or participating in one.
+                <h1 class="display-3 fw-bold mb-4 fade-in">
+                    Where Curiosity Leads, Learning Follows
+                </h1>
+                <p class="lead mb-5 slide-in-left">
+                    At Dynamic Discoveries, we create hands-on learning adventures designed to inspire young minds. From science experiments and storytelling to math challenges and moon missions, our programs spark wonder and confidence in every child.
                 </p>
-                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
-                    <a href="{% url 'accounts:signup' %}" class="btn btn-light btn-lg px-4">
-                        Get Started
+                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center slide-in-right">
+                    <a href="#programs" class="btn btn-light btn-lg px-4">
+                        <i class="bi bi-rocket-takeoff me-2"></i>Explore Programs
                     </a>
-                    <a href="{% url 'accounts:login' %}" class="btn btn-outline-light btn-lg px-4">
-                        Log In
+                    <a href="#contact" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-envelope me-2"></i>Contact Us
                     </a>
                 </div>
             </div>
@@ -25,95 +36,138 @@
     </div>
 </section>
 
-<!-- What Is Jexida Section -->
+<!-- What We Offer Section -->
+<section id="programs" class="py-5 bg-warm">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2 class="h1 mb-4">What We Offer</h2>
+                <p class="lead text-muted">Comprehensive educational experiences designed to nurture every child's potential</p>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card service-card h-100 text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-lightbulb icon-large"></i>
+                    </div>
+                    <h5 class="card-title">After-School Enrichment</h5>
+                    <p class="card-text">Engaging programs that extend learning beyond the classroom with hands-on activities and creative exploration.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card service-card h-100 text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-people icon-large"></i>
+                    </div>
+                    <h5 class="card-title">Small Group Tutoring</h5>
+                    <p class="card-text">Personalized attention in intimate settings where every child's learning style is celebrated and supported.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card service-card h-100 text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-clipboard-data icon-large"></i>
+                    </div>
+                    <h5 class="card-title">Educational Assessments</h5>
+                    <p class="card-text">Comprehensive evaluations to understand your child's unique learning profile and academic needs.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card service-card h-100 text-center p-4">
+                    <div class="mb-3">
+                        <i class="bi bi-stars icon-large"></i>
+                    </div>
+                    <h5 class="card-title">Signature Learning Workshops</h5>
+                    <p class="card-text">Immersive, themed experiences that combine education with imagination and discovery.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Highlight Block -->
+<section class="py-5">
+    <div class="container">
+        <div class="highlight-block text-center">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h3 class="mb-3">
+                        <i class="bi bi-lightbulb-fill me-2"></i>Join us this fall!
+                    </h3>
+                    <p class="lead mb-4">
+                        Our popular STEAM Series and Lunar Explorers Workshop are filling up fast. Spots are limited—registration opens soon!
+                    </p>
+                    <a href="#contact" class="btn btn-primary btn-lg">
+                        <i class="bi bi-calendar-check me-2"></i>Get Early Access
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Programs -->
 <section class="py-5">
     <div class="container">
         <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h2 class="h3 mb-4">What Is Jexida?</h2>
-                <p class="lead mb-4">
-                    Jexida is a centralized platform created by Nellson Associates. It supports:
-                </p>
-                <div class="row g-4">
-                    <div class="col-md-6">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2 class="h1 mb-4">Featured Programs</h2>
+                <p class="lead text-muted">Discover our most popular learning adventures</p>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card program-card h-100">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-3">
+                            <i class="bi bi-flask icon-medium"></i>
+                        </div>
+                        <h5 class="card-title text-center">STEAM Series</h5>
+                        <p class="card-text">
+                            From bubbling lava lamps to engineering towers from marshmallows, our STEAM Series blends science, technology, engineering, art, and math in a creative, high-energy environment.
+                        </p>
                         <ul class="list-unstyled">
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Role-based dashboards</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Program management</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Document sharing</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Hands-on labs</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Reflection activities</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Take-home challenges</li>
                         </ul>
                     </div>
-                    <div class="col-md-6">
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card program-card h-100">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-3">
+                            <i class="bi bi-book icon-medium"></i>
+                        </div>
+                        <h5 class="card-title text-center">Storybook Collection</h5>
+                        <p class="card-text">
+                            Over six magical weeks, students explore what makes a story come to life—from setting and character to plot and point of view. Each child works toward publishing their own short story.
+                        </p>
                         <ul class="list-unstyled">
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Financial and operational tools</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Contractor and team collaboration</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Character development</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Plot structure</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Published story</li>
                         </ul>
                     </div>
                 </div>
-                <p class="mt-4">
-                    Whether you're managing an organization or joining a program, Jexida adapts to fit your role.
-                </p>
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- Who Uses Jexida Section -->
-<section class="py-5 bg-light">
-    <div class="container">
-        <h2 class="text-center mb-5">Who Uses Jexida?</h2>
-        <div class="row g-4">
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-shield-check text-primary" style="font-size: 2.5rem;"></i>
+            <div class="col-lg-4">
+                <div class="card program-card h-100">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-3">
+                            <i class="bi bi-moon-stars icon-medium"></i>
                         </div>
-                        <h5 class="card-title">Admins & Owners</h5>
-                        <p class="card-text">Oversee operations, teams, and finances</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-briefcase text-primary" style="font-size: 2.5rem;"></i>
-                        </div>
-                        <h5 class="card-title">Consultants</h5>
-                        <p class="card-text">Manage programs and client relationships</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-tools text-primary" style="font-size: 2.5rem;"></i>
-                        </div>
-                        <h5 class="card-title">Contractors</h5>
-                        <p class="card-text">Track assignments, submit documents, and get paid</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-people text-primary" style="font-size: 2.5rem;"></i>
-                        </div>
-                        <h5 class="card-title">Customers</h5>
-                        <p class="card-text">Sign up for services or track their participation</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-person text-primary" style="font-size: 2.5rem;"></i>
-                        </div>
-                        <h5 class="card-title">General Users</h5>
-                        <p class="card-text">Apply for roles, view offerings, and manage accounts</p>
+                        <h5 class="card-title text-center">Lunar Explorers</h5>
+                        <p class="card-text">
+                            Dive into the mysteries of the moon! This 8-week workshop explores moon phases, tides, legends, and lunar science through experiments, art projects, and a final showcase diorama.
+                        </p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Moon phases</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Lunar science</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Showcase diorama</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -121,85 +175,170 @@
     </div>
 </section>
 
-<!-- Tools & Features Section -->
-<section class="py-5">
-    <div class="container">
-        <h2 class="text-center mb-5">Tools & Features</h2>
-        <div class="row g-4">
-            <div class="col-md-6 col-lg-4">
-                <div class="text-center">
-                    <div class="mb-3">
-                        <i class="bi bi-speedometer2 text-primary" style="font-size: 3rem;"></i>
-                    </div>
-                    <h5>Dashboards</h5>
-                    <p class="text-muted">Customized by role</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="text-center">
-                    <div class="mb-3">
-                        <i class="bi bi-kanban text-primary" style="font-size: 3rem;"></i>
-                    </div>
-                    <h5>Program & Project Tracking</h5>
-                    <p class="text-muted">Organize and monitor progress</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="text-center">
-                    <div class="mb-3">
-                        <i class="bi bi-receipt text-primary" style="font-size: 3rem;"></i>
-                    </div>
-                    <h5>Pay & Document History</h5>
-                    <p class="text-muted">Track finances and files</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="text-center">
-                    <div class="mb-3">
-                        <i class="bi bi-chat-dots text-primary" style="font-size: 3rem;"></i>
-                    </div>
-                    <h5>Messaging & Collaboration</h5>
-                    <p class="text-muted">Connect with your team</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="text-center">
-                    <div class="mb-3">
-                        <i class="bi bi-person-plus text-primary" style="font-size: 3rem;"></i>
-                    </div>
-                    <h5>Signup Workflows</h5>
-                    <p class="text-muted">Streamlined onboarding</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="text-center">
-                    <div class="mb-3">
-                        <i class="bi bi-person-circle text-primary" style="font-size: 3rem;"></i>
-                    </div>
-                    <h5>Profiles</h5>
-                    <p class="text-muted">Manage your information</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Getting Started Section -->
-<section class="py-5 bg-light">
+<!-- Tutoring & Assessments Section -->
+<section id="tutoring" class="py-5 bg-light">
     <div class="container">
         <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h2 class="mb-4">Getting Started</h2>
-                <p class="lead mb-5">
-                    To access Jexida, create an account or log in using the secure portal. Your experience is personalized based on your role and assignments.
-                </p>
-                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
-                    <a href="{% url 'accounts:signup' %}" class="btn btn-primary btn-lg px-4">
-                        Create an Account
-                    </a>
-                    <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-lg px-4">
-                        Login
-                    </a>
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2 class="h1 mb-4">Personalized Learning Support</h2>
+                <p class="lead text-muted">Every learner is different—and that's exactly the point</p>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-3">
+                            <i class="bi bi-people icon-medium"></i>
+                        </div>
+                        <h5 class="card-title text-center">Small Group Tutoring</h5>
+                        <p class="card-text">
+                            Our tutoring programs are built for students who thrive with encouragement, engagement, and instruction that adapts to their needs. We use games, storytelling, visual tools, and discussion to make abstract concepts stick.
+                        </p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Reading Comprehension</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Math Fluency</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Executive Function & Study Skills</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Confidence-building in core subjects</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-3">
+                            <i class="bi bi-clipboard-data icon-medium"></i>
+                        </div>
+                        <h5 class="card-title text-center">Educational Assessments</h5>
+                        <p class="card-text">
+                            Wondering how your child learns best? We can help you find out. Our informal educational assessments provide insights into your child's unique learning profile and academic needs.
+                        </p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Reading Comprehension</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Academic Strengths and Gaps</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Gifted Screening</li>
+                            <li><i class="bi bi-check-circle text-primary me-2"></i>Learning Preferences and Styles</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Why Choose Us -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2 class="h1 mb-4">Why Choose Dynamic Discoveries?</h2>
+                <p class="lead text-muted">We believe every child deserves to discover their potential</p>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-heart-fill text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5>Child-Centered Learning</h5>
+                    <p class="text-muted">Every program is designed around your child's unique interests and learning style.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-award-fill text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5>Expert Educators</h5>
+                    <p class="text-muted">Our team brings years of experience in child development and creative education.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-house-fill text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5>Dedicated Learning Space</h5>
+                    <p class="text-muted">All programs are held in our purpose-built facility designed for exploration and discovery.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Section -->
+<section id="contact" class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2 class="h1 mb-4">Ready to Start Your Child's Adventure?</h2>
+                <p class="lead text-muted">Let's discuss how we can support your child's learning journey</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-6 mx-auto">
+                <div class="contact-form">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <form method="post" action="{% url 'communications:contact_form' %}">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <input type="text" 
+                                       class="form-control" 
+                                       name="parent_name" 
+                                       placeholder="Parent's Name" 
+                                       value="{{ contact_form_data.parent_name|default:'' }}"
+                                       required>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="email" 
+                                       class="form-control" 
+                                       name="email" 
+                                       placeholder="Email Address" 
+                                       value="{{ contact_form_data.email|default:'' }}"
+                                       required>
+                            </div>
+                            <div class="col-12">
+                                <input type="tel" 
+                                       class="form-control" 
+                                       name="phone" 
+                                       placeholder="Phone Number"
+                                       value="{{ contact_form_data.phone|default:'' }}">
+                            </div>
+                            <div class="col-12">
+                                <select class="form-control" name="interest" required>
+                                    <option value="">I'm interested in...</option>
+                                    <option value="after_school" {% if contact_form_data.interest == 'after_school' %}selected{% endif %}>After-School Enrichment</option>
+                                    <option value="small_group" {% if contact_form_data.interest == 'small_group' %}selected{% endif %}>Small Group Tutoring</option>
+                                    <option value="assessments" {% if contact_form_data.interest == 'assessments' %}selected{% endif %}>Educational Assessments</option>
+                                    <option value="workshops" {% if contact_form_data.interest == 'workshops' %}selected{% endif %}>Signature Workshops</option>
+                                    <option value="other" {% if contact_form_data.interest == 'other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <textarea class="form-control" 
+                                          name="message" 
+                                          rows="4" 
+                                          placeholder="Tell us about your child and their interests..."
+                                          required>{{ contact_form_data.message|default:'' }}</textarea>
+                            </div>
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-send me-2"></i>Send Message
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -207,18 +346,58 @@
 </section>
 
 <!-- Footer -->
-<footer class="bg-dark text-white py-4">
+<footer class="bg-dark text-white py-5 mt-5">
     <div class="container">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <div class="d-flex gap-4">
-                    <a href="#" class="text-white text-decoration-none">About</a>
-                    <a href="#" class="text-white text-decoration-none">Privacy Policy</a>
-                    <a href="#" class="text-white text-decoration-none">Contact</a>
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-stars me-2"></i>Dynamic Discoveries
+                </h5>
+                <p class="text-muted">Creating hands-on learning adventures designed to inspire young minds.</p>
+                <div class="d-flex gap-3">
+                    <a href="#" class="text-white"><i class="bi bi-facebook"></i></a>
+                    <a href="#" class="text-white"><i class="bi bi-instagram"></i></a>
+                    <a href="#" class="text-white"><i class="bi bi-twitter"></i></a>
                 </div>
             </div>
+            <div class="col-lg-2 col-md-6 mb-4">
+                <h6 class="fw-bold mb-3">Programs</h6>
+                <ul class="list-unstyled">
+                    <li><a href="#" class="text-muted text-decoration-none">STEAM Series</a></li>
+                    <li><a href="#" class="text-muted text-decoration-none">Storybook Collection</a></li>
+                    <li><a href="#" class="text-muted text-decoration-none">Lunar Explorers</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-2 col-md-6 mb-4">
+                <h6 class="fw-bold mb-3">Services</h6>
+                <ul class="list-unstyled">
+                    <li><a href="#" class="text-muted text-decoration-none">Tutoring</a></li>
+                    <li><a href="#" class="text-muted text-decoration-none">Assessments</a></li>
+                    <li><a href="#" class="text-muted text-decoration-none">After-School</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <h6 class="fw-bold mb-3">Contact</h6>
+                <p class="text-muted mb-2">
+                    <i class="bi bi-geo-alt me-2"></i>123 Learning Lane<br>
+                    Discovery City, DC 12345
+                </p>
+                <p class="text-muted mb-2">
+                    <i class="bi bi-telephone me-2"></i>(555) 123-4567
+                </p>
+                <p class="text-muted">
+                    <i class="bi bi-envelope me-2"></i>hello@dynamicdiscoveries.com
+                </p>
+            </div>
+        </div>
+        <hr class="my-4">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="mb-0 text-muted">&copy; 2024 Dynamic Discoveries. All rights reserved.</p>
+            </div>
             <div class="col-md-6 text-md-end">
-                <p class="mb-0 text-muted">Powered by Nellson Associates</p>
+                <a href="#" class="text-muted text-decoration-none me-3">Privacy Policy</a>
+                <a href="#" class="text-muted text-decoration-none">Terms of Service</a>
             </div>
         </div>
     </div>

@@ -37,6 +37,9 @@ ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['*'])
 
 # Application definition
 
+# Custom User Model
+AUTH_USER_MODEL = 'accounts.User'
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

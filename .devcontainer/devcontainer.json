@@ -1,11 +1,6 @@
 {
   "name": "Django Stdlib",
-  "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "features": {
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.11"
-    }
-  },
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -15,13 +10,13 @@
       "settings": {
         "python.formatting.provider": "black",
         "python.linting.pylintEnabled": true,
-        "python.linting.enabled": true,
-        "python.pythonPath": "/usr/local/bin/python"
+        "python.linting.enabled": true
       }
     }
   },
   "forwardPorts": [8000],
-  "postCreateCommand": "pip install -r requirements.txt && cp .env.example .env && python manage.py migrate",
+  "postCreateCommand": "test -f requirements.txt && pip install -r requirements.txt; test -f .env.example && cp .env.example .env; python manage.py migrate || true",
+  "postStartCommand": "python manage.py runserver 0.0.0.0:8000",
   "portsAttributes": {
     "8000": {
       "label": "Django Server",

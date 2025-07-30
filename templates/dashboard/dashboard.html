@@ -44,6 +44,36 @@
     </div>
 </div>
 
+{% if user.is_authenticated %}
+    {% if 'Admin' in user.get_role_names or 'Consultant' in user.get_role_names %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-envelope me-2"></i>Contact Inquiries
+                            </h5>
+                            <a href="{% url 'communications:contact_list' %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-arrow-right me-1"></i>View All
+                            </a>
+                        </div>
+                        <div id="contact-inquiries"
+                             hx-get="{% url 'communications:contact_list' %}"
+                             hx-trigger="intersect once"
+                             hx-swap="afterend">
+                            <div class="text-center py-3">
+                                <i class="bi bi-envelope display-4 text-muted"></i>
+                                <p class="mt-2 text-muted">Loading contact inquiries...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endif %}
+
 <div class="row mt-4">
     <div class="col-12">
         <div class="card">
