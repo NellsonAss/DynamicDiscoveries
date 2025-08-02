@@ -14,6 +14,7 @@ from django.urls import reverse
 from .mixins import RoleRequiredMixin
 from django.views.generic import ListView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from .forms import LoginForm, SignupForm
 import random
 import string
 import logging
@@ -48,8 +49,9 @@ def get_email_service():
 def login_view(request):
     """Handle the login process with email verification."""
     if request.method == 'POST':
-        email = request.POST.get('email')
-        if email:
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
             # Generate verification code
             verification_code = generate_verification_code()
             
@@ -79,6 +81,7 @@ def login_view(request):
                     logger.error(f"Failed to send verification email to {email}: {str(e)}")
                     if request.headers.get('HX-Request'):
                         return render(request, 'accounts/_login_form.html', {
+                            'form': form,
                             'error': f"Failed to send verification email: {str(e)}"
                         })
                     messages.error(request, f"Failed to send verification email: {str(e)}")
@@ -86,11 +89,22 @@ def login_view(request):
                 logger.error("Email service not available")
                 if request.headers.get('HX-Request'):
                     return render(request, 'accounts/_login_form.html', {
+                        'form': form,
                         'error': "Email service is currently unavailable. Please try again later."
                     })
                 messages.error(request, "Email service is currently unavailable. Please try again later.")
+        else:
+            # Form validation failed
+            if request.headers.get('HX-Request'):
+                return render(request, 'accounts/_login_form.html', {
+                    'form': form,
+                    'error': "Please correct the errors below."
+                })
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = LoginForm()
     
-    return render(request, 'accounts/login.html')
+    return render(request, 'accounts/login.html', {'form': form})
 
 @require_http_methods(['GET', 'POST'])
 def verify_code(request):
@@ -157,8 +171,9 @@ def debug_env(request):
 def signup(request):
     """Handle user registration."""
     if request.method == 'POST':
-        email = request.POST.get('email')
-        if email:
+        form = SignupForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
             # Generate verification code
             verification_code = generate_verification_code()
             
@@ -187,6 +202,7 @@ def signup(request):
                     logger.error(f"Failed to send verification email to {email}: {str(e)}")
                     if request.headers.get('HX-Request'):
                         return render(request, 'accounts/_signup_form.html', {
+                            'form': form,
                             'error': f"Failed to send verification email: {str(e)}"
                         })
                     messages.error(request, f"Failed to send verification email: {str(e)}")
@@ -194,11 +210,22 @@ def signup(request):
                 logger.error("Email service not available")
                 if request.headers.get('HX-Request'):
                     return render(request, 'accounts/_signup_form.html', {
+                        'form': form,
                         'error': "Email service is currently unavailable. Please try again later."
                     })
                 messages.error(request, "Email service is currently unavailable. Please try again later.")
+        else:
+            # Form validation failed
+            if request.headers.get('HX-Request'):
+                return render(request, 'accounts/_signup_form.html', {
+                    'form': form,
+                    'error': "Please correct the errors below."
+                })
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = SignupForm()
     
-    return render(request, 'accounts/signup.html')
+    return render(request, 'accounts/signup.html', {'form': form})
 
 class UserListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     """View for listing users (admin only)."""

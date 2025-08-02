@@ -9,23 +9,54 @@
       hx-swap="innerHTML">
     {% csrf_token %}
     <div class="mb-3">
-        <label for="email" class="form-label">Email address</label>
-        <input type="email" 
-               class="form-control" 
-               id="email" 
-               name="email" 
-               required>
+        <label for="id_email" class="form-label">Email address</label>
+        {{ form.email }}
         <div id="email-indicator" class="htmx-indicator">
             <div class="spinner-border spinner-border-sm" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
         </div>
-        <div id="email-feedback" class="form-text"></div>
+        {% if form.email.errors %}
+            <div class="text-danger small">{{ form.email.errors.0 }}</div>
+        {% endif %}
     </div>
+    
+    <div class="mb-3">
+        <label for="id_captcha_1" class="form-label">CAPTCHA</label>
+        <div class="d-flex align-items-center gap-2">
+            {{ form.captcha }}
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshCaptcha()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        {% if form.captcha.errors %}
+            <div class="text-danger small">{{ form.captcha.errors.0 }}</div>
+        {% endif %}
+        <div class="form-text">Please solve the math problem to verify you're human.</div>
+    </div>
+    
+    <style>
+        .captcha input[type="text"] {
+            width: 150px !important;
+            display: inline-block !important;
+        }
+        .captcha img {
+            margin-right: 10px;
+        }
+    </style>
     
     <div class="d-grid">
         <button type="submit" class="btn btn-primary">
             Create Account
         </button>
     </div>
-</form> 
+</form>
+
+<script>
+function refreshCaptcha() {
+    const captchaImg = document.querySelector('.captcha');
+    if (captchaImg) {
+        captchaImg.src = captchaImg.src.split('?')[0] + '?' + new Date().getTime();
+    }
+}
+</script> 
