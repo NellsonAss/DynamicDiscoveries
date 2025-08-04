@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Complete Registration Form - {{ registration.program_instance.program_type.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Complete Registration Form</h2>
+                    <p class="text-muted mb-0">
+                        {{ registration.program_instance.program_type.name }} - {{ registration.child.full_name }}
+                    </p>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Please complete the registration form below. All required fields must be filled out before your registration can be approved.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% for question in form.form_instance.questions.all %}
+                            <div class="mb-3">
+                                <label for="question_{{ question.pk }}" class="form-label">
+                                    {{ question.question_text }}
+                                    {% if question.is_required %}
+                                        <span class="text-danger">*</span>
+                                    {% endif %}
+                                </label>
+                                
+                                {% if question.question_type == 'text' %}
+                                    <input type="text" 
+                                           name="question_{{ question.pk }}" 
+                                           id="question_{{ question.pk }}"
+                                           class="form-control"
+                                           {% if question.is_required %}required{% endif %}
+                                           placeholder="Enter your answer...">
+                                
+                                {% elif question.question_type == 'textarea' %}
+                                    <textarea name="question_{{ question.pk }}" 
+                                              id="question_{{ question.pk }}"
+                                              class="form-control"
+                                              rows="3"
+                                              {% if question.is_required %}required{% endif %}
+                                              placeholder="Enter your answer..."></textarea>
+                                
+                                {% elif question.question_type == 'email' %}
+                                    <input type="email" 
+                                           name="question_{{ question.pk }}" 
+                                           id="question_{{ question.pk }}"
+                                           class="form-control"
+                                           {% if question.is_required %}required{% endif %}
+                                           placeholder="Enter email address...">
+                                
+                                {% elif question.question_type == 'phone' %}
+                                    <input type="tel" 
+                                           name="question_{{ question.pk }}" 
+                                           id="question_{{ question.pk }}"
+                                           class="form-control"
+                                           {% if question.is_required %}required{% endif %}
+                                           placeholder="Enter phone number...">
+                                
+                                {% elif question.question_type == 'select' %}
+                                    <select name="question_{{ question.pk }}" 
+                                            id="question_{{ question.pk }}"
+                                            class="form-select"
+                                            {% if question.is_required %}required{% endif %}>
+                                        <option value="">Choose an option...</option>
+                                        {% for option in question.options %}
+                                            <option value="{{ option }}">{{ option }}</option>
+                                        {% endfor %}
+                                    </select>
+                                
+                                {% elif question.question_type == 'radio' %}
+                                    <div class="form-check">
+                                        {% for option in question.options %}
+                                            <input type="radio" 
+                                                   name="question_{{ question.pk }}" 
+                                                   id="question_{{ question.pk }}_{{ forloop.counter }}"
+                                                   value="{{ option }}"
+                                                   class="form-check-input"
+                                                   {% if question.is_required %}required{% endif %}>
+                                            <label class="form-check-label" for="question_{{ question.pk }}_{{ forloop.counter }}">
+                                                {{ option }}
+                                            </label>
+                                            {% if not forloop.last %}<br>{% endif %}
+                                        {% endfor %}
+                                    </div>
+                                
+                                {% elif question.question_type == 'checkbox' %}
+                                    <div class="form-check">
+                                        {% for option in question.options %}
+                                            <input type="checkbox" 
+                                                   name="question_{{ question.pk }}" 
+                                                   id="question_{{ question.pk }}_{{ forloop.counter }}"
+                                                   value="{{ option }}"
+                                                   class="form-check-input">
+                                            <label class="form-check-label" for="question_{{ question.pk }}_{{ forloop.counter }}">
+                                                {{ option }}
+                                            </label>
+                                            {% if not forloop.last %}<br>{% endif %}
+                                        {% endfor %}
+                                    </div>
+                                
+                                {% elif question.question_type == 'date' %}
+                                    <input type="date" 
+                                           name="question_{{ question.pk }}" 
+                                           id="question_{{ question.pk }}"
+                                           class="form-control"
+                                           {% if question.is_required %}required{% endif %}>
+                                
+                                {% elif question.question_type == 'number' %}
+                                    <input type="number" 
+                                           name="question_{{ question.pk }}" 
+                                           id="question_{{ question.pk }}"
+                                           class="form-control"
+                                           {% if question.is_required %}required{% endif %}
+                                           placeholder="Enter a number...">
+                                
+                                {% else %}
+                                    <input type="text" 
+                                           name="question_{{ question.pk }}" 
+                                           id="question_{{ question.pk }}"
+                                           class="form-control"
+                                           {% if question.is_required %}required{% endif %}
+                                           placeholder="Enter your answer...">
+                                {% endif %}
+                                
+                                {% if not question.is_required %}
+                                    <div class="form-text text-muted">Optional</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'programs:parent_dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Submit Registration Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

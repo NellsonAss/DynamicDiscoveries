@@ -11,12 +11,18 @@ class RoleRequiredMixin(UserPassesTestMixin):
         self.required_roles = required_roles or []
         super().__init__(*args, **kwargs)
     
+    def get_required_roles(self):
+        """Get the required roles for this view."""
+        return getattr(self, 'required_roles', [])
+    
     def test_func(self):
         if not self.request.user.is_authenticated:
             return False
         
         user_roles = self.request.user.get_role_names()
-        return any(role in user_roles for role in self.required_roles)
+        required_roles = self.get_required_roles()
+        
+        return any(role in user_roles for role in required_roles)
     
     def handle_no_permission(self):
         messages.error(self.request, "You don't have permission to access this page.")

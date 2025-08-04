@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Send Form to Participants - {{ program_instance.program_type.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Send Form to Participants</h2>
+                    <p class="text-muted mb-0">
+                        {{ program_instance.program_type.name }} - {{ program_instance.start_date|date:"M d, Y" }}
+                    </p>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>How this works:</strong>
+                        <br>
+                        When you assign a form to this program, all current and future registrations will be required to complete the form before their registration can be approved.
+                    </div>
+
+                    {% if program_instance.assigned_form %}
+                        <div class="alert alert-success">
+                            <h6><i class="bi bi-check-circle"></i> Form Currently Assigned</h6>
+                            <p class="mb-2"><strong>{{ program_instance.assigned_form.title }}</strong></p>
+                            {% if program_instance.assigned_form.description %}
+                                <p class="text-muted">{{ program_instance.assigned_form.description }}</p>
+                            {% endif %}
+                            <p class="mb-0">
+                                <small class="text-muted">
+                                    {{ program_instance.assigned_form.questions.count }} questions
+                                </small>
+                            </p>
+                        </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="form" class="form-label">Select Form to Assign</label>
+                            <select name="form" id="form" class="form-select" required>
+                                <option value="">Choose a form...</option>
+                                {% for form in forms %}
+                                    <option value="{{ form.pk }}" 
+                                            {% if program_instance.assigned_form == form %}selected{% endif %}>
+                                        {{ form.title }} ({{ form.questions.count }} questions)
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                This form will be required for all registrations in this program.
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'programs:view_registrations' program_instance.pk %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Registrations
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Assign Form to Program
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Current Registrations Status -->
+            {% if program_instance.registrations.exists %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Current Registrations Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Child</th>
+                                        <th>Parent</th>
+                                        <th>Form Complete</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for registration in program_instance.registrations.all %}
+                                        <tr>
+                                            <td>{{ registration.child.full_name }}</td>
+                                            <td>{{ registration.child.parent.email }}</td>
+                                            <td>
+                                                {% if registration.form_responses %}
+                                                    <span class="badge bg-success">Yes</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">No</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if registration.status == 'approved' %}success{% elif registration.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                                    {{ registration.get_status_display }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

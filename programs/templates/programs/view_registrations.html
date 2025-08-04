@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Registrations - {{ program_instance.program_type.name }}{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="mb-1">{{ program_instance.program_type.name }}</h1>
+                    <p class="text-muted mb-0">
+                        {{ program_instance.start_date|date:"M d, Y" }} - {{ program_instance.end_date|date:"M d, Y" }} at {{ program_instance.location }}
+                    </p>
+                </div>
+                <div class="text-end">
+                    <a href="{% url 'programs:send_form_to_participants' program_instance.pk %}" class="btn btn-outline-primary">
+                        <i class="bi bi-envelope"></i> Send Form
+                    </a>
+                    <a href="{% url 'programs:contractor_dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Program Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ registrations.count }}</h5>
+                            <p class="card-text text-muted">Total Registrations</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ program_instance.current_enrollment }}</h5>
+                            <p class="card-text text-muted">Approved</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ program_instance.available_spots }}</h5>
+                            <p class="card-text text-muted">Available Spots</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ program_instance.capacity }}</h5>
+                            <p class="card-text text-muted">Total Capacity</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registrations Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Registrations</h5>
+                </div>
+                <div class="card-body">
+                    {% if registrations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Child</th>
+                                        <th>Parent</th>
+                                        <th>Age</th>
+                                        <th>Grade</th>
+                                        <th>Status</th>
+                                        <th>Form Complete</th>
+                                        <th>Registered</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for registration in registrations %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ registration.child.full_name }}</strong>
+                                                {% if registration.child.special_needs %}
+                                                    <br>
+                                                    <small class="text-warning">
+                                                        <i class="bi bi-exclamation-triangle"></i> Special needs
+                                                    </small>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ registration.child.parent.email }}</td>
+                                            <td>{{ registration.child.age }}</td>
+                                            <td>{{ registration.child.grade_level|default:"-" }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <select class="form-select form-select-sm status-select me-2" 
+                                                            data-registration-id="{{ registration.pk }}"
+                                                            data-original-value="{{ registration.status }}"
+                                                            style="width: auto;">
+                                                        {% for value, label in registration.STATUS_CHOICES %}
+                                                            <option value="{{ value }}" 
+                                                                    {% if registration.status == value %}selected{% endif %}>
+                                                                {{ label }}
+                                                            </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-arrow-clockwise"></i> Auto-saves
+                                                    </small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if registration.form_responses %}
+                                                    <span class="badge bg-success">Yes</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">No</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ registration.registered_at|date:"M d, Y" }}</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-info btn-sm" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#registrationModal{{ registration.pk }}">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                    {% if registration.form_responses %}
+                                                        <button class="btn btn-outline-primary btn-sm"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#formResponsesModal{{ registration.pk }}">
+                                                            <i class="bi bi-clipboard-list"></i>
+                                                        </button>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No registrations yet for this program.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Registration Detail Modals -->
+{% for registration in registrations %}
+<div class="modal fade" id="registrationModal{{ registration.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registration Details - {{ registration.child.full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Child Information</h6>
+                        <p><strong>Name:</strong> {{ registration.child.full_name }}</p>
+                        <p><strong>Age:</strong> {{ registration.child.age }} years old</p>
+                        <p><strong>Grade Level:</strong> {{ registration.child.grade_level|default:"Not specified" }}</p>
+                        {% if registration.child.special_needs %}
+                            <p><strong>Special Needs:</strong> {{ registration.child.special_needs }}</p>
+                        {% endif %}
+                        {% if registration.child.emergency_contact %}
+                            <p><strong>Emergency Contact:</strong> {{ registration.child.emergency_contact }}</p>
+                            {% if registration.child.emergency_phone %}
+                                <p><strong>Emergency Phone:</strong> {{ registration.child.emergency_phone }}</p>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Registration Information</h6>
+                        <p><strong>Parent:</strong> {{ registration.child.parent.email }}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge bg-{% if registration.status == 'approved' %}success{% elif registration.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                {{ registration.get_status_display }}
+                            </span>
+                        </p>
+                        <p><strong>Registered:</strong> {{ registration.registered_at|date:"F d, Y g:i A" }}</p>
+                        {% if registration.notes %}
+                            <p><strong>Notes:</strong> {{ registration.notes }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if registration.form_responses %}
+<div class="modal fade" id="formResponsesModal{{ registration.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Form Responses - {{ registration.child.full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% for question_id, response in registration.form_responses.items %}
+                    {% for question in registration.program_instance.assigned_form.questions.all %}
+                        {% if question.pk|stringformat:"s" == question_id %}
+                            <div class="mb-3">
+                                <h6>{{ question.question_text }}</h6>
+                                <p class="text-muted">{{ response }}</p>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle status changes
+    document.querySelectorAll('.status-select').forEach(function(select) {
+        select.addEventListener('change', function() {
+            const registrationId = this.dataset.registrationId;
+            const newStatus = this.value;
+            const originalValue = this.getAttribute('data-original-value');
+            
+            // Show loading state
+            this.disabled = true;
+            this.style.opacity = '0.6';
+            
+            // Add loading spinner
+            const loadingSpinner = document.createElement('span');
+            loadingSpinner.className = 'spinner-border spinner-border-sm ms-2';
+            loadingSpinner.setAttribute('role', 'status');
+            loadingSpinner.setAttribute('aria-hidden', 'true');
+            this.parentNode.appendChild(loadingSpinner);
+            
+            fetch(`{% url 'programs:update_registration_status' 0 %}`.replace('0', registrationId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: `status=${newStatus}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the original value
+                    this.setAttribute('data-original-value', newStatus);
+                    
+                    // Add visual feedback to the select
+                    this.classList.add('border-success');
+                    setTimeout(() => {
+                        this.classList.remove('border-success');
+                    }, 2000);
+                    
+                    // Show success message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show';
+                    alert.innerHTML = `
+                        <i class="bi bi-check-circle me-2"></i>Status updated successfully!
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.container').insertBefore(alert, document.querySelector('.container').firstChild);
+                    
+                    // Auto-dismiss after 3 seconds
+                    setTimeout(() => {
+                        alert.remove();
+                    }, 3000);
+                } else {
+                    // Revert to original value on error
+                    this.value = originalValue;
+                    alert('Error updating status. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Revert to original value on error
+                this.value = originalValue;
+                alert('Error updating status. Please try again.');
+            })
+            .finally(() => {
+                // Re-enable the select
+                this.disabled = false;
+                this.style.opacity = '1';
+                
+                // Remove loading spinner
+                const loadingSpinner = this.parentNode.querySelector('.spinner-border');
+                if (loadingSpinner) {
+                    loadingSpinner.remove();
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %} 

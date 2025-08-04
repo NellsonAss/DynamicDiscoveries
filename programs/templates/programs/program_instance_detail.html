@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ program_instance.program_type.name }} - Program Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Program Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="mb-0">{{ program_instance.program_type.name }}</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Program Information</h5>
+                            <p><strong>Description:</strong> {{ program_instance.program_type.description }}</p>
+                            <p><strong>Target Grades:</strong> {{ program_instance.program_type.target_grade_levels }}</p>
+                            <p><strong>Instructor:</strong> {{ program_instance.instructor.email }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Schedule & Location</h5>
+                            <p><strong>Start Date:</strong> {{ program_instance.start_date|date:"F d, Y g:i A" }}</p>
+                            <p><strong>End Date:</strong> {{ program_instance.end_date|date:"F d, Y g:i A" }}</p>
+                            <p><strong>Location:</strong> {{ program_instance.location }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h5>Enrollment Status</h5>
+                            <div class="progress mb-2">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {% widthratio program_instance.current_enrollment program_instance.capacity 100 %}%">
+                                    {{ program_instance.current_enrollment }}/{{ program_instance.capacity }}
+                                </div>
+                            </div>
+                            <p class="text-muted">
+                                {% if program_instance.is_full %}
+                                    <span class="badge bg-danger">Program Full</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ program_instance.available_spots }} spots available</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registration Form -->
+            {% if can_register and not user_registrations %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Register for this Program</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="{% url 'programs:register_child' program_instance.pk %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="child" class="form-label">Select Child</label>
+                                <select name="child" id="child" class="form-select" required>
+                                    <option value="">Choose a child...</option>
+                                    {% for child in request.user.children.all %}
+                                        <option value="{{ child.pk }}">{{ child.full_name }} (Age: {{ child.age }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                Register for Program
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% elif user_registrations %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Your Registration</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for registration in user_registrations %}
+                            <div class="alert alert-info">
+                                <strong>{{ registration.child.full_name }}</strong> is registered for this program.
+                                <br>
+                                <small>Status: 
+                                    <span class="badge bg-{% if registration.status == 'approved' %}success{% elif registration.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                        {{ registration.get_status_display }}
+                                    </span>
+                                </small>
+                                {% if registration.program_instance.assigned_form and not registration.form_responses %}
+                                    <br>
+                                    <a href="{% url 'programs:complete_registration_form' registration.pk %}" class="btn btn-warning btn-sm mt-2">
+                                        Complete Registration Form
+                                    </a>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'programs:parent_dashboard' %}" class="btn btn-outline-secondary btn-sm mb-2 w-100">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                    {% if can_register %}
+                        <a href="{% url 'programs:manage_children' %}" class="btn btn-outline-primary btn-sm mb-2 w-100">
+                            <i class="bi bi-person-plus"></i> Manage Children
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Program Type Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Program Type Details</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Type:</strong> {{ program_instance.program_type.name }}</p>
+                    <p><strong>Target Grades:</strong> {{ program_instance.program_type.target_grade_levels }}</p>
+                    {% if program_instance.program_type.default_registration_form %}
+                        <p><strong>Default Form:</strong> {{ program_instance.program_type.default_registration_form.title }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

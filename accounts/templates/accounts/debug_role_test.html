@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Debug Role Test{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>Debug Role Test</h2>
+        </div>
+        <div class="card-body">
+            <h5>User Information:</h5>
+            <ul>
+                <li><strong>Email:</strong> {{ user_email }}</li>
+                <li><strong>Groups:</strong> {{ user_groups|join:", " }}</li>
+                <li><strong>Roles:</strong> {{ user_roles|join:", " }}</li>
+                <li><strong>Is Authenticated:</strong> {{ is_authenticated }}</li>
+                <li><strong>Has Admin Role:</strong> {{ has_admin_role }}</li>
+            </ul>
+            
+            <h5>Role Test Results:</h5>
+            <ul>
+                <li><strong>Required Roles:</strong> {{ required_roles|join:", " }}</li>
+                <li><strong>Test Result:</strong> 
+                    {% if test_result %}
+                        <span class="text-success">✅ PASS</span>
+                    {% else %}
+                        <span class="text-danger">❌ FAIL</span>
+                    {% endif %}
+                </li>
+            </ul>
+            
+            <div class="mt-3">
+                <a href="{% url 'accounts:user_list' %}" class="btn btn-primary">Try User List</a>
+                <a href="{% url 'accounts:debug_user' %}" class="btn btn-secondary">Debug User</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

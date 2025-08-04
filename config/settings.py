@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "dashboard.apps.DashboardConfig",
     "communications",
+    "programs",
 ]
 
 MIDDLEWARE = [

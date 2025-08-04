@@ -26,6 +26,7 @@ urlpatterns = [
     path('auth/', include(('allauth.urls', 'allauth'), namespace='auth')),  # django-allauth URLs under /auth/
     path('accounts/', include('accounts.urls')),  # Our custom accounts URLs
     path('communications/', include('communications.urls')),
+    path('programs/', include('programs.urls')),
     path('', include('dashboard.urls')),
     path('debug-env/', debug_env),
     path('captcha/', include('captcha.urls')),

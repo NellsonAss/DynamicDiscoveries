@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Contractor Dashboard - Programs{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Contractor Dashboard</h1>
+            
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="bi bi-clipboard-list display-4 text-primary mb-3"></i>
+                            <h5>Manage Forms</h5>
+                            <p class="text-muted">Create and edit registration forms</p>
+                            <a href="{% url 'programs:form_builder' %}" class="btn btn-primary">
+                                Create New Form
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="bi bi-people display-4 text-success mb-3"></i>
+                            <h5>View Registrations</h5>
+                            <p class="text-muted">Manage program registrations</p>
+                            <a href="#" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#viewRegistrationsModal">
+                                View All
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Programs -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">My Programs</h5>
+                    <span class="badge bg-primary">{{ program_instances.count }} programs</span>
+                </div>
+                <div class="card-body">
+                    {% if program_instances %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Program</th>
+                                        <th>Dates</th>
+                                        <th>Location</th>
+                                        <th>Enrollment</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for program in program_instances %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ program.program_type.name }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ program.program_type.target_grade_levels }}</small>
+                                            </td>
+                                            <td>
+                                                {{ program.start_date|date:"M d" }} - {{ program.end_date|date:"M d, Y" }}
+                                                <br>
+                                                <small class="text-muted">{{ program.start_date|date:"g:i A" }}</small>
+                                            </td>
+                                            <td>{{ program.location }}</td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         style="width: {% widthratio program.current_enrollment program.capacity 100 %}%">
+                                                        {{ program.current_enrollment }}/{{ program.capacity }}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if program.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'programs:view_registrations' program.pk %}" class="btn btn-outline-primary">
+                                                        <i class="bi bi-people"></i>
+                                                    </a>
+                                                    <a href="{% url 'programs:send_form_to_participants' program.pk %}" class="btn btn-outline-secondary">
+                                                        <i class="bi bi-envelope"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No programs assigned yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- My Forms -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">My Forms</h5>
+                    <a href="{% url 'programs:form_builder' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus"></i> Create Form
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if forms %}
+                        <div class="row">
+                            {% for form in forms %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ form.title }}</h6>
+                                            {% if form.description %}
+                                                <p class="card-text text-muted">{{ form.description|truncatewords:10 }}</p>
+                                            {% endif %}
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">
+                                                    {{ form.questions.count }} questions
+                                                </small>
+                                                {% if form.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="card-footer">
+                                            <div class="btn-group btn-group-sm w-100">
+                                                <a href="{% url 'programs:form_edit' form.pk %}" class="btn btn-outline-primary">
+                                                    Edit
+                                                </a>
+                                                <a href="{% url 'programs:duplicate_form' form.pk %}" class="btn btn-outline-secondary">
+                                                    Duplicate
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No forms created yet. <a href="{% url 'programs:form_builder' %}">Create your first form</a></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Registrations Modal -->
+<div class="modal fade" id="viewRegistrationsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">All Program Registrations</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if program_instances %}
+                    <div class="accordion" id="programsAccordion">
+                        {% for program in program_instances %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ program.pk }}">
+                                        {{ program.program_type.name }} ({{ program.registrations.count }} registrations)
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ program.pk }}" class="accordion-collapse collapse" data-bs-parent="#programsAccordion">
+                                    <div class="accordion-body">
+                                        <a href="{% url 'programs:view_registrations' program.pk %}" class="btn btn-primary btn-sm mb-3">
+                                            View Full Details
+                                        </a>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Child</th>
+                                                        <th>Parent</th>
+                                                        <th>Status</th>
+                                                        <th>Form Complete</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for registration in program.registrations.all|slice:":5" %}
+                                                        <tr>
+                                                            <td>{{ registration.child.full_name }}</td>
+                                                            <td>{{ registration.child.parent.email }}</td>
+                                                            <td>
+                                                                <span class="badge bg-{% if registration.status == 'approved' %}success{% elif registration.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                                                    {{ registration.get_status_display }}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                {% if registration.form_responses %}
+                                                                    <span class="badge bg-success">Yes</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-warning">No</span>
+                                                                {% endif %}
+                                                            </td>
+                                                        </tr>
+                                                    {% empty %}
+                                                        <tr>
+                                                            <td colspan="4" class="text-muted">No registrations yet</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No programs available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

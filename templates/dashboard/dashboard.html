@@ -9,6 +9,75 @@
     </div>
 </div>
 
+{% if user.is_authenticated %}
+    <!-- Role-based Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if 'Parent' in user.get_role_names %}
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:parent_dashboard' %}" class="btn btn-outline-primary">
+                                        <i class="bi bi-house me-2"></i>Parent Dashboard
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:manage_children' %}" class="btn btn-outline-success">
+                                        <i class="bi bi-person-plus me-2"></i>Manage Children
+                                    </a>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if 'Contractor' in user.get_role_names %}
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:contractor_dashboard' %}" class="btn btn-outline-primary">
+                                        <i class="bi bi-speedometer2 me-2"></i>Contractor Dashboard
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:form_builder' %}" class="btn btn-outline-success">
+                                        <i class="bi bi-clipboard-plus me-2"></i>Create Forms
+                                    </a>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if 'Admin' in user.get_role_names %}
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-primary">
+                                        <i class="bi bi-people me-2"></i>User Management
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'admin:index' %}" class="btn btn-outline-warning">
+                                        <i class="bi bi-gear me-2"></i>Django Admin
+                                    </a>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
 <div class="row">
     <div class="col-md-4">
         <div class="card">

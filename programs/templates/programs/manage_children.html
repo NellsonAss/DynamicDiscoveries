@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Manage Children{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Children List -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">My Children</h5>
+                </div>
+                <div class="card-body">
+                    {% if children %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Age</th>
+                                        <th>Grade Level</th>
+                                        <th>Emergency Contact</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for child in children %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ child.full_name }}</strong>
+                                                {% if child.special_needs %}
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-info-circle"></i> Special needs noted
+                                                    </small>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ child.age }} years old</td>
+                                            <td>{{ child.grade_level|default:"Not specified" }}</td>
+                                            <td>
+                                                {% if child.emergency_contact %}
+                                                    {{ child.emergency_contact }}
+                                                    {% if child.emergency_phone %}
+                                                        <br>
+                                                        <small class="text-muted">{{ child.emergency_phone }}</small>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">Not provided</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'programs:edit_child' child.pk %}" class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-pencil"></i> Edit
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No children registered yet. Add your first child below.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Add Child Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Add New Child</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name</label>
+                                    {{ form.first_name }}
+                                    {% if form.first_name.errors %}
+                                        <div class="text-danger">{{ form.first_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name</label>
+                                    {{ form.last_name }}
+                                    {% if form.last_name.errors %}
+                                        <div class="text-danger">{{ form.last_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.date_of_birth.id_for_label }}" class="form-label">Date of Birth</label>
+                                    {{ form.date_of_birth }}
+                                    {% if form.date_of_birth.errors %}
+                                        <div class="text-danger">{{ form.date_of_birth.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.grade_level.id_for_label }}" class="form-label">Grade Level</label>
+                                    {{ form.grade_level }}
+                                    {% if form.grade_level.errors %}
+                                        <div class="text-danger">{{ form.grade_level.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.special_needs.id_for_label }}" class="form-label">Special Needs or Allergies</label>
+                            {{ form.special_needs }}
+                            {% if form.special_needs.errors %}
+                                <div class="text-danger">{{ form.special_needs.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Please list any special needs, allergies, or medical conditions we should be aware of.</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.emergency_contact.id_for_label }}" class="form-label">Emergency Contact Name</label>
+                                    {{ form.emergency_contact }}
+                                    {% if form.emergency_contact.errors %}
+                                        <div class="text-danger">{{ form.emergency_contact.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.emergency_phone.id_for_label }}" class="form-label">Emergency Contact Phone</label>
+                                    {{ form.emergency_phone }}
+                                    {% if form.emergency_phone.errors %}
+                                        <div class="text-danger">{{ form.emergency_phone.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'programs:parent_dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus"></i> Add Child
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Information Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                                                    <i class="bi bi-info-circle"></i>
+                        <strong>Why register your children?</strong>
+                        <br>
+                        You need to have at least one child registered to sign up for programs. This information helps us provide appropriate programs and ensure safety.
+                    </div>
+                    
+                    <h6>What we collect:</h6>
+                    <ul class="list-unstyled">
+                                                        <li><i class="bi bi-check text-success"></i> Basic information (name, age)</li>
+                                <li><i class="bi bi-check text-success"></i> Grade level for program matching</li>
+                                <li><i class="bi bi-check text-success"></i> Special needs for accommodations</li>
+                                <li><i class="bi bi-check text-success"></i> Emergency contact information</li>
+                    </ul>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-shield-check"></i>
+                            All information is kept secure and only used for program administration.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

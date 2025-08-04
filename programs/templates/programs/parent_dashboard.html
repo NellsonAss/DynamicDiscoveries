@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Parent Dashboard - Programs{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Parent Dashboard</h1>
+            
+            <!-- Children Section -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">My Children</h5>
+                    <a href="{% url 'programs:manage_children' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus"></i> Add Child
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if children %}
+                        <div class="row">
+                            {% for child in children %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ child.full_name }}</h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">
+                                                    Age: {{ child.age }} | Grade: {{ child.grade_level|default:"Not specified" }}
+                                                </small>
+                                            </p>
+                                            <a href="{% url 'programs:edit_child' child.pk %}" class="btn btn-outline-primary btn-sm">
+                                                Edit
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No children registered yet. <a href="{% url 'programs:manage_children' %}">Add your first child</a></p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Active Programs Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Available Programs</h5>
+                </div>
+                <div class="card-body">
+                    {% if active_programs %}
+                        <div class="row">
+                            {% for program in active_programs %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ program.program_type.name }}</h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">
+                                                    {{ program.start_date|date:"M d, Y" }} - {{ program.end_date|date:"M d, Y" }}<br>
+                                                    Location: {{ program.location }}<br>
+                                                    Spots: {{ program.available_spots }}/{{ program.capacity }}
+                                                </small>
+                                            </p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <a href="{% url 'programs:program_instance_detail' program.pk %}" class="btn btn-primary btn-sm">
+                                                    View Details
+                                                </a>
+                                                {% if program.is_full %}
+                                                    <span class="badge bg-danger">Full</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">Available</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No active programs available at the moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Current Registrations -->
+            {% if current_registrations %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Current Registrations</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Child</th>
+                                        <th>Program</th>
+                                        <th>Dates</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for registration in current_registrations %}
+                                        <tr>
+                                            <td>{{ registration.child.full_name }}</td>
+                                            <td>{{ registration.program_instance.program_type.name }}</td>
+                                            <td>
+                                                {{ registration.program_instance.start_date|date:"M d" }} - 
+                                                {{ registration.program_instance.end_date|date:"M d, Y" }}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if registration.status == 'approved' %}success{% elif registration.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                                    {{ registration.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if registration.program_instance.assigned_form and not registration.form_responses %}
+                                                    <a href="{% url 'programs:complete_registration_form' registration.pk %}" class="btn btn-warning btn-sm">
+                                                        Complete Form
+                                                    </a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Past Registrations -->
+            {% if past_registrations %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Past Programs</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Child</th>
+                                        <th>Program</th>
+                                        <th>Dates</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for registration in past_registrations %}
+                                        <tr>
+                                            <td>{{ registration.child.full_name }}</td>
+                                            <td>{{ registration.program_instance.program_type.name }}</td>
+                                            <td>
+                                                {{ registration.program_instance.start_date|date:"M d" }} - 
+                                                {{ registration.program_instance.end_date|date:"M d, Y" }}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if registration.status == 'approved' %}success{% elif registration.status == 'rejected' %}danger{% else %}secondary{% endif %}">
+                                                    {{ registration.get_status_display }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

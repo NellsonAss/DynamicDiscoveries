@@ -227,7 +227,7 @@ def signup(request):
     
     return render(request, 'accounts/signup.html', {'form': form})
 
-class UserListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
+class UserListView(RoleRequiredMixin, LoginRequiredMixin, ListView):
     """View for listing users (admin only)."""
     model = User
     template_name = 'accounts/user_list.html'
@@ -237,7 +237,7 @@ class UserListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     def get_queryset(self):
         return User.objects.all().prefetch_related('groups')
 
-class UserRoleUpdateView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
+class UserRoleUpdateView(RoleRequiredMixin, LoginRequiredMixin, UpdateView):
     """View for updating user roles (admin only)."""
     model = User
     template_name = 'accounts/user_role_update.html'
@@ -300,4 +300,7 @@ def debug_user(request):
         'can_access_django_admin': getattr(request.user, 'can_access_django_admin', False),
         'can_manage_users': getattr(request.user, 'can_manage_users', False),
     }
-    return render(request, 'accounts/debug_user.html', context) 
+    return render(request, 'accounts/debug_user.html', context)
+
+
+ 
