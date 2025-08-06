@@ -28,4 +28,10 @@ urlpatterns = [
     path('programs/<int:program_instance_pk>/registrations/', views.view_registrations, name='view_registrations'),
     path('registrations/<int:registration_pk>/status/', views.update_registration_status, name='update_registration_status'),
     path('programs/<int:program_instance_pk>/send-form/', views.send_form_to_participants, name='send_form_to_participants'),
+    
+    # Program Buildout views
+    path('roles/', views.role_list, name='role_list'),
+    path('buildouts/', views.buildout_list, name='buildout_list'),
+    path('buildouts/<int:buildout_pk>/', views.buildout_detail, name='buildout_detail'),
+    path('program-types/<int:program_type_pk>/buildouts/', views.program_type_buildouts, name='program_type_buildouts'),
 ] 

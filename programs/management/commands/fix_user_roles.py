@@ -134,7 +134,8 @@ class Command(BaseCommand):
             name='STEAM Workshop',
             defaults={
                 'description': 'Science, Technology, Engineering, Arts, and Math activities for curious minds!',
-                'target_grade_levels': '3-5'
+                'target_grade_levels': '3-5',
+                'rate_per_student': 75.00
             }
         )
         
@@ -146,7 +147,8 @@ class Command(BaseCommand):
             name='Literary Adventures',
             defaults={
                 'description': 'Explore the world through reading, writing, and creative storytelling!',
-                'target_grade_levels': '1-3'
+                'target_grade_levels': '1-3',
+                'rate_per_student': 60.00
             }
         )
         

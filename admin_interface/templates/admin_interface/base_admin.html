@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 76px);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .admin-sidebar .nav-link {
+        color: rgba(255, 255, 255, 0.8);
+        border-radius: 8px;
+        margin: 2px 0;
+        transition: all 0.3s ease;
+    }
+    
+    .admin-sidebar .nav-link:hover,
+    .admin-sidebar .nav-link.active {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.1);
+        transform: translateX(5px);
+    }
+    
+    .admin-sidebar .nav-link i {
+        width: 20px;
+        text-align: center;
+        margin-right: 10px;
+    }
+    
+    .admin-content {
+        background-color: #f8f9fa;
+        min-height: calc(100vh - 76px);
+    }
+    
+    .admin-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border: none;
+        transition: transform 0.2s ease;
+    }
+    
+    .admin-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .admin-stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .admin-table {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .admin-table .table {
+        margin-bottom: 0;
+    }
+    
+    .admin-table .table th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    
+    .status-active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-inactive {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-pending {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .search-box {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        padding: 0.5rem 1rem;
+        transition: border-color 0.3s ease;
+    }
+    
+    .search-box:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    /* Fix modal z-index issues */
+    .modal-backdrop {
+        z-index: 1040 !important;
+    }
+    
+    .modal {
+        z-index: 1050 !important;
+    }
+    
+    .modal-dialog {
+        z-index: 1055 !important;
+    }
+    
+    .modal-content {
+        z-index: 1060 !important;
+    }
+    
+    /* Ensure modals appear above admin sidebar */
+    .admin-sidebar {
+        z-index: 1030;
+    }
+    
+    .admin-content {
+        z-index: 1020;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-md-3 col-lg-2 px-0">
+            <div class="admin-sidebar p-3">
+                <h5 class="text-white mb-4">
+                    <i class="bi bi-shield-check me-2"></i>Admin Panel
+                </h5>
+                
+                <nav class="nav flex-column">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+                       href="{% url 'admin_interface:dashboard' %}">
+                        <i class="bi bi-speedometer2"></i>Dashboard
+                    </a>
+                    
+                    <div class="mt-3 mb-2">
+                        <small class="text-white-50 text-uppercase">User Management</small>
+                    </div>
+                    <a class="nav-link {% if 'user' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:user_management' %}">
+                        <i class="bi bi-people"></i>Users
+                    </a>
+                    
+                    <div class="mt-3 mb-2">
+                        <small class="text-white-50 text-uppercase">Program Management</small>
+                    </div>
+                    <a class="nav-link {% if 'program_type' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:program_type_management' %}">
+                        <i class="bi bi-collection"></i>Program Types
+                    </a>
+                    <a class="nav-link {% if 'program_instance' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:program_instance_management' %}">
+                        <i class="bi bi-calendar-event"></i>Program Instances
+                    </a>
+                    <a class="nav-link {% if 'buildout' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:buildout_management' %}">
+                        <i class="bi bi-diagram-3"></i>Buildouts
+                    </a>
+                    
+                    <div class="mt-3 mb-2">
+                        <small class="text-white-50 text-uppercase">Registration</small>
+                    </div>
+                    <a class="nav-link {% if 'registration' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:registration_management' %}">
+                        <i class="bi bi-clipboard-check"></i>Registrations
+                    </a>
+                    <a class="nav-link {% if 'child' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:child_management' %}">
+                        <i class="bi bi-person-badge"></i>Children
+                    </a>
+                    <a class="nav-link {% if 'form' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:form_management' %}">
+                        <i class="bi bi-clipboard-plus"></i>Forms
+                    </a>
+                    
+                    <div class="mt-3 mb-2">
+                        <small class="text-white-50 text-uppercase">System</small>
+                    </div>
+                    <a class="nav-link {% if 'contact' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:contact_management' %}">
+                        <i class="bi bi-envelope"></i>Contacts
+                    </a>
+                    <a class="nav-link {% if 'role' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:role_management' %}">
+                        <i class="bi bi-person-gear"></i>Roles
+                    </a>
+                    <a class="nav-link {% if 'cost' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:cost_management' %}">
+                        <i class="bi bi-currency-dollar"></i>Costs
+                    </a>
+                </nav>
+            </div>
+        </div>
+        
+        <!-- Admin Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="admin-content p-4">
+                {% block admin_content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,328 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-people me-2"></i>Child Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total children
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-6">
+            <label for="search" class="form-label">Search Children</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by name or parent email...">
+        </div>
+        <div class="col-md-4">
+            <label for="grade" class="form-label">Filter by Grade Level</label>
+            <select class="form-select" id="grade" name="grade">
+                <option value="">All Grade Levels</option>
+                <option value="K" {% if grade_filter == 'K' %}selected{% endif %}>Kindergarten</option>
+                <option value="1" {% if grade_filter == '1' %}selected{% endif %}>1st Grade</option>
+                <option value="2" {% if grade_filter == '2' %}selected{% endif %}>2nd Grade</option>
+                <option value="3" {% if grade_filter == '3' %}selected{% endif %}>3rd Grade</option>
+                <option value="4" {% if grade_filter == '4' %}selected{% endif %}>4th Grade</option>
+                <option value="5" {% if grade_filter == '5' %}selected{% endif %}>5th Grade</option>
+                <option value="6" {% if grade_filter == '6' %}selected{% endif %}>6th Grade</option>
+                <option value="7" {% if grade_filter == '7' %}selected{% endif %}>7th Grade</option>
+                <option value="8" {% if grade_filter == '8' %}selected{% endif %}>8th Grade</option>
+                <option value="9" {% if grade_filter == '9' %}selected{% endif %}>9th Grade</option>
+                <option value="10" {% if grade_filter == '10' %}selected{% endif %}>10th Grade</option>
+                <option value="11" {% if grade_filter == '11' %}selected{% endif %}>11th Grade</option>
+                <option value="12" {% if grade_filter == '12' %}selected{% endif %}>12th Grade</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Children Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Children
+        </h6>
+        <button class="btn btn-success btn-sm" onclick="createChild()">
+            <i class="bi bi-plus-circle me-1"></i>Add Child
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Child</th>
+                            <th>Age</th>
+                            <th>Grade Level</th>
+                            <th>Parent</th>
+                            <th>Emergency Contact</th>
+                            <th>Special Needs</th>
+                            <th>Registrations</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for child in page_obj %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-info text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                        {{ child.first_name|first|upper }}{{ child.last_name|first|upper }}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ child.full_name }}</h6>
+                                        <small class="text-muted">ID: {{ child.id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ child.age }}</h6>
+                                    <small class="text-muted">years old</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if child.grade_level %}
+                                    <span class="badge bg-primary">{{ child.grade_level }}</span>
+                                {% else %}
+                                    <span class="text-muted">Not specified</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ child.parent.get_full_name|default:child.parent.email }}</h6>
+                                    <small class="text-muted">{{ child.parent.email }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if child.emergency_contact %}
+                                    <div>{{ child.emergency_contact }}</div>
+                                    <small class="text-muted">{{ child.emergency_phone }}</small>
+                                {% else %}
+                                    <span class="text-muted">Not provided</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if child.special_needs %}
+                                    <span class="text-truncate d-inline-block" style="max-width: 150px;" title="{{ child.special_needs }}">
+                                        {{ child.special_needs|truncatechars:50 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">None</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ child.registrations.count }}</h6>
+                                    <small class="text-muted">registrations</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="viewChild({{ child.id }})">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="editChild({{ child.id }})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="viewRegistrations({{ child.id }})">
+                                        <i class="bi bi-calendar-check"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteChild({{ child.id }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                <h5 class="text-muted mt-3">No children found</h5>
+                <p class="text-muted">Create your first child record to get started.</p>
+                <button class="btn btn-primary" onclick="createChild()">
+                    <i class="bi bi-plus-circle me-1"></i>Create Child
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="admin-card p-4 mt-4">
+    <nav aria-label="Children pagination">
+        <ul class="pagination justify-content-center mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if grade_filter %}&grade={{ grade_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if grade_filter %}&grade={{ grade_filter }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if grade_filter %}&grade={{ grade_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if grade_filter %}&grade={{ grade_filter }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if grade_filter %}&grade={{ grade_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Quick Stats -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-people" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">{{ page_obj.paginator.count }}</h4>
+                    <small>Total Children</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_registrations=0 %}
+                            {% for child in page_obj %}
+                                {% with registrations_count=child.registrations.count %}
+                                    {% if forloop.first %}
+                                        {{ registrations_count }}
+                                    {% else %}
+                                        {{ total_registrations|add:registrations_count }}
+                                    {% endif %}
+                                {% endwith %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Total Registrations</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-person" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with unique_parents=0 %}
+                            {% for child in page_obj %}
+                                {% if forloop.first %}
+                                    1
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Unique Parents</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with special_needs_count=0 %}
+                            {% for child in page_obj %}
+                                {% if child.special_needs %}
+                                    {% if forloop.first %}
+                                        1
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Special Needs</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function createChild() {
+    // Implementation for creating new child
+    alert('Create child functionality not implemented yet.');
+}
+
+function viewChild(id) {
+    // Implementation for viewing child details
+    alert('View child functionality not implemented yet.');
+}
+
+function editChild(id) {
+    // Implementation for editing child
+    alert('Edit child functionality not implemented yet.');
+}
+
+function viewRegistrations(id) {
+    // Implementation for viewing child registrations
+    alert('View registrations functionality not implemented yet.');
+}
+
+function deleteChild(id) {
+    if (confirm('Are you sure you want to delete this child? This action cannot be undone.')) {
+        // Implementation for deleting child
+        alert('Delete child functionality not implemented yet.');
+    }
+}
+</script>
+{% endblock %} 

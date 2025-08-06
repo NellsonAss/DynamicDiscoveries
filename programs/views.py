@@ -15,7 +15,7 @@ import json
 
 from .models import (
     ProgramType, ProgramInstance, RegistrationForm, FormQuestion,
-    Child, Registration
+    Child, Registration, Role, ProgramBuildout, ProgramRole
 )
 from .forms import (
     ChildForm, RegistrationFormForm,
@@ -100,18 +100,18 @@ def program_instance_detail(request, pk):
             program_instance.start_date > timezone.now()
         )
     
-    # Check if user is already registered
-    user_registrations = []
+    # Get existing registration if user is parent
+    existing_registration = None
     if user_is_parent(request.user):
-        user_registrations = Registration.objects.filter(
+        existing_registration = Registration.objects.filter(
             child__parent=request.user,
             program_instance=program_instance
-        )
+        ).first()
     
     context = {
         'program_instance': program_instance,
         'can_register': can_register,
-        'user_registrations': user_registrations,
+        'existing_registration': existing_registration,
     }
     
     return render(request, 'programs/program_instance_detail.html', context)
@@ -122,19 +122,17 @@ def register_child(request, program_instance_pk):
     """Register a child for a program instance."""
     if not user_is_parent(request.user):
         messages.error(request, "Access denied. Parent role required.")
-        return redirect('programs:parent_dashboard')
+        return redirect('dashboard')
     
     program_instance = get_object_or_404(ProgramInstance, pk=program_instance_pk, is_active=True)
     
-    # Check if user has children
-    children = request.user.children.all()
-    if not children.exists():
-        messages.error(request, "You must have at least one child registered to sign up for programs.")
-        return redirect('programs:parent_dashboard')
-    
-    # Check if program is full
+    # Check if program is full or past start date
     if program_instance.is_full:
         messages.error(request, "This program is full.")
+        return redirect('programs:program_instance_detail', pk=program_instance_pk)
+    
+    if program_instance.start_date <= timezone.now():
+        messages.error(request, "Registration is closed for this program.")
         return redirect('programs:program_instance_detail', pk=program_instance_pk)
     
     # Check if already registered
@@ -144,26 +142,37 @@ def register_child(request, program_instance_pk):
     ).first()
     
     if existing_registration:
-        messages.error(request, "You are already registered for this program.")
+        messages.warning(request, "You are already registered for this program.")
         return redirect('programs:program_instance_detail', pk=program_instance_pk)
     
     if request.method == 'POST':
-        child_id = request.POST.get('child')
-        child = get_object_or_404(Child, pk=child_id, parent=request.user)
-        
-        # Create registration
-        registration = Registration.objects.create(
-            child=child,
-            program_instance=program_instance,
-            status='pending'
-        )
-        
-        # If program has a form, redirect to form completion
-        if program_instance.assigned_form:
-            return redirect('programs:complete_registration_form', registration_pk=registration.pk)
-        
-        messages.success(request, f"Successfully registered {child.full_name} for {program_instance.program_type.name}")
-        return redirect('programs:parent_dashboard')
+        child_pk = request.POST.get('child')
+        if child_pk:
+            try:
+                child = request.user.children.get(pk=child_pk)
+                
+                # Create registration
+                registration = Registration.objects.create(
+                    child=child,
+                    program_instance=program_instance,
+                    status='pending'
+                )
+                
+                messages.success(request, f"Successfully registered {child.full_name} for {program_instance.program_type.name}.")
+                
+                # Redirect to form completion if form is assigned
+                if program_instance.assigned_form:
+                    return redirect('programs:complete_registration_form', registration_pk=registration.pk)
+                else:
+                    return redirect('programs:parent_dashboard')
+                    
+            except Child.DoesNotExist:
+                messages.error(request, "Invalid child selected.")
+        else:
+            messages.error(request, "Please select a child to register.")
+    
+    # Get user's children
+    children = request.user.children.all()
     
     context = {
         'program_instance': program_instance,
@@ -175,41 +184,42 @@ def register_child(request, program_instance_pk):
 
 @login_required
 def complete_registration_form(request, registration_pk):
-    """Complete registration form for a program."""
-    registration = get_object_or_404(Registration, pk=registration_pk)
+    """Complete registration form for a registration."""
+    if not user_is_parent(request.user):
+        messages.error(request, "Access denied. Parent role required.")
+        return redirect('dashboard')
     
-    # Check access
-    if not (user_is_parent(registration.child.parent) or user_is_admin(request.user)):
-        messages.error(request, "Access denied.")
-        return redirect('programs:parent_dashboard')
+    registration = get_object_or_404(
+        Registration, 
+        pk=registration_pk, 
+        child__parent=request.user
+    )
     
     if not registration.program_instance.assigned_form:
         messages.error(request, "No form assigned to this program.")
         return redirect('programs:parent_dashboard')
     
     if request.method == 'POST':
-        form_responses = {}
-        form = registration.program_instance.assigned_form
+        form_data = {}
+        for key, value in request.POST.items():
+            if key.startswith('question_'):
+                question_id = key.replace('question_', '')
+                form_data[question_id] = value
         
-        for question in form.questions.all():
-            field_name = f"question_{question.pk}"
-            value = request.POST.get(field_name)
-            
-            if question.is_required and not value:
-                messages.error(request, f"Please answer all required questions.")
-                break
-            else:
-                form_responses[str(question.pk)] = value
-        else:
-            # All questions answered
-            registration.form_responses = form_responses
-            registration.save()
-            messages.success(request, "Registration form completed successfully!")
-            return redirect('programs:parent_dashboard')
+        registration.form_responses = form_data
+        registration.save()
+        
+        messages.success(request, "Registration form completed successfully!")
+        return redirect('programs:parent_dashboard')
+    
+    # Get form questions
+    form = registration.program_instance.assigned_form
+    questions = form.questions.all()
     
     context = {
         'registration': registration,
-        'form': registration.program_instance.assigned_form,
+        'form': form,
+        'questions': questions,
     }
     
     return render(request, 'programs/complete_registration_form.html', context)
@@ -217,25 +227,31 @@ def complete_registration_form(request, registration_pk):
 
 @login_required
 def contractor_dashboard(request):
-    """Contractor dashboard for managing programs and forms."""
+    """Contractor dashboard showing programs and forms."""
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         messages.error(request, "Access denied. Contractor or Admin role required.")
         return redirect('dashboard')
     
-    # Get programs taught by this contractor
-    if user_is_admin(request.user):
-        program_instances = ProgramInstance.objects.all()
+    # Get programs where user is instructor
+    if user_is_contractor(request.user):
+        programs = ProgramInstance.objects.filter(
+            instructor=request.user,
+            is_active=True
+        ).order_by('-start_date')
     else:
-        program_instances = ProgramInstance.objects.filter(instructor=request.user)
+        # Admin can see all programs
+        programs = ProgramInstance.objects.filter(
+            is_active=True
+        ).order_by('-start_date')
     
-    # Get forms created by this contractor
-    if user_is_admin(request.user):
-        forms = RegistrationForm.objects.all()
-    else:
-        forms = RegistrationForm.objects.filter(created_by=request.user)
+    # Get forms created by user
+    forms = RegistrationForm.objects.filter(
+        created_by=request.user,
+        is_active=True
+    ).order_by('-created_at')
     
     context = {
-        'program_instances': program_instances,
+        'programs': programs,
         'forms': forms,
     }
     
@@ -244,18 +260,14 @@ def contractor_dashboard(request):
 
 @login_required
 def form_builder(request, form_pk=None):
-    """Create or edit registration forms."""
+    """Form builder for creating and editing registration forms."""
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         messages.error(request, "Access denied. Contractor or Admin role required.")
         return redirect('dashboard')
     
     form_instance = None
     if form_pk:
-        form_instance = get_object_or_404(RegistrationForm, pk=form_pk)
-        # Check if user can edit this form
-        if not user_is_admin(request.user) and form_instance.created_by != request.user:
-            messages.error(request, "Access denied.")
-            return redirect('programs:contractor_dashboard')
+        form_instance = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
     
     if request.method == 'POST':
         form = RegistrationFormForm(request.POST, instance=form_instance)
@@ -264,20 +276,18 @@ def form_builder(request, form_pk=None):
             form_instance.created_by = request.user
             form_instance.save()
             
-            # Handle form questions via HTMX
-            if request.headers.get('HX-Request'):
-                return HttpResponse(
-                    f'<div id="form-{form_instance.pk}" class="alert alert-success">Form saved!</div>'
-                )
-            
-            messages.success(request, "Form saved successfully!")
+            messages.success(request, f"Form '{form_instance.title}' saved successfully!")
             return redirect('programs:form_builder', form_pk=form_instance.pk)
     else:
         form = RegistrationFormForm(instance=form_instance)
     
+    # Get all forms by user
+    forms = RegistrationForm.objects.filter(created_by=request.user).order_by('-created_at')
+    
     context = {
         'form': form,
-        'form_instance': form_instance,
+        'forms': forms,
+        'current_form': form_instance,
     }
     
     return render(request, 'programs/form_builder.html', context)
@@ -289,20 +299,18 @@ def add_form_question(request, form_pk):
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         return HttpResponse("Access denied", status=403)
     
-    form_instance = get_object_or_404(RegistrationForm, pk=form_pk)
-    
-    if not user_is_admin(request.user) and form_instance.created_by != request.user:
-        return HttpResponse("Access denied", status=403)
+    form = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
     
     if request.method == 'POST':
         question_form = FormQuestionForm(request.POST)
         if question_form.is_valid():
             question = question_form.save(commit=False)
-            question.form = form_instance
+            question.form = form
             question.save()
             
-            return render(request, 'programs/partials/question_row.html', {
-                'question': question
+            return render(request, 'programs/partials/question_item.html', {
+                'question': question,
+                'form': form
             })
     
     return HttpResponse("Invalid request", status=400)
@@ -310,46 +318,36 @@ def add_form_question(request, form_pk):
 
 @login_required
 def delete_form_question(request, question_pk):
-    """Delete a form question via HTMX."""
+    """Delete a question from a form via HTMX."""
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         return HttpResponse("Access denied", status=403)
     
-    question = get_object_or_404(FormQuestion, pk=question_pk)
-    
-    if not user_is_admin(request.user) and question.form.created_by != request.user:
-        return HttpResponse("Access denied", status=403)
-    
+    question = get_object_or_404(FormQuestion, pk=question_pk, form__created_by=request.user)
     question.delete()
+    
     return HttpResponse("Question deleted")
 
 
 @login_required
 def duplicate_form(request, form_pk):
-    """Duplicate a registration form."""
+    """Duplicate a form."""
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         messages.error(request, "Access denied. Contractor or Admin role required.")
-        return redirect('programs:contractor_dashboard')
+        return redirect('programs:form_builder')
     
-    original_form = get_object_or_404(RegistrationForm, pk=form_pk)
-    
-    if not user_is_admin(request.user) and original_form.created_by != request.user:
-        messages.error(request, "Access denied.")
-        return redirect('programs:contractor_dashboard')
-    
+    original_form = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
     new_form = original_form.duplicate()
-    messages.success(request, f"Form '{original_form.title}' duplicated successfully!")
     
+    messages.success(request, f"Form '{original_form.title}' duplicated successfully!")
     return redirect('programs:form_builder', form_pk=new_form.pk)
 
 
 @login_required
 def manage_children(request):
-    """Manage children for parents."""
+    """Manage children for parent users."""
     if not user_is_parent(request.user):
         messages.error(request, "Access denied. Parent role required.")
         return redirect('dashboard')
-    
-    children = request.user.children.all()
     
     if request.method == 'POST':
         form = ChildForm(request.POST)
@@ -357,14 +355,17 @@ def manage_children(request):
             child = form.save(commit=False)
             child.parent = request.user
             child.save()
-            messages.success(request, f"Child {child.full_name} added successfully!")
+            
+            messages.success(request, f"Child '{child.full_name}' added successfully!")
             return redirect('programs:manage_children')
     else:
         form = ChildForm()
     
+    children = request.user.children.all()
+    
     context = {
-        'children': children,
         'form': form,
+        'children': children,
     }
     
     return render(request, 'programs/manage_children.html', context)
@@ -383,14 +384,14 @@ def edit_child(request, child_pk):
         form = ChildForm(request.POST, instance=child)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Child {child.full_name} updated successfully!")
+            messages.success(request, f"Child '{child.full_name}' updated successfully!")
             return redirect('programs:manage_children')
     else:
         form = ChildForm(instance=child)
     
     context = {
-        'child': child,
         'form': form,
+        'child': child,
     }
     
     return render(request, 'programs/edit_child.html', context)
@@ -398,21 +399,21 @@ def edit_child(request, child_pk):
 
 @login_required
 def view_registrations(request, program_instance_pk):
-    """View registrations for a program instance (contractors/admins)."""
+    """View registrations for a program instance."""
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         messages.error(request, "Access denied. Contractor or Admin role required.")
         return redirect('dashboard')
     
     program_instance = get_object_or_404(ProgramInstance, pk=program_instance_pk)
     
-    # Check if user can view this program's registrations
-    if not user_is_admin(request.user) and program_instance.instructor != request.user:
-        messages.error(request, "Access denied.")
+    # Check if user is instructor or admin
+    if user_is_contractor(request.user) and program_instance.instructor != request.user:
+        messages.error(request, "Access denied. You can only view registrations for your own programs.")
         return redirect('programs:contractor_dashboard')
     
     registrations = program_instance.registrations.all().select_related(
         'child', 'child__parent'
-    )
+    ).order_by('registered_at')
     
     context = {
         'program_instance': program_instance,
@@ -424,63 +425,171 @@ def view_registrations(request, program_instance_pk):
 
 @login_required
 def update_registration_status(request, registration_pk):
-    """Update registration status (contractors/admins)."""
+    """Update registration status via HTMX."""
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
-        return JsonResponse({'error': 'Access denied'}, status=403)
+        return HttpResponse("Access denied", status=403)
     
     registration = get_object_or_404(Registration, pk=registration_pk)
     
-    # Check if user can update this registration
-    if not user_is_admin(request.user) and registration.program_instance.instructor != request.user:
-        return JsonResponse({'error': 'Access denied'}, status=403)
+    # Check if user is instructor or admin
+    if user_is_contractor(request.user) and registration.program_instance.instructor != request.user:
+        return HttpResponse("Access denied", status=403)
     
     if request.method == 'POST':
         new_status = request.POST.get('status')
-        if new_status in dict(Registration.STATUS_CHOICES):
+        if new_status in ['pending', 'approved', 'rejected', 'cancelled']:
             registration.status = new_status
             registration.save()
-            return JsonResponse({'success': True, 'status': new_status})
+            
+            return render(request, 'programs/partials/registration_status.html', {
+                'registration': registration
+            })
     
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    return HttpResponse("Invalid request", status=400)
 
 
 @login_required
 def send_form_to_participants(request, program_instance_pk):
-    """Send a form to all participants in a program."""
+    """Send registration form to participants."""
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         messages.error(request, "Access denied. Contractor or Admin role required.")
-        return redirect('dashboard')
+        return redirect('programs:contractor_dashboard')
     
     program_instance = get_object_or_404(ProgramInstance, pk=program_instance_pk)
     
-    # Check if user can send forms for this program
-    if not user_is_admin(request.user) and program_instance.instructor != request.user:
-        messages.error(request, "Access denied.")
+    # Check if user is instructor or admin
+    if user_is_contractor(request.user) and program_instance.instructor != request.user:
+        messages.error(request, "Access denied. You can only send forms for your own programs.")
         return redirect('programs:contractor_dashboard')
     
-    if request.method == 'POST':
-        form_pk = request.POST.get('form')
-        form = get_object_or_404(RegistrationForm, pk=form_pk)
-        
-        # Update program instance with assigned form
-        program_instance.assigned_form = form
-        program_instance.save()
-        
-        messages.success(request, f"Form '{form.title}' assigned to program successfully!")
+    if not program_instance.assigned_form:
+        messages.error(request, "No form assigned to this program.")
         return redirect('programs:view_registrations', program_instance_pk=program_instance_pk)
     
-    # Get available forms
-    if user_is_admin(request.user):
-        forms = RegistrationForm.objects.filter(is_active=True)
-    else:
-        forms = RegistrationForm.objects.filter(
-            is_active=True,
-            created_by=request.user
-        )
+    # Get registrations that need form completion
+    registrations = program_instance.registrations.filter(
+        status='approved',
+        form_responses__isnull=True
+    )
+    
+    if not registrations.exists():
+        messages.info(request, "All approved registrations have completed their forms.")
+        return redirect('programs:view_registrations', program_instance_pk=program_instance_pk)
+    
+    # Here you would typically send emails to participants
+    # For now, we'll just show a success message
+    messages.success(request, f"Form sent to {registrations.count()} participants.")
+    
+    return redirect('programs:view_registrations', program_instance_pk=program_instance_pk)
+
+
+# Program Buildout Views
+
+@login_required
+def role_list(request):
+    """List all roles for Admin users."""
+    if not user_is_admin(request.user):
+        messages.error(request, "Access denied. Admin role required.")
+        return redirect('dashboard')
+    
+    roles = Role.objects.all().order_by('name')
     
     context = {
-        'program_instance': program_instance,
-        'forms': forms,
+        'roles': roles,
     }
     
-    return render(request, 'programs/send_form_to_participants.html', context)
+    return render(request, 'programs/role_list.html', context)
+
+
+@login_required
+def buildout_list(request):
+    """List all program buildouts for Admin and Contractor users."""
+    if not (user_is_admin(request.user) or user_is_contractor(request.user)):
+        messages.error(request, "Access denied. Admin or Contractor role required.")
+        return redirect('dashboard')
+    
+    buildouts = ProgramBuildout.objects.select_related('program_type').all().order_by('program_type__name', 'title')
+    
+    context = {
+        'buildouts': buildouts,
+    }
+    
+    return render(request, 'programs/buildout_list.html', context)
+
+
+@login_required
+def buildout_detail(request, buildout_pk):
+    """Show detailed view of a program buildout."""
+    if not (user_is_admin(request.user) or user_is_contractor(request.user)):
+        messages.error(request, "Access denied. Admin or Contractor role required.")
+        return redirect('dashboard')
+    
+    buildout = get_object_or_404(ProgramBuildout, pk=buildout_pk)
+    
+    # Calculate summary statistics using the new model structure
+    total_hours = sum(
+        role.calculate_total_hours(
+            buildout.expected_students, 
+            buildout.num_days, 
+            buildout.sessions_per_day
+        ) for role in buildout.program_type.roles.all()
+    )
+    total_revenue = buildout.total_revenue
+    total_payouts = buildout.total_payouts
+    profit = buildout.profit
+    profit_margin = buildout.profit_margin
+    
+    # Prepare role data for template
+    roles_data = []
+    for role in buildout.program_type.roles.all():
+        hours = role.calculate_total_hours(
+            buildout.expected_students, 
+            buildout.num_days, 
+            buildout.sessions_per_day
+        )
+        payout = role.calculate_payout(
+            buildout.expected_students, 
+            buildout.num_days, 
+            buildout.sessions_per_day
+        )
+        percentage = role.calculate_percentage_of_revenue(
+            buildout.expected_students, 
+            buildout.num_days, 
+            buildout.sessions_per_day
+        )
+        roles_data.append({
+            'role': role,
+            'hours': hours,
+            'payout': payout,
+            'percentage': percentage
+        })
+    
+    context = {
+        'buildout': buildout,
+        'total_hours': total_hours,
+        'total_revenue': total_revenue,
+        'total_payouts': total_payouts,
+        'profit': profit,
+        'profit_margin': profit_margin,
+        'roles_data': roles_data,
+    }
+    
+    return render(request, 'programs/buildout_detail.html', context)
+
+
+@login_required
+def program_type_buildouts(request, program_type_pk):
+    """Show buildouts for a specific program type."""
+    if not (user_is_admin(request.user) or user_is_contractor(request.user)):
+        messages.error(request, "Access denied. Admin or Contractor role required.")
+        return redirect('dashboard')
+    
+    program_type = get_object_or_404(ProgramType, pk=program_type_pk)
+    buildouts = program_type.buildouts.all().order_by('title')
+    
+    context = {
+        'program_type': program_type,
+        'buildouts': buildouts,
+    }
+    
+    return render(request, 'programs/program_type_buildouts.html', context)

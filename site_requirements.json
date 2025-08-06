@@ -1,0 +1,201 @@
+{
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "Requirements Tracking System",
+      "description": "System to track and validate all project requirements through JSON file and automated testing",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-002",
+      "title": "Requirements Management CLI",
+      "description": "Command-line interface for managing project requirements",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-003",
+      "title": "User Authentication System",
+      "description": "Custom user model with email-based authentication, email verification codes, and role-based access control",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-004",
+      "title": "User Registration and Login",
+      "description": "Email-based signup and login with verification code system using Azure Email Service",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-005",
+      "title": "Role-Based Access Control",
+      "description": "User roles including Admin, Contractor, Consultant, User, Parent, Child, Money Manager, and Program Designer with permission-based access",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-006",
+      "title": "User Profile Management",
+      "description": "Extended user profiles with bio and role management for administrators",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-007",
+      "title": "Contact Form System",
+      "description": "Public contact form for parents to submit inquiries with interest categories and status tracking",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-008",
+      "title": "Email Notification System",
+      "description": "Azure Email Service integration for sending verification codes, contact notifications, and confirmations",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-009",
+      "title": "Contact Management Dashboard",
+      "description": "Admin interface for viewing and managing contact inquiries with search and filtering capabilities",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-010",
+      "title": "Program Management System",
+      "description": "Comprehensive program type management with roles, costs, and buildout configurations",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-011",
+      "title": "Program Type Templates",
+      "description": "Program type definitions with target grade levels, rates, and role assignments",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-012",
+      "title": "Role and Payout Management",
+      "description": "Role definitions with hourly rates and frequency-based payout calculations",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-013",
+      "title": "Cost Management System",
+      "description": "Base cost tracking and program-specific cost calculations",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-014",
+      "title": "Program Buildout Configuration",
+      "description": "Program buildout templates with student counts, duration, and financial projections",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-015",
+      "title": "Program Instance Management",
+      "description": "Specific program offerings with scheduling, location, instructor assignment, and capacity management",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-016",
+      "title": "Registration Form Builder",
+      "description": "Dynamic form creation system with multiple question types and form templates",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-017",
+      "title": "Child Management System",
+      "description": "Child profiles for parents with personal information, special needs, and emergency contacts",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-018",
+      "title": "Program Registration System",
+      "description": "Child registration for program instances with form responses and status tracking",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-019",
+      "title": "Financial Calculation Engine",
+      "description": "Automated revenue, payout, cost, and profit calculations for programs",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-020",
+      "title": "Dashboard Interface",
+      "description": "Main dashboard for authenticated users with HTMX-powered statistics",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-021",
+      "title": "HTMX Integration",
+      "description": "Modern web interface using HTMX for dynamic content updates without JavaScript frameworks",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-022",
+      "title": "Bootstrap UI Framework",
+      "description": "Responsive web interface using Bootstrap CSS framework for modern styling",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-023",
+      "title": "Admin Interface",
+      "description": "Django admin integration for managing all models and data",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-024",
+      "title": "Testing Framework",
+      "description": "Comprehensive test suite for all applications with requirements validation",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-025",
+      "title": "Test User Setup System",
+      "description": "Management commands to create and configure three test users: jon@nellson.net (Admin), jon.nellson@gmail.com (Parent), and DynamicDiscoveries@nellson.net (Contractor) with sample children and programs for testing",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-026",
+      "title": "Custom Template Math Filters",
+      "description": "Custom Django template filters for mathematical operations including multiply, divide, subtract, and percentage calculations to support buildout calculations and financial projections",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-027",
+      "title": "Custom Admin Interface",
+      "description": "Replace Django admin interface with custom pages for all data management operations to maintain consistent user experience and branding",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-028",
+      "title": "User Detail View",
+      "description": "Comprehensive user detail page showing account information, permissions, children (for parents), programs (for contractors), and management actions with status toggle functionality",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-029",
+      "title": "Route Completion System",
+      "description": "Self-updating requirements registry with automatic template parsing for undefined routes. System scans HTML templates for Django URL tags, HTMX calls, and href attributes, then prompts for implementation of missing routes",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-030",
+      "title": "Cost Management Interface",
+      "description": "Admin interface for managing base costs with search functionality, cost details modal, and program assignment tracking. Includes add/edit capabilities and financial summary cards",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-999",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-998",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2025-08-05T20:50:15.801319",
+    "description": "Dynamic Discoveries project requirements tracking"
+  }
+}

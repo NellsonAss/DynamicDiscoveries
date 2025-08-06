@@ -49,3 +49,13 @@ class Contact(models.Model):
     @property
     def days_old(self):
         return (timezone.now() - self.created_at).days
+    
+    @property
+    def days_old_display(self):
+        days = self.days_old
+        if days == 0:
+            return "Today"
+        elif days == 1:
+            return "Yesterday"
+        else:
+            return f"{days} days ago"

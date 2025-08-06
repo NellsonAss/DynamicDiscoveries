@@ -87,6 +87,10 @@
                                     <li><a class="dropdown-item" href="{% url 'programs:contractor_dashboard' %}">
                                         <i class="bi bi-people me-2"></i>View Registrations
                                     </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:buildout_list' %}">
+                                        <i class="bi bi-diagram-3 me-2"></i>Program Buildouts
+                                    </a></li>
                                 </ul>
                             </li>
                         {% endif %}
@@ -98,15 +102,25 @@
                                     <i class="bi bi-gear me-1"></i>Admin Tools
                                 </a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="{% url 'accounts:user_list' %}">
-                                        <i class="bi bi-people me-2"></i>User Management
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="{% url 'admin:index' %}">
-                                        <i class="bi bi-gear me-2"></i>Django Admin
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:dashboard' %}">
+                                        <i class="bi bi-speedometer2 me-2"></i>Admin Dashboard
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="{% url 'communications:contact_list' %}">
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:user_management' %}">
+                                        <i class="bi bi-people me-2"></i>User Management
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:program_instance_management' %}">
+                                        <i class="bi bi-calendar-event me-2"></i>Program Instances
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:registration_management' %}">
+                                        <i class="bi bi-clipboard-check me-2"></i>Registrations
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:contact_management' %}">
                                         <i class="bi bi-envelope me-2"></i>Contact Inquiries
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin:index' %}">
+                                        <i class="bi bi-gear me-2"></i>Django Admin (Legacy)
                                     </a></li>
                                 </ul>
                             </li>

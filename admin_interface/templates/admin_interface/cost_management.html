@@ -1,0 +1,295 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block extra_head %}
+<style>
+    /* Ensure modals work properly in admin interface */
+    .modal-backdrop {
+        z-index: 1040 !important;
+    }
+    
+    .modal {
+        z-index: 1050 !important;
+    }
+    
+    .modal-dialog {
+        z-index: 1055 !important;
+    }
+    
+    .modal-content {
+        z-index: 1060 !important;
+        position: relative;
+    }
+    
+    /* Fix any potential stacking context issues */
+    .admin-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Ensure table doesn't interfere with modals */
+    .table-responsive {
+        position: relative;
+        z-index: 1;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fix modal backdrop issues
+    document.addEventListener('show.bs.modal', function(event) {
+        const modal = event.target;
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.style.zIndex = '1040';
+        }
+        modal.style.zIndex = '1050';
+    });
+    
+    // Ensure modals are properly positioned
+    document.addEventListener('shown.bs.modal', function(event) {
+        const modal = event.target;
+        const modalDialog = modal.querySelector('.modal-dialog');
+        if (modalDialog) {
+            modalDialog.style.zIndex = '1055';
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-currency-dollar me-2"></i>Cost Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ costs|length }} total costs
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-8">
+            <label for="search" class="form-label">Search Costs</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by name or description...">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Costs Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Base Costs
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if costs %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Cost Name</th>
+                            <th>Cost Per Student</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cost in costs %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                        <i class="bi bi-currency-dollar"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ cost.name }}</h6>
+                                        <small class="text-muted">ID: {{ cost.id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-bold text-success">${{ cost.cost_per_student }}</span>
+                                <small class="text-muted d-block">per student</small>
+                            </td>
+                            <td>
+                                <span class="text-break">{{ cost.description|truncatechars:100 }}</span>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" data-bs-target="#costDetailModal{{ cost.id }}">
+                                        <i class="bi bi-eye me-1"></i>View
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil me-1"></i>Edit
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- Cost Detail Modal -->
+                        <div class="modal fade" id="costDetailModal{{ cost.id }}" tabindex="-1" aria-labelledby="costDetailModalLabel{{ cost.id }}" aria-hidden="true">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="costDetailModalLabel{{ cost.id }}">
+                                            <i class="bi bi-currency-dollar me-2"></i>{{ cost.name }}
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted mb-2">Cost Details</h6>
+                                                <p><strong>Cost per Student:</strong> ${{ cost.cost_per_student }}</p>
+                                                <p><strong>Description:</strong></p>
+                                                <p class="text-muted">{{ cost.description }}</p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted mb-2">Program Assignments</h6>
+                                                {% if cost.programbasecost_set.all %}
+                                                    <ul class="list-unstyled">
+                                                    {% for program_cost in cost.programbasecost_set.all %}
+                                                        <li class="mb-2">
+                                                            <span class="badge bg-primary me-2">{{ program_cost.program_type.name }}</span>
+                                                            <small class="text-muted">Multiplier: {{ program_cost.multiplier }}x</small>
+                                                        </li>
+                                                    {% endfor %}
+                                                    </ul>
+                                                {% else %}
+                                                    <p class="text-muted">No program assignments</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <button type="button" class="btn btn-primary">
+                                            <i class="bi bi-pencil me-1"></i>Edit Cost
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-currency-dollar display-1 text-muted mb-3"></i>
+                <h5 class="text-muted">No costs found</h5>
+                <p class="text-muted">No base costs match your search criteria.</p>
+                {% if search %}
+                    <a href="{% url 'admin_interface:cost_management' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left me-1"></i>Clear Search
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add New Cost Button -->
+<div class="text-center mt-4">
+    <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#addCostModal">
+        <i class="bi bi-plus-circle me-2"></i>Add New Base Cost
+    </button>
+</div>
+
+<!-- Add Cost Modal -->
+<div class="modal fade" id="addCostModal" tabindex="-1" aria-labelledby="addCostModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCostModalLabel">
+                    <i class="bi bi-plus-circle me-2"></i>Add New Base Cost
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'admin_interface:cost_management' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="costName" class="form-label">Cost Name</label>
+                        <input type="text" class="form-control" id="costName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="costPerStudent" class="form-label">Cost Per Student</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="costPerStudent" name="cost_per_student" 
+                                   step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="costDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="costDescription" name="description" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-plus-circle me-1"></i>Add Cost
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="admin-stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">Total Costs</h6>
+                    <h3 class="mb-0">{{ costs|length }}</h3>
+                </div>
+                <i class="bi bi-currency-dollar display-6"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="admin-stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">Average Cost</h6>
+                    <h3 class="mb-0">
+                        ${{ costs|length|default:0|floatformat:2 }}
+                    </h3>
+                </div>
+                <i class="bi bi-calculator display-6"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="admin-stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">Active Programs</h6>
+                    <h3 class="mb-0">
+                        {% with total_programs=0 %}
+                            {{ total_programs }}
+                        {% endwith %}
+                    </h3>
+                </div>
+                <i class="bi bi-diagram-3 display-6"></i>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,323 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-clipboard-check me-2"></i>Registration Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total registrations
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-5">
+            <label for="search" class="form-label">Search Registrations</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by child name, parent email, or program...">
+        </div>
+        <div class="col-md-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status">
+                <option value="">All Statuses</option>
+                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Registrations Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Registrations
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Child</th>
+                            <th>Parent</th>
+                            <th>Program</th>
+                            <th>Status</th>
+                            <th>Registered</th>
+                            <th>Form</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registration in page_obj %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ registration.child.full_name }}</h6>
+                                    <small class="text-muted">Age: {{ registration.child.age }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ registration.child.parent.get_full_name|default:registration.child.parent.email }}</h6>
+                                    <small class="text-muted">{{ registration.child.parent.email }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ registration.program_instance.program_type.name }}</h6>
+                                    <small class="text-muted">{{ registration.program_instance.location }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm registration-status-select" 
+                                        data-registration-id="{{ registration.id }}" 
+                                        data-current-status="{{ registration.status }}">
+                                    <option value="pending" {% if registration.status == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="approved" {% if registration.status == 'approved' %}selected{% endif %}>Approved</option>
+                                    <option value="rejected" {% if registration.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                                    <option value="cancelled" {% if registration.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div>
+                                    <small class="text-muted">{{ registration.registered_at|date:"M j, Y" }}</small>
+                                    <br>
+                                    <small class="text-muted">{{ registration.registered_at|timesince }} ago</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if registration.form_responses %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#registrationModal{{ registration.id }}">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <a href="mailto:{{ registration.child.parent.email }}" class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-envelope"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-clipboard-check fs-1 text-muted mb-3"></i>
+                <h5 class="text-muted">No registrations found</h5>
+                <p class="text-muted">Try adjusting your search criteria</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Registration Detail Modals -->
+{% for registration in page_obj %}
+<div class="modal fade" id="registrationModal{{ registration.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registration Details - {{ registration.child.full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Child Information</h6>
+                        <p><strong>Name:</strong> {{ registration.child.full_name }}</p>
+                        <p><strong>Age:</strong> {{ registration.child.age }} years old</p>
+                        <p><strong>Grade Level:</strong> {{ registration.child.get_grade_level_display }}</p>
+                        {% if registration.child.special_needs %}
+                            <p><strong>Special Needs:</strong> {{ registration.child.special_needs }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Parent Information</h6>
+                        <p><strong>Name:</strong> {{ registration.child.parent.get_full_name|default:"Not provided" }}</p>
+                        <p><strong>Email:</strong> <a href="mailto:{{ registration.child.parent.email }}">{{ registration.child.parent.email }}</a></p>
+                        {% if registration.child.parent.phone %}
+                            <p><strong>Phone:</strong> <a href="tel:{{ registration.child.parent.phone }}">{{ registration.child.parent.phone }}</a></p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Program Information</h6>
+                        <p><strong>Program:</strong> {{ registration.program_instance.program_type.name }}</p>
+                        <p><strong>Location:</strong> {{ registration.program_instance.location }}</p>
+                        <p><strong>Schedule:</strong> {{ registration.program_instance.start_date|date:"M j" }} - {{ registration.program_instance.end_date|date:"M j, Y" }}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="status-badge status-{{ registration.status }}">
+                                {{ registration.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Registration Details</h6>
+                        <p><strong>Registered:</strong> {{ registration.registered_at|date:"F j, Y g:i A" }}</p>
+                        <p><strong>Last Updated:</strong> {{ registration.updated_at|date:"F j, Y g:i A" }}</p>
+                        <p><strong>Form Status:</strong> 
+                            {% if registration.form_responses %}
+                                <span class="badge bg-success">Completed</span>
+                            {% else %}
+                                <span class="badge bg-warning">Pending</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                {% if registration.notes %}
+                    <hr>
+                    <h6>Notes</h6>
+                    <div class="bg-light p-3 rounded">
+                        {{ registration.notes|linebreaks }}
+                    </div>
+                {% endif %}
+                
+                {% if registration.form_responses %}
+                    <hr>
+                    <h6>Form Responses</h6>
+                    <div class="bg-light p-3 rounded">
+                        <pre>{{ registration.form_responses|pprint }}</pre>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <a href="mailto:{{ registration.child.parent.email }}?subject=Registration Update - {{ registration.program_instance.program_type.name }}" 
+                   class="btn btn-primary">
+                    <i class="bi bi-envelope me-1"></i>Contact Parent
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="d-flex justify-content-center mt-4">
+    <nav aria-label="Registration pagination">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Status Update Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelects = document.querySelectorAll('.registration-status-select');
+    
+    statusSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            const registrationId = this.dataset.registrationId;
+            const newStatus = this.value;
+            const currentStatus = this.dataset.currentStatus;
+            
+            if (newStatus !== currentStatus) {
+                fetch(`/admin-interface/registrations/${registrationId}/update-status/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `status=${newStatus}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.dataset.currentStatus = newStatus;
+                        
+                        // Show success message
+                        const toast = document.createElement('div');
+                        toast.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                        toast.style.top = '20px';
+                        toast.style.right = '20px';
+                        toast.style.zIndex = '9999';
+                        toast.innerHTML = `
+                            ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.body.appendChild(toast);
+                        
+                        // Auto-remove toast after 3 seconds
+                        setTimeout(() => {
+                            toast.remove();
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while updating registration status.');
+                    // Reset to previous value
+                    this.value = currentStatus;
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

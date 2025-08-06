@@ -1,0 +1,296 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-envelope me-2"></i>Contact Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total contacts
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-4">
+            <label for="search" class="form-label">Search Contacts</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by name, email, or message...">
+        </div>
+        <div class="col-md-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status">
+                <option value="">All Statuses</option>
+                <option value="new" {% if status_filter == 'new' %}selected{% endif %}>New</option>
+                <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+                <option value="contacted" {% if status_filter == 'contacted' %}selected{% endif %}>Contacted</option>
+                <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="interest" class="form-label">Interest</label>
+            <select class="form-select" id="interest" name="interest">
+                <option value="">All Interests</option>
+                <option value="general" {% if interest_filter == 'general' %}selected{% endif %}>General Inquiry</option>
+                <option value="programs" {% if interest_filter == 'programs' %}selected{% endif %}>Programs</option>
+                <option value="registration" {% if interest_filter == 'registration' %}selected{% endif %}>Registration</option>
+                <option value="pricing" {% if interest_filter == 'pricing' %}selected{% endif %}>Pricing</option>
+                <option value="partnership" {% if interest_filter == 'partnership' %}selected{% endif %}>Partnership</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Contacts Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Contact Inquiries
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Contact</th>
+                            <th>Email</th>
+                            <th>Interest</th>
+                            <th>Status</th>
+                            <th>Received</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contact in page_obj %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ contact.parent_name }}</h6>
+                                    {% if contact.phone %}
+                                        <small class="text-muted">{{ contact.phone }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="text-break">{{ contact.email }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ contact.get_interest_display }}</span>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm contact-status-select" 
+                                        data-contact-id="{{ contact.id }}" 
+                                        data-current-status="{{ contact.status }}">
+                                    <option value="new" {% if contact.status == 'new' %}selected{% endif %}>New</option>
+                                    <option value="in_progress" {% if contact.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="contacted" {% if contact.status == 'contacted' %}selected{% endif %}>Contacted</option>
+                                    <option value="completed" {% if contact.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="archived" {% if contact.status == 'archived' %}selected{% endif %}>Archived</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div>
+                                    <small class="text-muted">{{ contact.created_at|date:"M j, Y" }}</small>
+                                    <br>
+                                    <small class="text-muted">{{ contact.days_old_display }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#contactModal{{ contact.id }}">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <a href="mailto:{{ contact.email }}" class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-envelope"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-envelope fs-1 text-muted mb-3"></i>
+                <h5 class="text-muted">No contacts found</h5>
+                <p class="text-muted">Try adjusting your search criteria</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Contact Detail Modals -->
+{% for contact in page_obj %}
+<div class="modal fade" id="contactModal{{ contact.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Contact Details - {{ contact.parent_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Contact Information</h6>
+                        <p><strong>Name:</strong> {{ contact.parent_name }}</p>
+                        <p><strong>Email:</strong> <a href="mailto:{{ contact.email }}">{{ contact.email }}</a></p>
+                        {% if contact.phone %}
+                            <p><strong>Phone:</strong> <a href="tel:{{ contact.phone }}">{{ contact.phone }}</a></p>
+                        {% endif %}
+                        <p><strong>Interest:</strong> <span class="badge bg-info">{{ contact.get_interest_display }}</span></p>
+                        <p><strong>Status:</strong> <span class="status-badge status-{{ contact.status }}">{{ contact.get_status_display }}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Timeline</h6>
+                        <p><strong>Received:</strong> {{ contact.created_at|date:"F j, Y g:i A" }}</p>
+                        <p><strong>Age:</strong> {{ contact.days_old_display }}</p>
+                        {% if contact.updated_at != contact.created_at %}
+                            <p><strong>Last Updated:</strong> {{ contact.updated_at|date:"F j, Y g:i A" }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6>Message</h6>
+                <div class="bg-light p-3 rounded">
+                    {{ contact.message|linebreaks }}
+                </div>
+                
+                {% if contact.notes %}
+                    <hr>
+                    <h6>Admin Notes</h6>
+                    <div class="bg-warning bg-opacity-10 p-3 rounded">
+                        {{ contact.notes|linebreaks }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <a href="mailto:{{ contact.email }}?subject=Re: {{ contact.interest|title }} Inquiry" 
+                   class="btn btn-primary">
+                    <i class="bi bi-envelope me-1"></i>Reply
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="d-flex justify-content-center mt-4">
+    <nav aria-label="Contact pagination">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if interest_filter %}&interest={{ interest_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if interest_filter %}&interest={{ interest_filter }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if interest_filter %}&interest={{ interest_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if interest_filter %}&interest={{ interest_filter }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if interest_filter %}&interest={{ interest_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Status Update Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelects = document.querySelectorAll('.contact-status-select');
+    
+    statusSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            const contactId = this.dataset.contactId;
+            const newStatus = this.value;
+            const currentStatus = this.dataset.currentStatus;
+            
+            if (newStatus !== currentStatus) {
+                fetch(`/admin-interface/contacts/${contactId}/update-status/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `status=${newStatus}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.dataset.currentStatus = newStatus;
+                        
+                        // Show success message
+                        const toast = document.createElement('div');
+                        toast.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                        toast.style.top = '20px';
+                        toast.style.right = '20px';
+                        toast.style.zIndex = '9999';
+                        toast.innerHTML = `
+                            ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.body.appendChild(toast);
+                        
+                        // Auto-remove toast after 3 seconds
+                        setTimeout(() => {
+                            toast.remove();
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while updating contact status.');
+                    // Reset to previous value
+                    this.value = currentStatus;
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,313 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-collection me-2"></i>Program Type Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total program types
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-8">
+            <label for="search" class="form-label">Search Program Types</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by name or description...">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Program Types Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Program Types
+        </h6>
+        <button class="btn btn-success btn-sm" onclick="createProgramType()">
+            <i class="bi bi-plus-circle me-1"></i>Add Program Type
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Program Type</th>
+                            <th>Target Grades</th>
+                            <th>Rate per Student</th>
+                            <th>Roles</th>
+                            <th>Base Costs</th>
+                            <th>Instances</th>
+                            <th>Buildouts</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for program_type in page_obj %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ program_type.name }}</h6>
+                                    <small class="text-muted">{{ program_type.description|truncatechars:80 }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ program_type.target_grade_levels }}</span>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="text-success mb-0">${{ program_type.rate_per_student }}</h6>
+                                    <small class="text-muted">per student</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% for role in program_type.roles.all %}
+                                    <div class="mb-1">
+                                        <span class="badge bg-secondary">{{ role.name }}</span>
+                                        <small class="text-muted">${{ role.hourly_rate }}/hr</small>
+                                    </div>
+                                {% empty %}
+                                    <span class="text-muted">No roles</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                {% for cost in program_type.base_costs.all %}
+                                    <div class="mb-1">
+                                        <span class="badge bg-warning">{{ cost.name }}</span>
+                                        <small class="text-muted">${{ cost.cost_per_student }}</small>
+                                    </div>
+                                {% empty %}
+                                    <span class="text-muted">No costs</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ program_type.instances.count }}</h6>
+                                    <small class="text-muted">instances</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ program_type.buildouts.count }}</h6>
+                                    <small class="text-muted">buildouts</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="viewProgramType({{ program_type.id }})">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="editProgramType({{ program_type.id }})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="manageRoles({{ program_type.id }})">
+                                        <i class="bi bi-people"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm" onclick="manageCosts({{ program_type.id }})">
+                                        <i class="bi bi-currency-dollar"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteProgramType({{ program_type.id }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-collection text-muted" style="font-size: 3rem;"></i>
+                <h5 class="text-muted mt-3">No program types found</h5>
+                <p class="text-muted">Create your first program type to get started.</p>
+                <button class="btn btn-primary" onclick="createProgramType()">
+                    <i class="bi bi-plus-circle me-1"></i>Create Program Type
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="admin-card p-4 mt-4">
+    <nav aria-label="Program types pagination">
+        <ul class="pagination justify-content-center mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Quick Stats -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-collection" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">{{ page_obj.paginator.count }}</h4>
+                    <small>Total Program Types</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-calendar-event" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_instances=0 %}
+                            {% for program_type in page_obj %}
+                                {% with instances_count=program_type.instances.count %}
+                                    {% if forloop.first %}
+                                        {{ instances_count }}
+                                    {% else %}
+                                        {{ total_instances|add:instances_count }}
+                                    {% endif %}
+                                {% endwith %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Total Instances</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-people" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_roles=0 %}
+                            {% for program_type in page_obj %}
+                                {% with roles_count=program_type.roles.count %}
+                                    {% if forloop.first %}
+                                        {{ roles_count }}
+                                    {% else %}
+                                        {{ total_roles|add:roles_count }}
+                                    {% endif %}
+                                {% endwith %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Total Roles</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-currency-dollar" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_rate=0 %}
+                            {% for program_type in page_obj %}
+                                {% if forloop.first %}
+                                    ${{ program_type.rate_per_student }}
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Avg Rate per Student</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function createProgramType() {
+    // Implementation for creating new program type
+    alert('Create program type functionality not implemented yet.');
+}
+
+function viewProgramType(id) {
+    // Implementation for viewing program type details
+    alert('View program type functionality not implemented yet.');
+}
+
+function editProgramType(id) {
+    // Implementation for editing program type
+    alert('Edit program type functionality not implemented yet.');
+}
+
+function manageRoles(id) {
+    // Implementation for managing program type roles
+    alert('Manage roles functionality not implemented yet.');
+}
+
+function manageCosts(id) {
+    // Implementation for managing program type costs
+    alert('Manage costs functionality not implemented yet.');
+}
+
+function deleteProgramType(id) {
+    if (confirm('Are you sure you want to delete this program type? This action cannot be undone.')) {
+        // Implementation for deleting program type
+        alert('Delete program type functionality not implemented yet.');
+    }
+}
+</script>
+{% endblock %} 

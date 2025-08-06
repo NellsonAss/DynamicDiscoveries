@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load math_filters %}
+
+{% block title %}{{ buildout.title }} - Buildout Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="bi bi-diagram-3 me-2"></i>{{ buildout.title }}</h1>
+                    <p class="text-muted mb-0">{{ buildout.program_type.name }}</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'admin:programs_programbuildout_change' buildout.pk %}" class="btn btn-primary">
+                        <i class="bi bi-pencil me-2"></i>Edit Buildout
+                    </a>
+                    <a href="{% url 'programs:buildout_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to List
+                    </a>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="card-title text-primary">{{ buildout.expected_students }}</h3>
+                            <p class="card-text text-muted">Expected Students</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="card-title text-success">{{ buildout.num_days }}</h3>
+                            <p class="card-text text-muted">Program Days</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="card-title text-info">${{ buildout.total_expected_revenue }}</h3>
+                            <p class="card-text text-muted">Expected Revenue</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="card-title text-warning">{{ total_hours|floatformat:1 }}</h3>
+                            <p class="card-text text-muted">Total Hours</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation Status -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    {% if percentage_valid %}
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle me-2"></i>
+                            <strong>Buildout is valid!</strong> Role percentages sum to 100%.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Buildout needs attention!</strong> Role percentages sum to {{ buildout.get_total_role_percentage }}% (should be 100%).
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Role Assignments -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-people me-2"></i>Role Assignments</h5>
+                            <a href="{% url 'admin:programs_programrole_add' %}?program_type={{ buildout.program_type.pk }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i>Add Role
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% if buildout.program_type.roles.exists %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Role</th>
+                                                <th>Revenue %</th>
+                                                <th>Payout Amount</th>
+                                                <th>Hour Frequency</th>
+                                                <th>Hours</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for role_data in roles_data %}
+                                                <tr>
+                                                    <td>
+                                                        <div>
+                                                            <strong>{{ role_data.role.role.name }}</strong>
+                                                            <br>
+                                                            <small class="text-muted">{{ role_data.role.role.responsibilities|truncatewords:10 }}</small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-primary">{{ role_data.percentage|floatformat:1 }}%</span>
+                                                    </td>
+                                                    <td>
+                                                        <strong>${{ role_data.payout|floatformat:2 }}</strong>
+                                                        <br>
+                                                        <small class="text-muted">(${{ role_data.role.role.hourly_rate }}/hr × {{ role_data.hours|floatformat:1 }} hrs)</small>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ role_data.role.get_hour_frequency_display }}</small>
+                                                        {% if role_data.role.hour_frequency == "OVERRIDE" %}
+                                                            <br><small class="text-info">Manual override</small>
+                                                        {% else %}
+                                                            <br><small class="text-info">{{ role_data.role.hour_multiplier }} × multiplier</small>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <strong>{{ role_data.hours|floatformat:1 }} hours</strong>
+                                                    </td>
+                                                    <td>
+                                                        <a href="{% url 'admin:programs_programrole_change' role_data.role.pk %}" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-active">
+                                                <td><strong>Total</strong></td>
+                                                <td><strong>100.0%</strong></td>
+                                                <td><strong>${{ total_payouts|floatformat:2 }}</strong></td>
+                                                <td></td>
+                                                <td><strong>{{ total_hours|floatformat:1 }} hours</strong></td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                                    <p class="text-muted mt-3">No roles have been assigned to this program type yet.</p>
+                                    <a href="{% url 'admin:programs_programrole_add' %}?program_type={{ buildout.program_type.pk }}" class="btn btn-primary">
+                                        <i class="bi bi-plus-circle me-2"></i>Add First Role
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hour Calculation Breakdown -->
+            {% if buildout.program_type.roles.exists %}
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-calculator me-2"></i>Hour Calculation Breakdown</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Buildout Context:</h6>
+                                        <ul class="list-unstyled">
+                                            <li><strong>Students:</strong> {{ buildout.expected_students }}</li>
+                                            <li><strong>Days:</strong> {{ buildout.num_days }}</li>
+                                            <li><strong>Sessions per Day:</strong> {{ buildout.sessions_per_day }}</li>
+                                            <li><strong>Total Sessions:</strong> {{ buildout.num_days|multiply:buildout.sessions_per_day }}</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Frequency Examples:</h6>
+                                        <ul class="list-unstyled">
+                                            <li><strong>Per Program:</strong> Once for entire program</li>
+                                            <li><strong>Per Session:</strong> Once per session ({{ buildout.num_days|multiply:buildout.sessions_per_day }} total)</li>
+                                            <li><strong>Per Kid:</strong> Once per student ({{ buildout.expected_students }} total)</li>
+                                            <li><strong>Per Session per Kid:</strong> {{ buildout.num_days|multiply:buildout.sessions_per_day|multiply:buildout.expected_students }} total</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

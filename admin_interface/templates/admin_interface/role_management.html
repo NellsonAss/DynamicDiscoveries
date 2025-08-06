@@ -1,0 +1,349 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-shield-check me-2"></i>Role Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total roles
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-8">
+            <label for="search" class="form-label">Search Roles</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by name or description...">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Roles Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Roles
+        </h6>
+        <button class="btn btn-success btn-sm" onclick="createRole()">
+            <i class="bi bi-plus-circle me-1"></i>Add Role
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Hourly Rate</th>
+                            <th>Default Revenue %</th>
+                            <th>Responsibilities</th>
+                            <th>Program Types</th>
+                            <th>Users</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for role in page_obj %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ role.name }}</h6>
+                                    <small class="text-muted">ID: {{ role.id }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="text-success mb-0">${{ role.hourly_rate }}</h6>
+                                    <small class="text-muted">per hour</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="text-info mb-0">{{ role.default_percent_of_revenue }}%</h6>
+                                    <small class="text-muted">of revenue</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if role.responsibilities %}
+                                    <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ role.responsibilities }}">
+                                        {{ role.responsibilities|truncatechars:80 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">No description</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ role.program_types.count }}</h6>
+                                    <small class="text-muted">program types</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ role.users.count }}</h6>
+                                    <small class="text-muted">users</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="viewRole({{ role.id }})">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="editRole({{ role.id }})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="manageProgramTypes({{ role.id }})">
+                                        <i class="bi bi-collection"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm" onclick="manageUsers({{ role.id }})">
+                                        <i class="bi bi-people"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteRole({{ role.id }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-shield-check text-muted" style="font-size: 3rem;"></i>
+                <h5 class="text-muted mt-3">No roles found</h5>
+                <p class="text-muted">Create your first role to get started.</p>
+                <button class="btn btn-primary" onclick="createRole()">
+                    <i class="bi bi-plus-circle me-1"></i>Create Role
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="admin-card p-4 mt-4">
+    <nav aria-label="Roles pagination">
+        <ul class="pagination justify-content-center mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Quick Stats -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-shield-check" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">{{ page_obj.paginator.count }}</h4>
+                    <small>Total Roles</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-currency-dollar" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with avg_rate=0 %}
+                            {% for role in page_obj %}
+                                {% if forloop.first %}
+                                    ${{ role.hourly_rate }}
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Avg Hourly Rate</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-collection" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_programs=0 %}
+                            {% for role in page_obj %}
+                                {% with programs_count=role.program_types.count %}
+                                    {% if forloop.first %}
+                                        {{ programs_count }}
+                                    {% else %}
+                                        {{ total_programs|add:programs_count }}
+                                    {% endif %}
+                                {% endwith %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Total Program Types</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-people" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_users=0 %}
+                            {% for role in page_obj %}
+                                {% with users_count=role.users.count %}
+                                    {% if forloop.first %}
+                                        {{ users_count }}
+                                    {% else %}
+                                        {{ total_users|add:users_count }}
+                                    {% endif %}
+                                {% endwith %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Total Users</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Types Info -->
+<div class="admin-card p-4 mt-4">
+    <h5 class="mb-3">
+        <i class="bi bi-info-circle me-2"></i>Common Role Types
+    </h5>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="border rounded p-3">
+                <h6 class="mb-2">Admin</h6>
+                <small class="text-muted">System administrators with full access</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3">
+                <h6 class="mb-2">Contractor</h6>
+                <small class="text-muted">Program instructors and facilitators</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3">
+                <h6 class="mb-2">Consultant</h6>
+                <small class="text-muted">Advisory and support roles</small>
+            </div>
+        </div>
+        <div class="col-md-4 mt-3">
+            <div class="border rounded p-3">
+                <h6 class="mb-2">Parent</h6>
+                <small class="text-muted">Parents registering children</small>
+            </div>
+        </div>
+        <div class="col-md-4 mt-3">
+            <div class="border rounded p-3">
+                <h6 class="mb-2">Money Manager</h6>
+                <small class="text-muted">Financial management roles</small>
+            </div>
+        </div>
+        <div class="col-md-4 mt-3">
+            <div class="border rounded p-3">
+                <h6 class="mb-2">Program Designer</h6>
+                <small class="text-muted">Curriculum and program development</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function createRole() {
+    // Implementation for creating new role
+    alert('Create role functionality not implemented yet.');
+}
+
+function viewRole(id) {
+    // Implementation for viewing role details
+    alert('View role functionality not implemented yet.');
+}
+
+function editRole(id) {
+    // Implementation for editing role
+    alert('Edit role functionality not implemented yet.');
+}
+
+function manageProgramTypes(id) {
+    // Implementation for managing role program types
+    alert('Manage program types functionality not implemented yet.');
+}
+
+function manageUsers(id) {
+    // Implementation for managing role users
+    alert('Manage users functionality not implemented yet.');
+}
+
+function deleteRole(id) {
+    if (confirm('Are you sure you want to delete this role? This action cannot be undone.')) {
+        // Implementation for deleting role
+        alert('Delete role functionality not implemented yet.');
+    }
+}
+</script>
+{% endblock %} 

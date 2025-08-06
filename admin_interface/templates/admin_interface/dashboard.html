@@ -1,0 +1,255 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-speedometer2 me-2"></i>Admin Dashboard
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-calendar3 me-1"></i>{{ today|date:"F j, Y" }}
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="admin-stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-1">{{ total_users }}</h3>
+                    <p class="mb-0 opacity-75">Total Users</p>
+                </div>
+                <div class="fs-1 opacity-50">
+                    <i class="bi bi-people"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="admin-stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-1">{{ total_programs }}</h3>
+                    <p class="mb-0 opacity-75">Program Types</p>
+                </div>
+                <div class="fs-1 opacity-50">
+                    <i class="bi bi-collection"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="admin-stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-1">{{ total_instances }}</h3>
+                    <p class="mb-0 opacity-75">Program Instances</p>
+                </div>
+                <div class="fs-1 opacity-50">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="admin-stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-1">{{ total_registrations }}</h3>
+                    <p class="mb-0 opacity-75">Registrations</p>
+                </div>
+                <div class="fs-1 opacity-50">
+                    <i class="bi bi-clipboard-check"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Overview -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="admin-card p-4">
+            <h5 class="mb-3">
+                <i class="bi bi-currency-dollar me-2"></i>Financial Overview
+            </h5>
+            <div class="row">
+                <div class="col-6">
+                    <div class="text-center">
+                        <h4 class="text-success mb-1">${{ total_revenue|floatformat:2 }}</h4>
+                        <small class="text-muted">Total Revenue</small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="text-center">
+                        <h4 class="text-primary mb-1">${{ total_profit|floatformat:2 }}</h4>
+                        <small class="text-muted">Total Profit</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <div class="admin-card p-4">
+            <h5 class="mb-3">
+                <i class="bi bi-envelope me-2"></i>Contact Overview
+            </h5>
+            <div class="text-center">
+                <h4 class="text-info mb-1">{{ total_contacts }}</h4>
+                <small class="text-muted">Total Contact Inquiries</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="admin-card">
+            <div class="card-header bg-transparent border-0">
+                <h6 class="mb-0">
+                    <i class="bi bi-clipboard-check me-2"></i>Recent Registrations
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_registrations %}
+                    <div class="list-group list-group-flush">
+                        {% for registration in recent_registrations %}
+                        <div class="list-group-item border-0 py-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ registration.child.full_name }}</h6>
+                                    <small class="text-muted">{{ registration.program_instance.program_type.name }}</small>
+                                </div>
+                                <span class="status-badge status-{{ registration.status }}">
+                                    {{ registration.get_status_display }}
+                                </span>
+                            </div>
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>{{ registration.registered_at|timesince }} ago
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-1 mb-2"></i>
+                        <p class="mb-0">No recent registrations</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="admin-card">
+            <div class="card-header bg-transparent border-0">
+                <h6 class="mb-0">
+                    <i class="bi bi-envelope me-2"></i>Recent Contacts
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_contacts %}
+                    <div class="list-group list-group-flush">
+                        {% for contact in recent_contacts %}
+                        <div class="list-group-item border-0 py-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ contact.parent_name }}</h6>
+                                    <small class="text-muted">{{ contact.email }}</small>
+                                </div>
+                                <span class="status-badge status-{{ contact.status }}">
+                                    {{ contact.get_status_display }}
+                                </span>
+                            </div>
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>{{ contact.created_at|timesince }} ago
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-1 mb-2"></i>
+                        <p class="mb-0">No recent contacts</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="admin-card">
+            <div class="card-header bg-transparent border-0">
+                <h6 class="mb-0">
+                    <i class="bi bi-calendar-event me-2"></i>Recent Programs
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_programs %}
+                    <div class="list-group list-group-flush">
+                        {% for program in recent_programs %}
+                        <div class="list-group-item border-0 py-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ program.program_type.name }}</h6>
+                                    <small class="text-muted">{{ program.instructor.email }}</small>
+                                </div>
+                                <span class="status-badge {% if program.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                    {% if program.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </div>
+                            <small class="text-muted">
+                                <i class="bi bi-geo-alt me-1"></i>{{ program.location }}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-1 mb-2"></i>
+                        <p class="mb-0">No recent programs</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="admin-card p-4">
+            <h5 class="mb-3">
+                <i class="bi bi-lightning me-2"></i>Quick Actions
+            </h5>
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'admin_interface:user_management' %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-people me-2"></i>Manage Users
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'admin_interface:program_instance_management' %}" class="btn btn-outline-success w-100">
+                        <i class="bi bi-calendar-event me-2"></i>View Programs
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'admin_interface:registration_management' %}" class="btn btn-outline-info w-100">
+                        <i class="bi bi-clipboard-check me-2"></i>View Registrations
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'admin_interface:contact_management' %}" class="btn btn-outline-warning w-100">
+                        <i class="bi bi-envelope me-2"></i>View Contacts
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

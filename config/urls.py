@@ -28,6 +28,7 @@ urlpatterns = [
     path('communications/', include('communications.urls')),
     path('programs/', include('programs.urls')),
     path('', include('dashboard.urls')),
+    path('admin-interface/', include('admin_interface.urls')),
     path('debug-env/', debug_env),
     path('captcha/', include('captcha.urls')),
 ]

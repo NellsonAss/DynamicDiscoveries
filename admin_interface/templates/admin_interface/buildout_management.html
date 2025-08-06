@@ -1,0 +1,319 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-diagram-3 me-2"></i>Buildout Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total buildouts
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-6">
+            <label for="search" class="form-label">Search Buildouts</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by title or program type...">
+        </div>
+        <div class="col-md-4">
+            <label for="program_type" class="form-label">Filter by Program Type</label>
+            <select class="form-select" id="program_type" name="program_type">
+                <option value="">All Program Types</option>
+                {% for program_type in program_types %}
+                    <option value="{{ program_type.id }}" {% if program_type.id|stringformat:"s" == program_type_filter %}selected{% endif %}>
+                        {{ program_type.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Buildouts Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Program Buildouts
+        </h6>
+        <button class="btn btn-success btn-sm" onclick="createBuildout()">
+            <i class="bi bi-plus-circle me-1"></i>Add Buildout
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Buildout</th>
+                            <th>Program Type</th>
+                            <th>Students</th>
+                            <th>Duration</th>
+                            <th>Revenue</th>
+                            <th>Payouts</th>
+                            <th>Profit</th>
+                            <th>Margin</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for buildout in page_obj %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ buildout.title }}</h6>
+                                    <small class="text-muted">{{ buildout.sessions_per_day }} session{{ buildout.sessions_per_day|pluralize }} per day</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ buildout.program_type.name }}</span>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ buildout.expected_students }}</h6>
+                                    <small class="text-muted">students</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ buildout.num_days }}</h6>
+                                    <small class="text-muted">days</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="text-success mb-0">${{ buildout.total_revenue|floatformat:0 }}</h6>
+                                    <small class="text-muted">total revenue</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="text-warning mb-0">${{ buildout.total_payouts|floatformat:0 }}</h6>
+                                    <small class="text-muted">total payouts</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="{% if buildout.profit >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                                        ${{ buildout.profit|floatformat:0 }}
+                                    </h6>
+                                    <small class="text-muted">profit</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="{% if buildout.profit_margin >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                                        {{ buildout.profit_margin|floatformat:1 }}%
+                                    </h6>
+                                    <small class="text-muted">margin</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="viewBuildout({{ buildout.id }})">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="editBuildout({{ buildout.id }})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="manageRoles({{ buildout.id }})">
+                                        <i class="bi bi-people"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm" onclick="manageCosts({{ buildout.id }})">
+                                        <i class="bi bi-currency-dollar"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteBuildout({{ buildout.id }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-diagram-3 text-muted" style="font-size: 3rem;"></i>
+                <h5 class="text-muted mt-3">No buildouts found</h5>
+                <p class="text-muted">Create your first buildout to get started.</p>
+                <button class="btn btn-primary" onclick="createBuildout()">
+                    <i class="bi bi-plus-circle me-1"></i>Create Buildout
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="admin-card p-4 mt-4">
+    <nav aria-label="Buildouts pagination">
+        <ul class="pagination justify-content-center mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if program_type_filter %}&program_type={{ program_type_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if program_type_filter %}&program_type={{ program_type_filter }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if program_type_filter %}&program_type={{ program_type_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if program_type_filter %}&program_type={{ program_type_filter }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if program_type_filter %}&program_type={{ program_type_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Quick Stats -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-diagram-3" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">{{ page_obj.paginator.count }}</h4>
+                    <small>Total Buildouts</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-currency-dollar" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_revenue=0 %}
+                            {% for buildout in page_obj %}
+                                {% if forloop.first %}
+                                    ${{ buildout.total_revenue|floatformat:0 }}
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Avg Revenue</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_profit=0 %}
+                            {% for buildout in page_obj %}
+                                {% if forloop.first %}
+                                    ${{ buildout.profit|floatformat:0 }}
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Avg Profit</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-percent" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">
+                        {% with total_margin=0 %}
+                            {% for buildout in page_obj %}
+                                {% if forloop.first %}
+                                    {{ buildout.profit_margin|floatformat:1 }}%
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h4>
+                    <small>Avg Margin</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function createBuildout() {
+    // Implementation for creating new buildout
+    alert('Create buildout functionality not implemented yet.');
+}
+
+function viewBuildout(id) {
+    // Implementation for viewing buildout details
+    alert('View buildout functionality not implemented yet.');
+}
+
+function editBuildout(id) {
+    // Implementation for editing buildout
+    alert('Edit buildout functionality not implemented yet.');
+}
+
+function manageRoles(id) {
+    // Implementation for managing buildout roles
+    alert('Manage roles functionality not implemented yet.');
+}
+
+function manageCosts(id) {
+    // Implementation for managing buildout costs
+    alert('Manage costs functionality not implemented yet.');
+}
+
+function deleteBuildout(id) {
+    if (confirm('Are you sure you want to delete this buildout? This action cannot be undone.')) {
+        // Implementation for deleting buildout
+        alert('Delete buildout functionality not implemented yet.');
+    }
+}
+</script>
+{% endblock %} 

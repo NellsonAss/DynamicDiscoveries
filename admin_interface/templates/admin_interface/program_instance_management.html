@@ -1,0 +1,312 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-calendar-event me-2"></i>Program Instance Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total instances
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-6">
+            <label for="search" class="form-label">Search Programs</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by program type, location, or instructor...">
+        </div>
+        <div class="col-md-4">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status">
+                <option value="">All Statuses</option>
+                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Programs Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Program Instances
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Program</th>
+                            <th>Instructor</th>
+                            <th>Schedule</th>
+                            <th>Location</th>
+                            <th>Enrollment</th>
+                            <th>Financial</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for instance in page_obj %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ instance.program_type.name }}</h6>
+                                    <small class="text-muted">{{ instance.program_type.description|truncatechars:50 }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ instance.instructor.get_full_name|default:instance.instructor.email }}</h6>
+                                    <small class="text-muted">{{ instance.instructor.email }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar3 me-1"></i>{{ instance.start_date|date:"M j" }} - {{ instance.end_date|date:"M j, Y" }}
+                                    </small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="text-break">{{ instance.location }}</span>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="mb-0">{{ instance.current_enrollment }}/{{ instance.capacity }}</h6>
+                                    <small class="text-muted">{{ instance.available_spots }} spots left</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="text-success mb-0">${{ instance.expected_revenue|floatformat:0 }}</h6>
+                                    <small class="text-muted">${{ instance.expected_profit|floatformat:0 }} profit</small>
+                                </div>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm {% if instance.is_active %}btn-success{% else %}btn-secondary{% endif %} toggle-program-status"
+                                        data-instance-id="{{ instance.id }}" 
+                                        data-current-status="{{ instance.is_active|yesno:'true,false' }}">
+                                    {% if instance.is_active %}Active{% else %}Inactive{% endif %}
+                                </button>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#programModal{{ instance.id }}">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <a href="{% url 'programs:program_instance_detail' instance.id %}" 
+                                       class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-gear"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-calendar-event fs-1 text-muted mb-3"></i>
+                <h5 class="text-muted">No program instances found</h5>
+                <p class="text-muted">Try adjusting your search criteria</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Program Detail Modals -->
+{% for instance in page_obj %}
+<div class="modal fade" id="programModal{{ instance.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ instance.program_type.name }} - Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Program Information</h6>
+                        <p><strong>Type:</strong> {{ instance.program_type.name }}</p>
+                        <p><strong>Instructor:</strong> {{ instance.instructor.get_full_name|default:instance.instructor.email }}</p>
+                        <p><strong>Location:</strong> {{ instance.location }}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="status-badge {% if instance.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                {% if instance.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Schedule & Capacity</h6>
+                        <p><strong>Start Date:</strong> {{ instance.start_date|date:"F j, Y" }}</p>
+                        <p><strong>End Date:</strong> {{ instance.end_date|date:"F j, Y" }}</p>
+                        <p><strong>Capacity:</strong> {{ instance.capacity }} students</p>
+                        <p><strong>Current Enrollment:</strong> {{ instance.current_enrollment }} students</p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Financial Information</h6>
+                        <p><strong>Expected Revenue:</strong> ${{ instance.expected_revenue|floatformat:2 }}</p>
+                        <p><strong>Expected Payouts:</strong> ${{ instance.expected_payouts|floatformat:2 }}</p>
+                        <p><strong>Expected Profit:</strong> ${{ instance.expected_profit|floatformat:2 }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Registration Form</h6>
+                        {% if instance.assigned_form %}
+                            <p><strong>Form:</strong> {{ instance.assigned_form.title }}</p>
+                            <p><strong>Questions:</strong> {{ instance.assigned_form.questions.count }}</p>
+                        {% else %}
+                            <p class="text-muted">No form assigned</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if instance.buildout %}
+                    <hr>
+                    <h6>Buildout Information</h6>
+                    <p><strong>Buildout:</strong> {{ instance.buildout.title }}</p>
+                    <p><strong>Expected Students:</strong> {{ instance.buildout.expected_students }}</p>
+                    <p><strong>Number of Days:</strong> {{ instance.buildout.num_days }}</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <a href="{% url 'programs:program_instance_detail' instance.id %}" 
+                   class="btn btn-primary">
+                    <i class="bi bi-gear me-1"></i>Manage Program
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="d-flex justify-content-center mt-4">
+    <nav aria-label="Program pagination">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Status Toggle Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButtons = document.querySelectorAll('.toggle-program-status');
+    
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const instanceId = this.dataset.instanceId;
+            const currentStatus = this.dataset.currentStatus === 'true';
+            
+            if (confirm(`Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this program instance?`)) {
+                fetch(`/admin-interface/program-instances/${instanceId}/toggle-status/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update button appearance
+                        if (data.is_active) {
+                            this.className = 'btn btn-sm btn-success toggle-program-status';
+                            this.textContent = 'Active';
+                            this.dataset.currentStatus = 'true';
+                        } else {
+                            this.className = 'btn btn-sm btn-secondary toggle-program-status';
+                            this.textContent = 'Inactive';
+                            this.dataset.currentStatus = 'false';
+                        }
+                        
+                        // Show success message
+                        const toast = document.createElement('div');
+                        toast.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                        toast.style.top = '20px';
+                        toast.style.right = '20px';
+                        toast.style.zIndex = '9999';
+                        toast.innerHTML = `
+                            ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.body.appendChild(toast);
+                        
+                        // Auto-remove toast after 3 seconds
+                        setTimeout(() => {
+                            toast.remove();
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while updating program status.');
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

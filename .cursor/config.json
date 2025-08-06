@@ -1,0 +1,69 @@
+{
+  "custom_rules": [
+    {
+      "description": "Each time a new feature is added or an existing feature is modified via a prompt, it must be recorded in `site_requirements.json`. This file acts as the canonical source of all system behavior and must be kept current.",
+      "enforcement": "Every new feature prompt must include a brief requirement description to be appended to the file. Each requirement must have a unique ID, title, and description."
+    },
+    {
+      "description": "Acceptance tests must be written to validate every requirement listed in `site_requirements.json`. These tests are placed in `tests/test_requirements.py` and should check for implementation coverage.",
+      "enforcement": "Test file should fail if any listed requirement is not referenced or is marked unimplemented."
+    },
+    {
+      "description": "When a new HTML page or HTMX partial is generated or updated, automatically parse for `<a href=\"...\">` and `hx-get` links. For any link pointing to an undefined or missing route, prompt: \"Would you like to implement this route now?\"",
+      "enforcement": "After creating or modifying any template file, scan for undefined routes and offer to implement them immediately."
+    },
+    {
+      "description": "All prompts that change functionality must update the requirements file with a new requirement entry.",
+      "enforcement": "Before implementing any new feature, add a requirement entry with status 'required', then update to 'implemented' after completion."
+    },
+    {
+      "description": "Enforce matching tests for all requirements listed in site_requirements.json.",
+      "enforcement": "Every requirement must have a corresponding test in tests/test_requirements.py that validates its implementation."
+    },
+    {
+      "description": "Inspect templates and prompt to complete undefined links automatically.",
+      "enforcement": "Use utils/requirements_tracker.py route completion functionality to scan templates and identify missing routes."
+    }
+  ],
+  "requirements_tracking": {
+    "enabled": true,
+    "source_file": "site_requirements.json",
+    "test_module": "tests/test_requirements.py",
+    "validation": {
+      "enforce_implementation": true,
+      "enforce_testing": true,
+      "auto_update": true,
+      "route_completion": true
+    },
+    "route_completion": {
+      "enabled": true,
+      "auto_scan_templates": true,
+      "prompt_for_undefined_routes": true,
+      "template_patterns": [
+        "*.html",
+        "**/*.html"
+      ],
+      "link_patterns": [
+        "{% url '...' %}",
+        "hx-get=\"...\"",
+        "hx-post=\"...\"",
+        "href=\"...\""
+      ]
+    }
+  },
+  "project_settings": {
+    "framework": "Django",
+    "frontend": "HTMX + Bootstrap",
+    "testing": "Django TestCase",
+    "requirements_validation": {
+      "enabled": true,
+      "source_file": "site_requirements.json",
+      "test_module": "tests/test_requirements.py"
+    },
+    "template_analysis": {
+      "enabled": true,
+      "scan_for_undefined_routes": true,
+      "auto_prompt_completion": true
+    }
+  }
+} 
