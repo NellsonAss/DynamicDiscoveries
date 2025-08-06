@@ -1,0 +1,62 @@
+{% extends "admin_interface/base_admin.html" %}
+
+{% block title %}Manage Program Types - {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Manage Program Types for {{ role.name }}</h1>
+                <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Role
+                </a>
+            </div>
+            
+            <div class="admin-card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <h6>Select program types for this role:</h6>
+                            <div class="row">
+                                {% for program_type in all_program_types %}
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   name="program_types" value="{{ program_type.id }}" 
+                                                   id="program_type_{{ program_type.id }}"
+                                                   {% if program_type in selected_program_types %}checked{% endif %}>
+                                            <label class="form-check-label" for="program_type_{{ program_type.id }}">
+                                                <strong>{{ program_type.name }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ program_type.description|truncatewords:10 }}</small>
+                                                <br>
+                                                <small class="text-success">${{ program_type.rate_per_student }}/student</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <div class="col-12">
+                                        <p class="text-muted">No program types available. <a href="{% url 'admin_interface:program_type_create' %}">Create a program type</a> first.</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>Update Program Types
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

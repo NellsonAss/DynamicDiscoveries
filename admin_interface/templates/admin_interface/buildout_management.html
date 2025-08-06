@@ -285,34 +285,30 @@
 
 <script>
 function createBuildout() {
-    // Implementation for creating new buildout
-    alert('Create buildout functionality not implemented yet.');
+    window.location.href = "{% url 'admin_interface:buildout_create' %}";
 }
 
 function viewBuildout(id) {
-    // Implementation for viewing buildout details
-    alert('View buildout functionality not implemented yet.');
+    window.location.href = `/admin-interface/buildouts/${id}/`;
 }
 
 function editBuildout(id) {
-    // Implementation for editing buildout
-    alert('Edit buildout functionality not implemented yet.');
+    window.location.href = `/admin-interface/buildouts/${id}/edit/`;
 }
 
 function manageRoles(id) {
-    // Implementation for managing buildout roles
-    alert('Manage roles functionality not implemented yet.');
+    // Buildouts don't have direct role management - roles are managed at the program type level
+    alert('Role management is handled at the program type level. Please edit the program type to manage roles.');
 }
 
 function manageCosts(id) {
-    // Implementation for managing buildout costs
-    alert('Manage costs functionality not implemented yet.');
+    // Buildouts don't have direct cost management - costs are managed at the program type level
+    alert('Cost management is handled at the program type level. Please edit the program type to manage costs.');
 }
 
 function deleteBuildout(id) {
     if (confirm('Are you sure you want to delete this buildout? This action cannot be undone.')) {
-        // Implementation for deleting buildout
-        alert('Delete buildout functionality not implemented yet.');
+        window.location.href = `/admin-interface/buildouts/${id}/delete/`;
     }
 }
 </script>

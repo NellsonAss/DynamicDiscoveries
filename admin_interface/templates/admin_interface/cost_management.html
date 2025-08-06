@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <thead>
                         <tr>
                             <th>Cost Name</th>
-                            <th>Cost Per Student</th>
+                            <th>Amount & Frequency</th>
                             <th>Description</th>
                             <th>Actions</th>
                         </tr>
@@ -120,8 +120,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </td>
                             <td>
-                                <span class="fw-bold text-success">${{ cost.cost_per_student }}</span>
-                                <small class="text-muted d-block">per student</small>
+                                <span class="fw-bold text-success">${{ cost.amount }}</span>
+                                <small class="text-muted d-block">{{ cost.get_frequency_display }}</small>
                             </td>
                             <td>
                                 <span class="text-break">{{ cost.description|truncatechars:100 }}</span>
@@ -153,23 +153,24 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <h6 class="text-muted mb-2">Cost Details</h6>
-                                                <p><strong>Cost per Student:</strong> ${{ cost.cost_per_student }}</p>
+                                                <p><strong>Amount:</strong> ${{ cost.amount }}</p>
+                                                <p><strong>Frequency:</strong> {{ cost.get_frequency_display }}</p>
                                                 <p><strong>Description:</strong></p>
                                                 <p class="text-muted">{{ cost.description }}</p>
                                             </div>
                                             <div class="col-md-6">
-                                                <h6 class="text-muted mb-2">Program Assignments</h6>
-                                                {% if cost.programbasecost_set.all %}
+                                                <h6 class="text-muted mb-2">Buildout Assignments</h6>
+                                                {% if cost.buildoutbasecost_set.all %}
                                                     <ul class="list-unstyled">
-                                                    {% for program_cost in cost.programbasecost_set.all %}
+                                                    {% for buildout_cost in cost.buildoutbasecost_set.all %}
                                                         <li class="mb-2">
-                                                            <span class="badge bg-primary me-2">{{ program_cost.program_type.name }}</span>
-                                                            <small class="text-muted">Multiplier: {{ program_cost.multiplier }}x</small>
+                                                            <span class="badge bg-primary me-2">{{ buildout_cost.buildout.program_type.name }}</span>
+                                                            <small class="text-muted">{{ buildout_cost.buildout.title }} ({{ buildout_cost.multiplier }}x)</small>
                                                         </li>
                                                     {% endfor %}
                                                     </ul>
                                                 {% else %}
-                                                    <p class="text-muted">No program assignments</p>
+                                                    <p class="text-muted">No buildout assignments</p>
                                                 {% endif %}
                                             </div>
                                         </div>
@@ -227,12 +228,25 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input type="text" class="form-control" id="costName" name="name" required>
                     </div>
                     <div class="mb-3">
-                        <label for="costPerStudent" class="form-label">Cost Per Student</label>
+                        <label for="costAmount" class="form-label">Amount</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="costPerStudent" name="cost_per_student" 
+                            <input type="number" class="form-control" id="costAmount" name="amount" 
                                    step="0.01" min="0" required>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="costFrequency" class="form-label">Frequency</label>
+                        <select class="form-control" id="costFrequency" name="frequency" required>
+                            <option value="">Select frequency...</option>
+                            <option value="PER_WORKSHOP_CONCEPT">Per Workshop Concept</option>
+                            <option value="PER_NEW_FACILITATOR">Per New Facilitator</option>
+                            <option value="PER_WORKSHOP">Per Workshop</option>
+                            <option value="PER_SESSION">Per Session</option>
+                            <option value="PER_STUDENT">Per Student</option>
+                            <option value="PER_YEAR">Per Year</option>
+                            <option value="ADMIN_FLAT">Admin Flat</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="costDescription" class="form-label">Description</label>

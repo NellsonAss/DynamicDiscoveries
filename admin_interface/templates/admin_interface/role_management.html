@@ -315,34 +315,28 @@
 
 <script>
 function createRole() {
-    // Implementation for creating new role
-    alert('Create role functionality not implemented yet.');
+    window.location.href = "{% url 'admin_interface:role_create' %}";
 }
 
 function viewRole(id) {
-    // Implementation for viewing role details
-    alert('View role functionality not implemented yet.');
+    window.location.href = `/admin-interface/roles/${id}/`;
 }
 
 function editRole(id) {
-    // Implementation for editing role
-    alert('Edit role functionality not implemented yet.');
+    window.location.href = `/admin-interface/roles/${id}/edit/`;
 }
 
 function manageProgramTypes(id) {
-    // Implementation for managing role program types
-    alert('Manage program types functionality not implemented yet.');
+    window.location.href = `/admin-interface/roles/${id}/manage-program-types/`;
 }
 
 function manageUsers(id) {
-    // Implementation for managing role users
-    alert('Manage users functionality not implemented yet.');
+    window.location.href = `/admin-interface/roles/${id}/manage-users/`;
 }
 
 function deleteRole(id) {
     if (confirm('Are you sure you want to delete this role? This action cannot be undone.')) {
-        // Implementation for deleting role
-        alert('Delete role functionality not implemented yet.');
+        window.location.href = `/admin-interface/roles/${id}/delete/`;
     }
 }
 </script>

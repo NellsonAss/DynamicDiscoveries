@@ -65,14 +65,14 @@
                         <tr>
                             <td>
                                 <div>
-                                    <h6 class="mb-0">{{ instance.program_type.name }}</h6>
-                                    <small class="text-muted">{{ instance.program_type.description|truncatechars:50 }}</small>
+                                    <h6 class="mb-0">{{ instance.buildout.program_type.name }}</h6>
+                                    <small class="text-muted">{{ instance.buildout.program_type.description|truncatechars:50 }}</small>
                                 </div>
                             </td>
                             <td>
                                 <div>
-                                    <h6 class="mb-0">{{ instance.instructor.get_full_name|default:instance.instructor.email }}</h6>
-                                    <small class="text-muted">{{ instance.instructor.email }}</small>
+                                    <h6 class="mb-0">{{ instance.title }}</h6>
+                                    <small class="text-muted">{{ instance.buildout.title }}</small>
                                 </div>
                             </td>
                             <td>
@@ -93,7 +93,7 @@
                             </td>
                             <td>
                                 <div class="text-center">
-                                    <h6 class="text-success mb-0">${{ instance.expected_revenue|floatformat:0 }}</h6>
+                                    <h6 class="text-success mb-0">${{ instance.actual_revenue|floatformat:0 }}</h6>
                                     <small class="text-muted">${{ instance.expected_profit|floatformat:0 }} profit</small>
                                 </div>
                             </td>
@@ -138,15 +138,15 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">{{ instance.program_type.name }} - Details</h5>
+                <h5 class="modal-title">{{ instance.buildout.program_type.name }} - Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-6">
                         <h6>Program Information</h6>
-                        <p><strong>Type:</strong> {{ instance.program_type.name }}</p>
-                        <p><strong>Instructor:</strong> {{ instance.instructor.get_full_name|default:instance.instructor.email }}</p>
+                        <p><strong>Type:</strong> {{ instance.buildout.program_type.name }}</p>
+                        <p><strong>Buildout:</strong> {{ instance.buildout.title }}</p>
                         <p><strong>Location:</strong> {{ instance.location }}</p>
                         <p><strong>Status:</strong> 
                             <span class="status-badge {% if instance.is_active %}status-active{% else %}status-inactive{% endif %}">

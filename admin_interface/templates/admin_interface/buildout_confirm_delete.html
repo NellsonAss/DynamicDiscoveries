@@ -1,0 +1,59 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-exclamation-triangle me-2"></i>Delete Buildout
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Buildout
+        </a>
+    </div>
+</div>
+
+<div class="admin-card p-4">
+    <div class="text-center mb-4">
+        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+        <h3 class="mt-3">Are you sure?</h3>
+        <p class="text-muted">This action cannot be undone.</p>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="admin-card p-4 mb-4">
+                <h5 class="mb-3">Buildout Details</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Title:</strong> {{ buildout.title }}</p>
+                        <p><strong>Program Type:</strong> {{ buildout.program_type.name }}</p>
+                        <p><strong>Expected Students:</strong> {{ buildout.expected_students }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Duration:</strong> {{ buildout.num_days }} days</p>
+                        <p><strong>Sessions per Day:</strong> {{ buildout.sessions_per_day }}</p>
+                        <p><strong>Total Revenue:</strong> ${{ buildout.total_revenue|floatformat:0 }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning">
+                <h6><i class="bi bi-exclamation-triangle me-2"></i>Warning</h6>
+                <p class="mb-0">Deleting this buildout will remove all associated data. If this buildout is referenced by any program instances, those instances will be affected.</p>
+            </div>
+            
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                <div class="d-flex gap-2 justify-content-center">
+                    <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Delete Buildout
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

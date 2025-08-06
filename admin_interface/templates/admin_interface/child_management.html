@@ -299,29 +299,24 @@
 
 <script>
 function createChild() {
-    // Implementation for creating new child
-    alert('Create child functionality not implemented yet.');
+    window.location.href = "{% url 'admin_interface:child_create' %}";
 }
 
 function viewChild(id) {
-    // Implementation for viewing child details
-    alert('View child functionality not implemented yet.');
+    window.location.href = `/admin-interface/children/${id}/`;
 }
 
 function editChild(id) {
-    // Implementation for editing child
-    alert('Edit child functionality not implemented yet.');
+    window.location.href = `/admin-interface/children/${id}/edit/`;
 }
 
 function viewRegistrations(id) {
-    // Implementation for viewing child registrations
-    alert('View registrations functionality not implemented yet.');
+    window.location.href = `/admin-interface/children/${id}/registrations/`;
 }
 
 function deleteChild(id) {
     if (confirm('Are you sure you want to delete this child? This action cannot be undone.')) {
-        // Implementation for deleting child
-        alert('Delete child functionality not implemented yet.');
+        window.location.href = `/admin-interface/children/${id}/delete/`;
     }
 }
 </script>

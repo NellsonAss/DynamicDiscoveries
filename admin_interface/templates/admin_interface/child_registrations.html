@@ -1,0 +1,132 @@
+{% extends "admin_interface/base_admin.html" %}
+
+{% block title %}{{ child.full_name }} - Registrations{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">{{ child.full_name }} - Registrations</h1>
+                <a href="{% url 'admin_interface:child_detail' child.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Child
+                </a>
+            </div>
+            
+            <div class="admin-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-check me-2"></i>Program Registrations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if registrations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Program</th>
+                                        <th>Instructor</th>
+                                        <th>Location</th>
+                                        <th>Dates</th>
+                                        <th>Status</th>
+                                        <th>Registered</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for registration in registrations %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ registration.program_instance.program_type.name }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ registration.program_instance.location }}</small>
+                                            </td>
+                                            <td>{{ registration.program_instance.instructor.email }}</td>
+                                            <td>{{ registration.program_instance.location }}</td>
+                                            <td>
+                                                {{ registration.program_instance.start_date|date:"M j, Y" }}
+                                                <br>
+                                                <small class="text-muted">to {{ registration.program_instance.end_date|date:"M j, Y" }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if registration.status == 'approved' %}success{% elif registration.status == 'rejected' %}danger{% elif registration.status == 'cancelled' %}secondary{% else %}warning{% endif %}">
+                                                    {{ registration.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {{ registration.registered_at|date:"M j, Y" }}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'programs:program_instance_detail' registration.program_instance.id %}" class="btn btn-outline-primary">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                    {% if registration.form_responses %}
+                                                        <button type="button" class="btn btn-outline-info" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#formModal{{ registration.id }}">
+                                                            <i class="bi bi-file-text"></i>
+                                                        </button>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted mt-3">No registrations found</h5>
+                            <p class="text-muted">This child has not registered for any programs yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Form Response Modals -->
+{% for registration in registrations %}
+    {% if registration.form_responses %}
+        <div class="modal fade" id="formModal{{ registration.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Form Responses - {{ registration.program_instance.program_type.name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Question</th>
+                                        <th>Response</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for question, response in registration.form_responses.items %}
+                                        <tr>
+                                            <td><strong>{{ question }}</strong></td>
+                                            <td>{{ response }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endfor %}
+{% endblock %} 

@@ -2,10 +2,28 @@ from django import forms
 from django.contrib.auth import get_user_model
 from .models import (
     Child, RegistrationForm, FormQuestion, ProgramInstance,
-    ProgramType
+    ProgramType, Role, ProgramBuildout, BuildoutResponsibility, 
+    BuildoutRoleAssignment, BaseCost, BuildoutBaseCost
 )
 
 User = get_user_model()
+
+
+class RoleForm(forms.ModelForm):
+    """Form for creating and editing roles."""
+    
+    class Meta:
+        model = Role
+        fields = ['name', 'hourly_rate', 'description']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'hourly_rate': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.update({'class': 'form-control'})
 
 
 class ChildForm(forms.ModelForm):
@@ -85,8 +103,8 @@ class ProgramInstanceForm(forms.ModelForm):
     class Meta:
         model = ProgramInstance
         fields = [
-            'program_type', 'start_date', 'end_date', 'location',
-            'instructor', 'capacity', 'assigned_form', 'is_active'
+            'buildout', 'title', 'start_date', 'end_date', 'location',
+            'capacity', 'assigned_form', 'is_active'
         ]
         widgets = {
             'start_date': forms.DateTimeInput(
@@ -97,22 +115,11 @@ class ProgramInstanceForm(forms.ModelForm):
                 attrs={'type': 'datetime-local'},
                 format='%Y-%m-%dT%H:%M'
             ),
+            'title': forms.TextInput(attrs={'placeholder': 'Enter program title...'}),
         }
     
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
-        # Filter instructor choices based on user role
-        if user and not user.is_staff and not user.groups.filter(name='Admin').exists():
-            # Contractors can only assign themselves
-            self.fields['instructor'].queryset = User.objects.filter(pk=user.pk)
-            self.fields['instructor'].initial = user
-        else:
-            # Admins can assign any contractor or admin
-            self.fields['instructor'].queryset = User.objects.filter(
-                groups__name__in=['Contractor', 'Admin']
-            )
         
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
@@ -136,15 +143,81 @@ class ProgramTypeForm(forms.ModelForm):
     
     class Meta:
         model = ProgramType
-        fields = ['name', 'description', 'target_grade_levels', 'default_registration_form']
+        fields = [
+            'name', 'description', 'scope', 'target_grade_levels', 'rate_per_student',
+            'default_num_facilitators', 'default_num_new_facilitators',
+            'default_workshops_per_facilitator_per_year', 'default_students_per_workshop',
+            'default_sessions_per_workshop', 'default_new_workshop_concepts_per_year',
+            'default_registration_form'
+        ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'scope': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'target_grade_levels': forms.TextInput(attrs={'class': 'form-control'}),
+            'rate_per_student': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'class': 'form-control'}),
+            'default_num_facilitators': forms.NumberInput(attrs={'min': '1', 'class': 'form-control'}),
+            'default_num_new_facilitators': forms.NumberInput(attrs={'min': '0', 'class': 'form-control'}),
+            'default_workshops_per_facilitator_per_year': forms.NumberInput(attrs={'min': '1', 'class': 'form-control'}),
+            'default_students_per_workshop': forms.NumberInput(attrs={'min': '1', 'class': 'form-control'}),
+            'default_sessions_per_workshop': forms.NumberInput(attrs={'min': '1', 'class': 'form-control'}),
+            'default_new_workshop_concepts_per_year': forms.NumberInput(attrs={'min': '0', 'class': 'form-control'}),
+            'default_registration_form': forms.Select(attrs={'class': 'form-select'}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Ensure all fields have proper styling
         for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control'})
+            if hasattr(field.widget, 'attrs'):
+                if 'class' not in field.widget.attrs:
+                    field.widget.attrs['class'] = 'form-control'
+            else:
+                field.widget.attrs = {'class': 'form-control'}
+
+
+class ProgramBuildoutForm(forms.ModelForm):
+    """Form for creating and editing program buildouts."""
+    class Meta:
+        model = ProgramBuildout
+        fields = [
+            'program_type', 'title', 'num_facilitators', 'num_new_facilitators',
+            'workshops_per_facilitator_per_year', 'students_per_workshop',
+            'sessions_per_workshop', 'new_workshop_concepts_per_year'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'num_facilitators': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'num_new_facilitators': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'workshops_per_facilitator_per_year': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'students_per_workshop': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'sessions_per_workshop': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'new_workshop_concepts_per_year': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'program_type': forms.Select(attrs={'class': 'form-select'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure all fields have proper styling
+        for field in self.fields.values():
+            if hasattr(field.widget, 'attrs'):
+                if 'class' not in field.widget.attrs:
+                    field.widget.attrs['class'] = 'form-control'
+            else:
+                field.widget.attrs = {'class': 'form-control'}
+    
+    def clean(self):
+        """Validate buildout configuration."""
+        cleaned_data = super().clean()
+        num_facilitators = cleaned_data.get('num_facilitators')
+        num_new_facilitators = cleaned_data.get('num_new_facilitators')
+        
+        if num_facilitators and num_new_facilitators and num_new_facilitators > num_facilitators:
+            raise forms.ValidationError(
+                "Number of new facilitators cannot exceed total number of facilitators."
+            )
+        
+        return cleaned_data
 
 
 class RegistrationForm(forms.Form):

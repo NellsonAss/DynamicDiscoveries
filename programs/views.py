@@ -15,7 +15,8 @@ import json
 
 from .models import (
     ProgramType, ProgramInstance, RegistrationForm, FormQuestion,
-    Child, Registration, Role, ProgramBuildout, ProgramRole
+    Child, Registration, Role, ProgramBuildout, BuildoutResponsibility, 
+    BuildoutRoleAssignment, BaseCost, BuildoutBaseCost, InstanceRoleAssignment
 )
 from .forms import (
     ChildForm, RegistrationFormForm,
@@ -50,7 +51,7 @@ def parent_dashboard(request):
     """Parent dashboard showing programs and registrations."""
     if not user_is_parent(request.user):
         messages.error(request, "Access denied. Parent role required.")
-        return redirect('dashboard')
+        return redirect('dashboard:dashboard')
     
     # Get active/upcoming programs
     now = timezone.now()
@@ -122,7 +123,7 @@ def register_child(request, program_instance_pk):
     """Register a child for a program instance."""
     if not user_is_parent(request.user):
         messages.error(request, "Access denied. Parent role required.")
-        return redirect('dashboard')
+        return redirect('dashboard:dashboard')
     
     program_instance = get_object_or_404(ProgramInstance, pk=program_instance_pk, is_active=True)
     

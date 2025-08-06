@@ -1,0 +1,52 @@
+{% extends "admin_interface/base_admin.html" %}
+
+{% block title %}Delete Role - {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Delete Role</h1>
+                <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Role
+                </a>
+            </div>
+            
+            <div class="admin-card">
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h5 class="alert-heading">
+                            <i class="bi bi-exclamation-triangle me-2"></i>Warning
+                        </h5>
+                        <p class="mb-0">
+                            You are about to delete the role <strong>"{{ role.name }}"</strong>. 
+                            This action cannot be undone.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>This will also affect:</h6>
+                        <ul>
+                            <li><strong>{{ role.program_types.count }}</strong> program types</li>
+                            <li><strong>{{ role.users.count }}</strong> users with this role</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>Delete Role
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

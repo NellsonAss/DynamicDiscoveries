@@ -4,7 +4,8 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import (
     ProgramType, ProgramInstance, RegistrationForm, FormQuestion,
-    Child, Registration, Role, ProgramBuildout, ProgramRole, BaseCost, ProgramBaseCost
+    Child, Registration, Role, ProgramBuildout, BuildoutResponsibility, 
+    BuildoutRoleAssignment, BaseCost, BuildoutBaseCost, InstanceRoleAssignment
 )
 
 
@@ -14,60 +15,79 @@ class FormQuestionInline(admin.TabularInline):
     ordering = ['order']
 
 
-class ProgramRoleInline(admin.TabularInline):
-    model = ProgramRole
+class BuildoutResponsibilityInline(admin.TabularInline):
+    model = BuildoutResponsibility
     extra = 1
-    fields = ['role', 'hour_frequency', 'hour_multiplier', 'override_hours', 'calculated_hours', 'calculated_payout', 'calculated_percentage']
-    readonly_fields = ['calculated_hours', 'calculated_payout', 'calculated_percentage']
+    fields = ['role', 'name', 'frequency', 'base_hours', 'override_hours', 'calculated_yearly_hours', 'calculated_yearly_cost']
+    readonly_fields = ['calculated_yearly_hours', 'calculated_yearly_cost']
 
-    def calculated_hours(self, obj):
+    def calculated_yearly_hours(self, obj):
         if obj.pk:
-            return f"{obj.calculate_total_hours(12, 4):.1f} hours"
+            return f"{obj.calculate_yearly_hours():.1f} hours"
         return "Save to calculate"
-    calculated_hours.short_description = 'Total Hours'
+    calculated_yearly_hours.short_description = 'Yearly Hours'
 
-    def calculated_payout(self, obj):
+    def calculated_yearly_cost(self, obj):
         if obj.pk:
-            return f"${obj.calculate_payout(12, 4):.2f}"
+            return f"${obj.calculate_yearly_cost():.2f}"
         return "Save to calculate"
-    calculated_payout.short_description = 'Payout'
-
-    def calculated_percentage(self, obj):
-        if obj.pk:
-            return f"{obj.calculate_percentage_of_revenue(12, 4):.1f}%"
-        return "Save to calculate"
-    calculated_percentage.short_description = '% of Revenue'
+    calculated_yearly_cost.short_description = 'Yearly Cost'
 
 
-class ProgramBaseCostInline(admin.TabularInline):
-    model = ProgramBaseCost
+class BuildoutRoleAssignmentInline(admin.TabularInline):
+    model = BuildoutRoleAssignment
     extra = 1
-    fields = ['base_cost', 'multiplier', 'calculated_cost']
-    readonly_fields = ['calculated_cost']
+    fields = ['role', 'percent_of_revenue', 'calculated_yearly_hours', 'calculated_yearly_cost', 'calculated_percent_of_revenue']
+    readonly_fields = ['calculated_yearly_hours', 'calculated_yearly_cost', 'calculated_percent_of_revenue']
 
-    def calculated_cost(self, obj):
+    def calculated_yearly_hours(self, obj):
         if obj.pk:
-            return f"${obj.calculate_cost(12):.2f}"
+            return f"{obj.calculate_yearly_hours():.1f} hours"
         return "Save to calculate"
-    calculated_cost.short_description = 'Total Cost'
+    calculated_yearly_hours.short_description = 'Yearly Hours'
+
+    def calculated_yearly_cost(self, obj):
+        if obj.pk:
+            return f"${obj.calculate_yearly_cost():.2f}"
+        return "Save to calculate"
+    calculated_yearly_cost.short_description = 'Yearly Cost'
+
+    def calculated_percent_of_revenue(self, obj):
+        if obj.pk:
+            return f"{obj.calculate_percent_of_revenue():.1f}%"
+        return "Save to calculate"
+    calculated_percent_of_revenue.short_description = '% of Revenue'
+
+
+class BuildoutBaseCostInline(admin.TabularInline):
+    model = BuildoutBaseCost
+    extra = 1
+    fields = ['base_cost', 'multiplier', 'calculated_yearly_cost']
+    readonly_fields = ['calculated_yearly_cost']
+
+    def calculated_yearly_cost(self, obj):
+        if obj.pk:
+            return f"${obj.calculate_yearly_cost():.2f}"
+        return "Save to calculate"
+    calculated_yearly_cost.short_description = 'Yearly Cost'
 
 
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
-    list_display = ['name', 'hourly_rate', 'responsibilities_short']
+    list_display = ['name', 'hourly_rate', 'description_short']
     list_filter = ['hourly_rate']
-    search_fields = ['name', 'responsibilities']
+    search_fields = ['name', 'description']
     ordering = ['name']
 
-    def responsibilities_short(self, obj):
-        return obj.responsibilities[:100] + "..." if len(obj.responsibilities) > 100 else obj.responsibilities
-    responsibilities_short.short_description = 'Responsibilities'
+    def description_short(self, obj):
+        return obj.description[:100] + "..." if len(obj.description) > 100 else obj.description
+    description_short.short_description = 'Description'
 
 
 @admin.register(BaseCost)
 class BaseCostAdmin(admin.ModelAdmin):
-    list_display = ['name', 'cost_per_student', 'description_short']
-    list_filter = ['cost_per_student']
+    list_display = ['name', 'frequency', 'amount', 'description_short']
+    list_filter = ['frequency', 'amount']
     search_fields = ['name', 'description']
     ordering = ['name']
 
@@ -78,22 +98,30 @@ class BaseCostAdmin(admin.ModelAdmin):
 
 @admin.register(ProgramBuildout)
 class ProgramBuildoutAdmin(admin.ModelAdmin):
-    list_display = ['title', 'program_type', 'expected_students', 'num_days', 'total_revenue', 'total_payouts', 'profit', 'profit_margin']
-    list_filter = ['program_type', 'num_days']
+    list_display = [
+        'title', 'program_type', 'num_facilitators', 'num_workshops_per_year', 
+        'total_students_per_year', 'total_revenue_per_year', 'total_yearly_costs', 
+        'yearly_profit', 'profit_margin'
+    ]
+    list_filter = ['program_type', 'num_facilitators']
     search_fields = ['title', 'program_type__name']
-    readonly_fields = ['total_revenue', 'total_payouts', 'profit', 'profit_margin']
+    readonly_fields = [
+        'num_workshops_per_year', 'total_students_per_year', 'total_sessions_per_year',
+        'total_revenue_per_year', 'total_yearly_costs', 'yearly_profit', 'profit_margin'
+    ]
+    inlines = [BuildoutResponsibilityInline, BuildoutRoleAssignmentInline, BuildoutBaseCostInline]
 
-    def total_revenue(self, obj):
-        return f"${obj.total_revenue:.2f}"
-    total_revenue.short_description = 'Revenue'
+    def total_revenue_per_year(self, obj):
+        return f"${obj.total_revenue_per_year:.2f}"
+    total_revenue_per_year.short_description = 'Yearly Revenue'
 
-    def total_payouts(self, obj):
-        return f"${obj.total_payouts:.2f}"
-    total_payouts.short_description = 'Payouts'
+    def total_yearly_costs(self, obj):
+        return f"${obj.total_yearly_costs:.2f}"
+    total_yearly_costs.short_description = 'Yearly Costs'
 
-    def profit(self, obj):
-        return f"${obj.profit:.2f}"
-    profit.short_description = 'Profit'
+    def yearly_profit(self, obj):
+        return f"${obj.yearly_profit:.2f}"
+    yearly_profit.short_description = 'Yearly Profit'
 
     def profit_margin(self, obj):
         return f"{obj.profit_margin:.1f}%"
@@ -103,54 +131,90 @@ class ProgramBuildoutAdmin(admin.ModelAdmin):
         ('Basic Information', {
             'fields': ('program_type', 'title')
         }),
-        ('Program Details', {
-            'fields': ('expected_students', 'num_days', 'sessions_per_day')
+        ('Count Parameters', {
+            'fields': (
+                'num_facilitators', 'num_new_facilitators', 'workshops_per_facilitator_per_year',
+                'students_per_workshop', 'sessions_per_workshop', 'new_workshop_concepts_per_year'
+            )
         }),
-        ('Financial Summary', {
-            'fields': ('total_revenue', 'total_payouts', 'profit', 'profit_margin'),
+        ('Calculated Values', {
+            'fields': (
+                'num_workshops_per_year', 'total_students_per_year', 'total_sessions_per_year',
+                'total_revenue_per_year', 'total_yearly_costs', 'yearly_profit', 'profit_margin'
+            ),
             'classes': ('collapse',)
         }),
     )
 
 
-@admin.register(ProgramRole)
-class ProgramRoleAdmin(admin.ModelAdmin):
-    list_display = ['program_type', 'role', 'hour_frequency', 'hour_multiplier', 'calculated_hours', 'calculated_payout']
-    list_filter = ['hour_frequency', 'role', 'program_type']
-    search_fields = ['role__name', 'program_type__name']
-    readonly_fields = ['calculated_hours', 'calculated_payout', 'calculated_percentage']
+@admin.register(BuildoutResponsibility)
+class BuildoutResponsibilityAdmin(admin.ModelAdmin):
+    list_display = [
+        'buildout', 'role', 'name', 'frequency', 'base_hours', 
+        'calculated_yearly_hours', 'calculated_yearly_cost'
+    ]
+    list_filter = ['frequency', 'role', 'buildout__program_type']
+    search_fields = ['name', 'role__name', 'buildout__title']
+    readonly_fields = ['calculated_yearly_hours', 'calculated_yearly_cost']
 
-    def calculated_hours(self, obj):
+    def calculated_yearly_hours(self, obj):
         if obj.pk:
-            return f"{obj.calculate_total_hours(12, 4):.1f} hours"
+            return f"{obj.calculate_yearly_hours():.1f} hours"
         return "Save to calculate"
-    calculated_hours.short_description = 'Total Hours'
+    calculated_yearly_hours.short_description = 'Yearly Hours'
 
-    def calculated_payout(self, obj):
+    def calculated_yearly_cost(self, obj):
         if obj.pk:
-            return f"${obj.calculate_payout(12, 4):.2f}"
+            return f"${obj.calculate_yearly_cost():.2f}"
         return "Save to calculate"
-    calculated_payout.short_description = 'Payout'
+    calculated_yearly_cost.short_description = 'Yearly Cost'
 
-    def calculated_percentage(self, obj):
+
+@admin.register(BuildoutRoleAssignment)
+class BuildoutRoleAssignmentAdmin(admin.ModelAdmin):
+    list_display = [
+        'buildout', 'role', 'percent_of_revenue', 'calculated_yearly_hours', 
+        'calculated_yearly_cost', 'calculated_percent_of_revenue'
+    ]
+    list_filter = ['role', 'buildout__program_type']
+    search_fields = ['role__name', 'buildout__title']
+    readonly_fields = ['calculated_yearly_hours', 'calculated_yearly_cost', 'calculated_percent_of_revenue']
+
+    def calculated_yearly_hours(self, obj):
         if obj.pk:
-            return f"{obj.calculate_percentage_of_revenue(12, 4):.1f}%"
+            return f"{obj.calculate_yearly_hours():.1f} hours"
         return "Save to calculate"
-    calculated_percentage.short_description = '% of Revenue'
+    calculated_yearly_hours.short_description = 'Yearly Hours'
 
-
-@admin.register(ProgramBaseCost)
-class ProgramBaseCostAdmin(admin.ModelAdmin):
-    list_display = ['program_type', 'base_cost', 'multiplier', 'calculated_cost']
-    list_filter = ['base_cost', 'program_type']
-    search_fields = ['base_cost__name', 'program_type__name']
-    readonly_fields = ['calculated_cost']
-
-    def calculated_cost(self, obj):
+    def calculated_yearly_cost(self, obj):
         if obj.pk:
-            return f"${obj.calculate_cost(12):.2f}"
+            return f"${obj.calculate_yearly_cost():.2f}"
         return "Save to calculate"
-    calculated_cost.short_description = 'Total Cost'
+    calculated_yearly_cost.short_description = 'Yearly Cost'
+
+    def calculated_percent_of_revenue(self, obj):
+        if obj.pk:
+            return f"{obj.calculate_percent_of_revenue():.1f}%"
+        return "Save to calculate"
+    calculated_percent_of_revenue.short_description = '% of Revenue'
+
+
+@admin.register(BuildoutBaseCost)
+class BuildoutBaseCostAdmin(admin.ModelAdmin):
+    list_display = ['buildout', 'base_cost', 'frequency', 'multiplier', 'calculated_yearly_cost']
+    list_filter = ['base_cost__frequency', 'buildout__program_type']
+    search_fields = ['base_cost__name', 'buildout__title']
+    readonly_fields = ['calculated_yearly_cost']
+
+    def frequency(self, obj):
+        return obj.base_cost.frequency
+    frequency.short_description = 'Frequency'
+
+    def calculated_yearly_cost(self, obj):
+        if obj.pk:
+            return f"${obj.calculate_yearly_cost():.2f}"
+        return "Save to calculate"
+    calculated_yearly_cost.short_description = 'Yearly Cost'
 
 
 @admin.register(RegistrationForm)
@@ -183,19 +247,21 @@ class FormQuestionAdmin(admin.ModelAdmin):
 
 @admin.register(ProgramType)
 class ProgramTypeAdmin(admin.ModelAdmin):
-    list_display = ['name', 'rate_per_student', 'target_grade_levels', 'instance_count', 'buildout_count', 'default_form']
+    list_display = [
+        'name', 'rate_per_student', 'target_grade_levels', 'buildout_count', 
+        'default_form', 'scope_short'
+    ]
     list_filter = ['created_at', 'rate_per_student']
-    search_fields = ['name', 'description']
+    search_fields = ['name', 'description', 'scope']
     readonly_fields = ['created_at', 'updated_at']
-    inlines = [ProgramRoleInline, ProgramBaseCostInline]
-
-    def instance_count(self, obj):
-        return obj.instances.count()
-    instance_count.short_description = 'Instances'
 
     def buildout_count(self, obj):
         return obj.buildouts.count()
     buildout_count.short_description = 'Buildouts'
+
+    def scope_short(self, obj):
+        return obj.scope[:100] + "..." if len(obj.scope) > 100 else obj.scope
+    scope_short.short_description = 'Scope'
 
     def default_form(self, obj):
         if obj.default_registration_form:
@@ -209,10 +275,17 @@ class ProgramTypeAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'description', 'target_grade_levels')
+            'fields': ('name', 'description', 'scope', 'target_grade_levels')
         }),
         ('Pricing', {
             'fields': ('rate_per_student',)
+        }),
+        ('Default Counts', {
+            'fields': (
+                'default_num_facilitators', 'default_num_new_facilitators',
+                'default_workshops_per_facilitator_per_year', 'default_students_per_workshop',
+                'default_sessions_per_workshop', 'default_new_workshop_concepts_per_year'
+            )
         }),
         ('Forms', {
             'fields': ('default_registration_form',)
@@ -231,30 +304,39 @@ class RegistrationInline(admin.TabularInline):
     fields = ['child', 'status', 'registered_at']
 
 
+class InstanceRoleAssignmentInline(admin.TabularInline):
+    model = InstanceRoleAssignment
+    extra = 1
+    fields = ['role', 'contractor', 'override_hours', 'override_revenue_share', 'computed_payout']
+    readonly_fields = ['computed_payout']
+
+
 @admin.register(ProgramInstance)
 class ProgramInstanceAdmin(admin.ModelAdmin):
     list_display = [
-        'program_type', 'instructor', 'start_date', 'end_date',
-        'location', 'enrollment_status', 'expected_revenue', 'expected_profit', 'is_active'
+        'title', 'buildout', 'start_date', 'end_date', 'location',
+        'enrollment_status', 'actual_revenue', 'expected_profit', 'is_active'
     ]
     list_filter = [
-        'is_active', 'start_date', 'end_date', 'instructor__groups__name',
-        'program_type'
+        'is_active', 'start_date', 'end_date', 'buildout__program_type'
     ]
     search_fields = [
-        'program_type__name', 'location', 'instructor__email'
+        'title', 'buildout__title', 'location'
     ]
-    readonly_fields = ['created_at', 'updated_at', 'current_enrollment', 'available_spots', 'expected_revenue', 'expected_payouts', 'expected_profit']
-    inlines = [RegistrationInline]
+    readonly_fields = [
+        'created_at', 'updated_at', 'current_enrollment', 'available_spots', 
+        'actual_revenue', 'expected_profit'
+    ]
+    inlines = [RegistrationInline, InstanceRoleAssignmentInline]
     date_hierarchy = 'start_date'
 
     def enrollment_status(self, obj):
         return f"{obj.current_enrollment}/{obj.capacity}"
     enrollment_status.short_description = 'Enrollment'
 
-    def expected_revenue(self, obj):
-        return f"${obj.expected_revenue:.2f}"
-    expected_revenue.short_description = 'Revenue'
+    def actual_revenue(self, obj):
+        return f"${obj.actual_revenue:.2f}"
+    actual_revenue.short_description = 'Revenue'
 
     def expected_profit(self, obj):
         return f"${obj.expected_profit:.2f}"
@@ -262,13 +344,17 @@ class ProgramInstanceAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Program Details', {
-            'fields': ('program_type', 'buildout', 'instructor', 'location')
+            'fields': ('buildout', 'title', 'location')
         }),
         ('Schedule', {
             'fields': ('start_date', 'end_date')
         }),
         ('Capacity & Forms', {
             'fields': ('capacity', 'assigned_form')
+        }),
+        ('Overrides', {
+            'fields': ('override_counts',),
+            'classes': ('collapse',)
         }),
         ('Status', {
             'fields': ('is_active',)
@@ -278,7 +364,7 @@ class ProgramInstanceAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Financial Projections', {
-            'fields': ('expected_revenue', 'expected_payouts', 'expected_profit'),
+            'fields': ('actual_revenue', 'expected_profit'),
             'classes': ('collapse',)
         }),
         ('Timestamps', {
@@ -286,6 +372,27 @@ class ProgramInstanceAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+
+
+@admin.register(InstanceRoleAssignment)
+class InstanceRoleAssignmentAdmin(admin.ModelAdmin):
+    list_display = [
+        'program_instance', 'role', 'contractor', 'computed_payout',
+        'override_hours', 'override_revenue_share'
+    ]
+    list_filter = ['role', 'program_instance__buildout__program_type']
+    search_fields = [
+        'contractor__email', 'role__name', 'program_instance__title'
+    ]
+    readonly_fields = ['computed_payout', 'created_at', 'updated_at']
+
+    actions = ['update_computed_payouts']
+
+    def update_computed_payouts(self, request, queryset):
+        for assignment in queryset:
+            assignment.update_computed_payout()
+        self.message_user(request, f"Updated computed payouts for {queryset.count()} assignment(s)")
+    update_computed_payouts.short_description = "Update computed payouts"
 
 
 @admin.register(Child)
@@ -311,12 +418,12 @@ class RegistrationAdmin(admin.ModelAdmin):
         'has_form_responses'
     ]
     list_filter = [
-        'status', 'registered_at', 'program_instance__program_type',
+        'status', 'registered_at', 'program_instance__buildout__program_type',
         'child__parent__groups__name'
     ]
     search_fields = [
         'child__first_name', 'child__last_name', 'child__parent__email',
-        'program_instance__program_type__name'
+        'program_instance__buildout__program_type__name'
     ]
     readonly_fields = ['registered_at', 'updated_at']
     date_hierarchy = 'registered_at'

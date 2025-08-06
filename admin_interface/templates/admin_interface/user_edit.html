@@ -1,0 +1,132 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-pencil-square me-2"></i>Edit User
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:user_detail' user_detail.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to User
+        </a>
+    </div>
+</div>
+
+<div class="admin-card p-4">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-3">
+                    <i class="bi bi-person me-2"></i>Basic Information
+                </h5>
+                
+                <div class="mb-3">
+                    <label for="first_name" class="form-label">First Name</label>
+                    <input type="text" class="form-control" id="first_name" name="first_name" 
+                           value="{{ user_detail.first_name|default:'' }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="last_name" class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="last_name" name="last_name" 
+                           value="{{ user_detail.last_name|default:'' }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" 
+                           value="{{ user_detail.email }}" required>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h5 class="mb-3">
+                    <i class="bi bi-shield-check me-2"></i>Permissions & Status
+                </h5>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                               {% if user_detail.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="is_active">
+                            Active User
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_staff" name="is_staff" 
+                               {% if user_detail.is_staff %}checked{% endif %}>
+                        <label class="form-check-label" for="is_staff">
+                            Staff Status
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">User Roles (Groups)</label>
+                    <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                        {% for group in available_groups %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="group_{{ group.id }}" 
+                                   name="groups" value="{{ group.name }}"
+                                   {% if group in user_groups %}checked{% endif %}>
+                            <label class="form-check-label" for="group_{{ group.id }}">
+                                {{ group.name }}
+                            </label>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No groups available</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <h5 class="mb-3">
+                    <i class="bi bi-info-circle me-2"></i>Account Information
+                </h5>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">Username</label>
+                        <p class="mb-0">{{ user_detail.username }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">Date Joined</label>
+                        <p class="mb-0">{{ user_detail.date_joined|date:"M j, Y g:i A" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">Last Login</label>
+                        <p class="mb-0">{{ user_detail.last_login|date:"M j, Y g:i A"|default:"Never" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted small">Superuser</label>
+                        <p class="mb-0">
+                            <span class="badge {% if user_detail.is_superuser %}bg-danger{% else %}bg-secondary{% endif %}">
+                                {% if user_detail.is_superuser %}Yes{% else %}No{% endif %}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <hr class="my-4">
+        
+        <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'admin_interface:user_detail' user_detail.id %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x me-1"></i>Cancel
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check me-1"></i>Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %} 

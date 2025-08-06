@@ -1,0 +1,214 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-diagram-3 me-2"></i>Buildout Details
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:buildout_management' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Buildouts
+        </a>
+    </div>
+</div>
+
+<!-- Buildout Information Card -->
+<div class="admin-card p-4 mb-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h3 class="mb-2">{{ buildout.title }}</h3>
+            <p class="text-muted mb-3">{{ buildout.program_type.name }} - {{ buildout.program_type.description|truncatechars:100 }}</p>
+            
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h5 class="mb-0">{{ buildout.total_students_per_year }}</h5>
+                        <small class="text-muted">Students per Year</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h5 class="mb-0">{{ buildout.num_workshops_per_year }}</h5>
+                        <small class="text-muted">Workshops per Year</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h5 class="mb-0">{{ buildout.total_sessions_per_year }}</h5>
+                        <small class="text-muted">Sessions per Year</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h5 class="mb-0">{{ buildout.num_facilitators }}</h5>
+                        <small class="text-muted">Facilitators</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div class="d-flex flex-column gap-2">
+                <a href="{% url 'admin_interface:buildout_edit' buildout.id %}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil me-1"></i>Edit Buildout
+                </a>
+                <a href="{% url 'admin_interface:buildout_delete' buildout.id %}" class="btn btn-outline-danger">
+                    <i class="bi bi-trash me-1"></i>Delete Buildout
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Projections -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="text-center">
+                <h4 class="text-success mb-0">${{ buildout.total_revenue_per_year|floatformat:0 }}</h4>
+                <small>Total Revenue</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="text-center">
+                <h4 class="text-warning mb-0">${{ buildout.total_yearly_costs|floatformat:0 }}</h4>
+                <small>Total Costs</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="text-center">
+                <h4 class="{% if buildout.yearly_profit >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                    ${{ buildout.yearly_profit|floatformat:0 }}
+                </h4>
+                <small>Yearly Profit</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-stats-card">
+            <div class="text-center">
+                <h4 class="{% if buildout.profit_margin >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                    {{ buildout.profit_margin|floatformat:1 }}%
+                </h4>
+                <small>Profit Margin</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="admin-stats-card">
+            <div class="text-center">
+                <h4 class="{% if buildout.profit_margin >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                    {{ buildout.profit_margin|floatformat:1 }}%
+                </h4>
+                <small>Profit Margin</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="admin-stats-card">
+            <div class="text-center">
+                <h4 class="text-primary mb-0">{{ instances.count }}</h4>
+                <small>Program Instances</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Program Instances -->
+{% if instances %}
+<div class="admin-card p-4">
+    <h5 class="mb-3">
+        <i class="bi bi-calendar-event me-2"></i>Program Instances ({{ instances.count }})
+    </h5>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Instance</th>
+                    <th>Location</th>
+                    <th>Schedule</th>
+                    <th>Instructor</th>
+                    <th>Status</th>
+                    <th>Registrations</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for instance in instances %}
+                <tr>
+                    <td>
+                        <div>
+                            <h6 class="mb-0">{{ instance.title }}</h6>
+                            <small class="text-muted">{{ instance.buildout.program_type.name }}</small>
+                        </div>
+                    </td>
+                    <td>{{ instance.location|default:"Not specified" }}</td>
+                    <td>
+                        <div>{{ instance.start_date|date:"M j, Y" }}</div>
+                        <small class="text-muted">{{ instance.start_date|time:"g:i A" }} - {{ instance.end_date|time:"g:i A" }}</small>
+                    </td>
+                    <td>
+                        {% for assignment in instance.contractor_assignments.all %}
+                            {{ assignment.contractor.get_full_name|default:assignment.contractor.username }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            <span class="text-muted">No contractors assigned</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <span class="status-badge {% if instance.is_active %}status-active{% else %}status-inactive{% endif %}">
+                            {% if instance.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-primary">{{ instance.registrations.count }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="admin-card p-4">
+    <div class="text-center">
+        <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+        <h5 class="text-muted mt-3">No Program Instances</h5>
+        <p class="text-muted">This buildout hasn't been used to create any program instances yet.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Program Type Details -->
+<div class="admin-card p-4 mt-4">
+    <h5 class="mb-3">
+        <i class="bi bi-info-circle me-2"></i>Program Type Details
+    </h5>
+    <div class="row">
+        <div class="col-md-6">
+            <h6>Description</h6>
+            <p>{{ buildout.program_type.description }}</p>
+            
+            <h6>Target Grade Levels</h6>
+            <p>{{ buildout.program_type.target_grade_levels }}</p>
+        </div>
+        <div class="col-md-6">
+            <h6>Rate per Student</h6>
+            <p class="text-success">${{ buildout.program_type.rate_per_student }}</p>
+            
+            <h6>Roles</h6>
+            <div class="d-flex flex-wrap gap-1">
+                {% for program_role in buildout.program_type.roles.all %}
+                    <span class="badge bg-primary">{{ program_role.role.name }}</span>
+                {% empty %}
+                    <span class="text-muted">No roles assigned</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

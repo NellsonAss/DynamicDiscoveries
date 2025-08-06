@@ -1,0 +1,187 @@
+{% extends "admin_interface/base_admin.html" %}
+
+{% block title %}{{ role.name }} - Role Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">{{ role.name }}</h1>
+                <div class="btn-group">
+                    <a href="{% url 'admin_interface:role_edit' role.id %}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </a>
+                    <a href="{% url 'admin_interface:role_management' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Roles
+                    </a>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-8">
+                    <!-- Role Info -->
+                    <div class="admin-card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-info-circle me-2"></i>Role Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Name:</strong> {{ role.name }}</p>
+                                    <p><strong>Hourly Rate:</strong> ${{ role.hourly_rate }}/hr</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Program Types:</strong> {{ program_types.count }}</p>
+                                    <p><strong>Users:</strong> {{ users.count }}</p>
+                                </div>
+                            </div>
+                            
+                            {% if role.responsibilities %}
+                                <div class="mt-3">
+                                    <strong>Responsibilities:</strong>
+                                    <p class="mb-0">{{ role.responsibilities }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Program Types -->
+                    <div class="admin-card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-collection me-2"></i>Program Types
+                            </h5>
+                            <span class="badge bg-primary">{{ program_types.count }}</span>
+                        </div>
+                        <div class="card-body">
+                            {% if program_types %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Program Type</th>
+                                                <th>Target Grades</th>
+                                                <th>Rate per Student</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for program_type in program_types %}
+                                                <tr>
+                                                    <td>{{ program_type.name }}</td>
+                                                    <td>{{ program_type.target_grade_levels }}</td>
+                                                    <td>${{ program_type.rate_per_student }}</td>
+                                                    <td>
+                                                        <a href="{% url 'admin_interface:program_type_detail' program_type.id %}" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-eye"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No program types assigned to this role.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Users -->
+                    <div class="admin-card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-people me-2"></i>Users with this Role
+                            </h5>
+                            <span class="badge bg-success">{{ users.count }}</span>
+                        </div>
+                        <div class="card-body">
+                            {% if users %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>User</th>
+                                                <th>Email</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for user in users %}
+                                                <tr>
+                                                    <td>{{ user.get_full_name|default:user.username }}</td>
+                                                    <td>{{ user.email }}</td>
+                                                    <td>
+                                                        {% if user.is_active %}
+                                                            <span class="badge bg-success">Active</span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">Inactive</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <a href="{% url 'admin_interface:user_detail' user.id %}" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-eye"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No users assigned to this role.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <!-- Quick Actions -->
+                    <div class="admin-card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-gear me-2"></i>Quick Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'admin_interface:role_manage_program_types' role.id %}" class="btn btn-outline-primary">
+                                    <i class="bi bi-collection me-1"></i>Manage Program Types
+                                </a>
+                                <a href="{% url 'admin_interface:role_manage_users' role.id %}" class="btn btn-outline-success">
+                                    <i class="bi bi-people me-1"></i>Manage Users
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics -->
+                    <div class="admin-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-graph-up me-2"></i>Statistics
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h4 class="text-primary mb-0">{{ program_types.count }}</h4>
+                                    <small class="text-muted">Program Types</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-success mb-0">{{ users.count }}</h4>
+                                    <small class="text-muted">Users</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

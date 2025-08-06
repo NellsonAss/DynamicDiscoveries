@@ -337,34 +337,28 @@
 
 <script>
 function createForm() {
-    // Implementation for creating new form
-    alert('Create form functionality not implemented yet.');
+    window.location.href = "{% url 'admin_interface:form_create' %}";
 }
 
 function viewForm(id) {
-    // Implementation for viewing form details
-    alert('View form functionality not implemented yet.');
+    window.location.href = `/admin-interface/forms/${id}/`;
 }
 
 function editForm(id) {
-    // Implementation for editing form
-    alert('Edit form functionality not implemented yet.');
+    window.location.href = `/admin-interface/forms/${id}/edit/`;
 }
 
 function manageQuestions(id) {
-    // Implementation for managing form questions
-    alert('Manage questions functionality not implemented yet.');
+    window.location.href = `/admin-interface/forms/${id}/manage-questions/`;
 }
 
 function duplicateForm(id) {
-    // Implementation for duplicating form
-    alert('Duplicate form functionality not implemented yet.');
+    window.location.href = `/admin-interface/forms/${id}/duplicate/`;
 }
 
 function deleteForm(id) {
     if (confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
-        // Implementation for deleting form
-        alert('Delete form functionality not implemented yet.');
+        window.location.href = `/admin-interface/forms/${id}/delete/`;
     }
 }
 </script>

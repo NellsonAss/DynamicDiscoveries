@@ -1,0 +1,52 @@
+{% extends "admin_interface/base_admin.html" %}
+
+{% block title %}Delete Child - {{ child.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Delete Child</h1>
+                <a href="{% url 'admin_interface:child_detail' child.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Child
+                </a>
+            </div>
+            
+            <div class="admin-card">
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h5 class="alert-heading">
+                            <i class="bi bi-exclamation-triangle me-2"></i>Warning
+                        </h5>
+                        <p class="mb-0">
+                            You are about to delete the child <strong>"{{ child.full_name }}"</strong>. 
+                            This action cannot be undone.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>This will also affect:</h6>
+                        <ul>
+                            <li><strong>{{ child.registrations.count }}</strong> program registrations</li>
+                            <li><strong>{{ child.parent.email }}</strong> (parent account)</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'admin_interface:child_detail' child.id %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>Delete Child
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

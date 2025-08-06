@@ -74,21 +74,25 @@
                                 </div>
                             </td>
                             <td>
-                                {% for role in program_type.roles.all %}
-                                    <div class="mb-1">
-                                        <span class="badge bg-secondary">{{ role.name }}</span>
-                                        <small class="text-muted">${{ role.hourly_rate }}/hr</small>
-                                    </div>
+                                {% for buildout in program_type.buildouts.all %}
+                                    {% for role_assignment in buildout.role_assignments.all %}
+                                        <div class="mb-1">
+                                            <span class="badge bg-secondary">{{ role_assignment.role.name }}</span>
+                                            <small class="text-muted">${{ role_assignment.role.hourly_rate }}/hr</small>
+                                        </div>
+                                    {% endfor %}
                                 {% empty %}
                                     <span class="text-muted">No roles</span>
                                 {% endfor %}
                             </td>
                             <td>
-                                {% for cost in program_type.base_costs.all %}
-                                    <div class="mb-1">
-                                        <span class="badge bg-warning">{{ cost.name }}</span>
-                                        <small class="text-muted">${{ cost.cost_per_student }}</small>
-                                    </div>
+                                {% for buildout in program_type.buildouts.all %}
+                                    {% for cost_assignment in buildout.baseline_costs.all %}
+                                        <div class="mb-1">
+                                            <span class="badge bg-warning">{{ cost_assignment.base_cost.name }}</span>
+                                            <small class="text-muted">${{ cost_assignment.base_cost.amount }}</small>
+                                        </div>
+                                    {% endfor %}
                                 {% empty %}
                                     <span class="text-muted">No costs</span>
                                 {% endfor %}
@@ -279,34 +283,28 @@
 
 <script>
 function createProgramType() {
-    // Implementation for creating new program type
-    alert('Create program type functionality not implemented yet.');
+    window.location.href = "{% url 'admin_interface:program_type_create' %}";
 }
 
 function viewProgramType(id) {
-    // Implementation for viewing program type details
-    alert('View program type functionality not implemented yet.');
+    window.location.href = `/admin-interface/program-types/${id}/`;
 }
 
 function editProgramType(id) {
-    // Implementation for editing program type
-    alert('Edit program type functionality not implemented yet.');
+    window.location.href = `/admin-interface/program-types/${id}/edit/`;
 }
 
 function manageRoles(id) {
-    // Implementation for managing program type roles
-    alert('Manage roles functionality not implemented yet.');
+    window.location.href = `/admin-interface/program-types/${id}/manage-roles/`;
 }
 
 function manageCosts(id) {
-    // Implementation for managing program type costs
-    alert('Manage costs functionality not implemented yet.');
+    window.location.href = `/admin-interface/program-types/${id}/manage-costs/`;
 }
 
 function deleteProgramType(id) {
     if (confirm('Are you sure you want to delete this program type? This action cannot be undone.')) {
-        // Implementation for deleting program type
-        alert('Delete program type functionality not implemented yet.');
+        window.location.href = `/admin-interface/program-types/${id}/delete/`;
     }
 }
 </script>

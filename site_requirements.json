@@ -181,6 +181,24 @@
       "status": "implemented"
     },
     {
+      "id": "REQ-031",
+      "title": "Enhanced Program Model Structure",
+      "description": "Redesigned program models to align with Excel plan structure. Includes granular responsibilities with frequency-based calculations, buildout-specific role assignments, revenue-based contractor payments, and comprehensive financial tracking with yearly projections",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-032",
+      "title": "Advanced Financial Modeling",
+      "description": "Comprehensive financial modeling system with frequency-based calculations, revenue sharing for contractors, buildout overrides, and detailed profit analysis. Supports per-workshop, per-session, per-student, and per-year cost calculations with automatic yearly projections",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-019",
+      "title": "Buildout Form Field Validation",
+      "description": "Fixed buildout creation form to include all required fields (program_type, title, num_facilitators, num_new_facilitators, workshops_per_facilitator_per_year, students_per_workshop, sessions_per_workshop, new_workshop_concepts_per_year) with proper validation and styling",
+      "status": "implemented"
+    },
+    {
       "id": "REQ-999",
       "title": "Test",
       "description": "Test",
@@ -195,7 +213,7 @@
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-08-05T20:50:15.801319",
+    "last_updated": "2025-08-06T22:59:08.795659",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }
