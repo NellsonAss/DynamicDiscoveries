@@ -17,8 +17,8 @@
                         <div class="col-md-6">
                             <h5>Program Information</h5>
                             <p><strong>Description:</strong> {{ program_instance.program_type.description }}</p>
-                            <p><strong>Target Grades:</strong> {{ program_instance.program_type.target_grade_levels }}</p>
-                            <p><strong>Instructor:</strong> {{ program_instance.instructor.email }}</p>
+                            <p><strong>Program Type:</strong> {{ program_instance.program_type.name }}</p>
+                            <p><strong>Buildout:</strong> {{ program_instance.buildout.title }}</p>
                         </div>
                         <div class="col-md-6">
                             <h5>Schedule & Location</h5>
@@ -126,9 +126,13 @@
                 </div>
                 <div class="card-body">
                     <p><strong>Type:</strong> {{ program_instance.program_type.name }}</p>
-                    <p><strong>Target Grades:</strong> {{ program_instance.program_type.target_grade_levels }}</p>
-                    {% if program_instance.program_type.default_registration_form %}
-                        <p><strong>Default Form:</strong> {{ program_instance.program_type.default_registration_form.title }}</p>
+                    <p><strong>Buildout:</strong> {{ program_instance.buildout.title }}</p>
+                    {% if program_instance.buildout.default_forms.all %}
+                        <p><strong>Default Forms:</strong> 
+                            {% for form in program_instance.buildout.default_forms.all %}
+                                {{ form.title }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </p>
                     {% endif %}
                 </div>
             </div>

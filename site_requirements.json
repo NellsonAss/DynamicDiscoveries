@@ -187,6 +187,12 @@
       "status": "implemented"
     },
     {
+      "id": "REQ-033",
+      "title": "Refactored Program Management Data Model",
+      "description": "Implemented new architecture with simplified ProgramType (name/description only), reusable Role objects with default responsibilities, Responsibility model with frequency-based calculations, ProgramBuildout with versioning and cloning support, BaseCost model with frequency options, and ProgramInstance with contractor assignments and communication capabilities",
+      "status": "implemented"
+    },
+    {
       "id": "REQ-032",
       "title": "Advanced Financial Modeling",
       "description": "Comprehensive financial modeling system with frequency-based calculations, revenue sharing for contractors, buildout overrides, and detailed profit analysis. Supports per-workshop, per-session, per-student, and per-year cost calculations with automatic yearly projections",
@@ -209,11 +215,95 @@
       "title": "Test2",
       "description": "Test2",
       "status": "implemented"
+    },
+    {
+      "id": "REQ-034",
+      "title": "Program Type Instance Relationship Fix",
+      "description": "Fixed AttributeError in admin interface where ProgramType.instances was being accessed incorrectly. Updated views and templates to use the correct relationship path: ProgramType → ProgramBuildout → ProgramInstance. Added instance_count attributes to program types in views for template display",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-017",
+      "title": "Registration Management System",
+      "description": "Child registration system with form responses, status tracking, and parent dashboard",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-018",
+      "title": "Program Management Data Model Refactoring",
+      "description": "Refactored program management data model to implement clean architecture with ProgramType (name/description only), Role (reusable with default responsibilities), Responsibility (frequency-based with hours), ProgramBuildout (versioning with computed properties), BaseCost (frequency-based costs), and ProgramInstance (contractor assignments with actual enrollment calculations). Replaced old ProgramRole system with new Responsibility structure.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-035",
+      "title": "ProgramType Roles Relationship Cleanup",
+      "description": "Removed references to non-existent program_type.roles relationship from templates and updated all role access to use the correct buildout.roles relationship. Updated buildout_list.html, program_type_buildouts.html, buildout_detail.html, and program_type_confirm_delete.html templates to use buildout.roles instead of program_type.roles. Confirmed ProgramType model is correctly designed with only name and description fields.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-036",
+      "title": "Program Type Management UI Cleanup",
+      "description": "Removed 'Manage Roles' buttons and functionality from program type management pages since roles are now managed at the buildout level. Removed roles column from program type management table, updated statistics to show buildouts instead of roles, removed program_type_manage_roles URL, and updated buildout management to redirect role management to buildout edit page.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-037",
+      "title": "Cost Management UI Cleanup",
+      "description": "Removed 'Manage Costs' buttons and 'Base Costs' column from program type management pages since costs are now managed at the buildout level. Updated buildout management to redirect cost management to buildout edit page with inline cost assignment formsets. Removed outdated program_type_manage_costs URL, view, and template.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-038",
+      "title": "Cost Management Functionality Fixes",
+      "description": "Fixed non-functional edit and delete buttons in cost management interface. Replaced modal-based cost creation with dedicated create/edit pages. Added proper cost detail, edit, and delete views with corresponding templates. Fixed view modal overlay issues and improved user experience with proper navigation between cost management pages.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-039",
+      "title": "Excel-Like Role and Buildout System",
+      "description": "Enhanced role and buildout system that mimics the TT After School Workshops Excel structure. Includes default role templates with responsibilities and hours per scope (per workshop concept, per new worker, per workshop, per session), buildout interface for adjusting hours, and comprehensive financial calculations matching the Excel formulas. Supports Facilitators, Operations Support, Service/Support, Business Consultant, and other role categories with frequency-based calculations.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-040",
+      "title": "Role Management Navigation Cleanup",
+      "description": "Fixed confusing navigation paths in role management interface. Removed 'Manage Program Types' buttons and functionality from role detail and management pages since roles are now assigned to buildouts, not directly to program types. Fixed 'Assign Roles' button in buildout detail page to correctly link to buildout_assign_roles instead of role_management. Removed role_manage_program_types URL, view, and template. Updated role detail page to clarify that roles are managed through buildouts.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-041",
+      "title": "ProgramBuildout Model Field Restoration",
+      "description": "Fixed AttributeError by restoring the new_workshop_concepts_per_year field to the ProgramBuildout model. This field was accidentally removed in migration 0011 but is still referenced in views and templates. Added the field back to the model with default value of 1, updated the form to include the field, and created migration 0012 to restore the field in the database.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-042",
+      "title": "Contractor Dashboard Role-Based Access",
+      "description": "Updated contractor dashboard and related views to use the new role-based access model with InstanceRoleAssignment. Replaced references to the old instructor field with contractor_assignments relationship. Updated contractor_dashboard, view_registrations, and send_form_to_participants views to check for program assignments through the contractor_assignments relationship.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-043",
+      "title": "Buildout Form Checkbox Styling Fix",
+      "description": "Fixed buildout creation form where Boolean fields (is_active and is_new_workshop) were appearing as empty text inputs instead of proper checkboxes. Updated form initialization to preserve Bootstrap checkbox styling for Boolean fields while maintaining form-control styling for other input types. Added missing new_workshop_concepts_per_year field to the form template.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-044",
+      "title": "Improved Instance Creation Workflow",
+      "description": "Restructured instance creation workflow to follow logical hierarchy: Program Type → Buildout → Instance. Moved 'Create Instance' button from program type page to buildout detail page and program instance management page for better user workflow. Updated navigation to reflect the logical progression through the system.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-045",
+      "title": "Custom Program Instance Creation Form",
+      "description": "Created custom program instance creation form that matches the site's design instead of redirecting to Django admin backend. Added AdminProgramInstanceForm with proper validation, custom template with Bootstrap styling, and integrated workflow for creating instances from both buildout detail pages and the general instance management page. Form includes smart defaults, validation, and contextual help information.",
+      "status": "implemented"
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-08-06T22:59:08.795659",
+    "last_updated": "2025-01-27T19:00:00.000000",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

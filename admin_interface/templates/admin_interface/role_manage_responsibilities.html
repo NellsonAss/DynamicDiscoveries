@@ -1,0 +1,93 @@
+{% extends 'admin_interface/base_admin.html' %}
+{% load math_filters %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-table me-2"></i>Manage Responsibilities
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Role
+        </a>
+    </div>
+</div>
+
+<!-- Instructions -->
+<div class="admin-card p-4 mb-4">
+    <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Instructions:</strong> Adjust the hours for each responsibility below. These are the default hours for this role when it's assigned to buildouts.
+    </div>
+</div>
+
+<!-- Excel-like Responsibility Management -->
+<form method="post">
+    {% csrf_token %}
+    <div class="admin-card p-4">
+        <h5 class="mb-3"><i class="bi bi-table me-2"></i>Responsibility Hours Management</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 30%;">Responsibility</th>
+                        <th style="width: 25%;">Description</th>
+                        <th class="text-center" style="width: 15%;">Frequency</th>
+                        <th class="text-center" style="width: 15%;">Hours</th>
+                        <th class="text-center" style="width: 15%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for responsibility in responsibilities %}
+                        <tr>
+                            <td><strong>{{ responsibility.name }}</strong></td>
+                            <td>{{ responsibility.description|truncatewords:8 }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ responsibility.get_frequency_type_display }}</span>
+                            </td>
+                            <td class="text-center">
+                                <input type="number" 
+                                       name="responsibility_{{ responsibility.id }}" 
+                                       value="{{ responsibility.hours|floatformat:2 }}" 
+                                       step="0.01" 
+                                       min="0" 
+                                       class="form-control form-control-sm text-center"
+                                       style="width: 80px;">
+                            </td>
+                            <td class="text-center">
+                                <a href="#" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="bi bi-list-task text-muted" style="font-size: 2rem;"></i>
+                                <h6 class="text-muted mt-2">No Responsibilities</h6>
+                                <p class="text-muted">This role doesn't have any responsibilities defined yet.</p>
+                                <a href="{% url 'admin_interface:role_add_responsibility' role.id %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-2"></i>Add First Responsibility
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="text-center mt-4">
+        <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-check-circle me-2"></i>Save Changes
+        </button>
+        <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary btn-lg ms-2">
+            <i class="bi bi-x-circle me-2"></i>Cancel
+        </a>
+    </div>
+</form>
+{% endblock %}

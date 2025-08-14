@@ -19,9 +19,15 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
 from accounts.views import debug_env
+from django.utils import timezone
+
+def test_view(request):
+    from django.shortcuts import render
+    return render(request, 'test_simple.html', {'current_time': timezone.now()})
 
 urlpatterns = [
     path('', TemplateView.as_view(template_name='home.html'), name='home'),
+    path('test/', test_view, name='test'),
     path('admin/', admin.site.urls),
     path('auth/', include(('allauth.urls', 'allauth'), namespace='auth')),  # django-allauth URLs under /auth/
     path('accounts/', include('accounts.urls')),  # Our custom accounts URLs

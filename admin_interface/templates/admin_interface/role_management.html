@@ -59,26 +59,26 @@
                         <tr>
                             <td>
                                 <div>
-                                    <h6 class="mb-0">{{ role.name }}</h6>
+                                    <h6 class="mb-0">{{ role.title }}</h6>
                                     <small class="text-muted">ID: {{ role.id }}</small>
                                 </div>
                             </td>
                             <td>
                                 <div class="text-center">
-                                    <h6 class="text-success mb-0">${{ role.hourly_rate }}</h6>
-                                    <small class="text-muted">per hour</small>
+                                    <h6 class="text-success mb-0">$50.00</h6>
+                                    <small class="text-muted">default rate</small>
                                 </div>
                             </td>
                             <td>
                                 <div class="text-center">
-                                    <h6 class="text-info mb-0">{{ role.default_percent_of_revenue }}%</h6>
-                                    <small class="text-muted">of revenue</small>
+                                    <h6 class="text-info mb-0">{{ role.responsibilities.count }}</h6>
+                                    <small class="text-muted">responsibilities</small>
                                 </div>
                             </td>
                             <td>
-                                {% if role.responsibilities %}
-                                    <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ role.responsibilities }}">
-                                        {{ role.responsibilities|truncatechars:80 }}
+                                {% if role.description %}
+                                    <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ role.description }}">
+                                        {{ role.description|truncatechars:80 }}
                                     </span>
                                 {% else %}
                                     <span class="text-muted">No description</span>
@@ -86,14 +86,14 @@
                             </td>
                             <td>
                                 <div class="text-center">
-                                    <h6 class="mb-0">{{ role.program_types.count }}</h6>
-                                    <small class="text-muted">program types</small>
+                                    <h6 class="mb-0">{{ role.buildouts.count }}</h6>
+                                    <small class="text-muted">buildouts</small>
                                 </div>
                             </td>
                             <td>
                                 <div class="text-center">
-                                    <h6 class="mb-0">{{ role.users.count }}</h6>
-                                    <small class="text-muted">users</small>
+                                    <h6 class="mb-0">-</h6>
+                                    <small class="text-muted">via groups</small>
                                 </div>
                             </td>
                             <td>
@@ -103,9 +103,6 @@
                                     </button>
                                     <button class="btn btn-outline-secondary btn-sm" onclick="editRole({{ role.id }})">
                                         <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="btn btn-outline-info btn-sm" onclick="manageProgramTypes({{ role.id }})">
-                                        <i class="bi bi-collection"></i>
                                     </button>
                                     <button class="btn btn-outline-warning btn-sm" onclick="manageUsers({{ role.id }})">
                                         <i class="bi bi-people"></i>
@@ -324,10 +321,6 @@ function viewRole(id) {
 
 function editRole(id) {
     window.location.href = `/admin-interface/roles/${id}/edit/`;
-}
-
-function manageProgramTypes(id) {
-    window.location.href = `/admin-interface/roles/${id}/manage-program-types/`;
 }
 
 function manageUsers(id) {

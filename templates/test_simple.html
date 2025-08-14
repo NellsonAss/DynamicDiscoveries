@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test Page</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background-color: #f0f0f0; 
+        }
+        .test-box { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            margin: 20px 0; 
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Django Server Test Page</h1>
+    
+    <div class="test-box">
+        <h2>Server Status: <span class="success">✅ Running</span></h2>
+        <p>If you can see this page, the Django server is working correctly.</p>
+        <p>Current time: {{ current_time }}</p>
+    </div>
+    
+    <div class="test-box">
+        <h3>Static Files Test</h3>
+        <p>If you see a blue box below, static files are working:</p>
+        <div style="width: 100px; height: 100px; background-color: blue; margin: 10px 0;"></div>
+    </div>
+    
+    <div class="test-box">
+        <h3>JavaScript Test</h3>
+        <p>Click the button below to test JavaScript:</p>
+        <button onclick="testJS()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Test JavaScript
+        </button>
+        <div id="js-result" style="margin-top: 10px;"></div>
+    </div>
+    
+    <div class="test-box">
+        <h3>Navigation</h3>
+        <p><a href="{% url 'home' %}">Back to Home Page</a></p>
+        <p><a href="{% url 'dashboard:dashboard' %}">Go to Dashboard</a></p>
+    </div>
+
+    <script>
+        function testJS() {
+            document.getElementById('js-result').innerHTML = '<span class="success">✅ JavaScript is working!</span>';
+        }
+        
+        // Test if page loaded completely
+        window.addEventListener('load', function() {
+            console.log('Page loaded successfully');
+        });
+    </script>
+</body>
+</html>

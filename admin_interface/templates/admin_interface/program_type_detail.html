@@ -31,16 +31,11 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <p><strong>Name:</strong> {{ program_type.name }}</p>
-                                    <p><strong>Target Grades:</strong> {{ program_type.target_grade_levels }}</p>
+                                    <p><strong>Created:</strong> {{ program_type.created_at|date:"M d, Y" }}</p>
                                 </div>
                                 <div class="col-md-6">
-                                    <p><strong>Default Form:</strong> 
-                                        {% if program_type.default_registration_form %}
-                                            {{ program_type.default_registration_form.title }}
-                                        {% else %}
-                                            <span class="text-muted">None</span>
-                                        {% endif %}
-                                    </p>
+                                    <p><strong>Buildouts:</strong> {{ buildouts.count }}</p>
+                                    <p><strong>Instances:</strong> {{ instances.count }}</p>
                                 </div>
                             </div>
                             
@@ -68,7 +63,8 @@
                                         <thead>
                                             <tr>
                                                 <th>Instance</th>
-                                                <th>Instructor</th>
+                                                <th>Buildout</th>
+                                                <th>Location</th>
                                                 <th>Dates</th>
                                                 <th>Status</th>
                                                 <th>Actions</th>
@@ -77,8 +73,9 @@
                                         <tbody>
                                             {% for instance in instances %}
                                                 <tr>
+                                                    <td>{{ instance.title }}</td>
+                                                    <td>{{ instance.buildout.title }}</td>
                                                     <td>{{ instance.location }}</td>
-                                                    <td>{{ instance.instructor.email }}</td>
                                                     <td>{{ instance.start_date|date:"M j, Y" }} - {{ instance.end_date|date:"M j, Y" }}</td>
                                                     <td>
                                                         {% if instance.is_active %}
@@ -114,14 +111,8 @@
                         </div>
                         <div class="card-body">
                             <div class="d-grid gap-2">
-                                <a href="{% url 'admin_interface:program_type_manage_roles' program_type.id %}" class="btn btn-outline-primary">
-                                    <i class="bi bi-people me-1"></i>Manage Roles
-                                </a>
-                                <a href="{% url 'admin_interface:program_type_manage_costs' program_type.id %}" class="btn btn-outline-success">
-                                    <i class="bi bi-currency-dollar me-1"></i>Manage Costs
-                                </a>
-                                <a href="{% url 'admin:programs_programinstance_add' %}?program_type={{ program_type.id }}" class="btn btn-outline-info">
-                                    <i class="bi bi-plus-circle me-1"></i>Create Instance
+                                <a href="{% url 'admin_interface:buildout_management' %}?program_type={{ program_type.id }}" class="btn btn-outline-info">
+                                    <i class="bi bi-table me-1"></i>View Buildouts
                                 </a>
                             </div>
                         </div>
@@ -141,8 +132,8 @@
                                     <small class="text-muted">Instances</small>
                                 </div>
                                 <div class="col-6">
-                                    <h4 class="text-success mb-0">{{ roles.count }}</h4>
-                                    <small class="text-muted">Roles</small>
+                                    <h4 class="text-success mb-0">{{ buildouts.count }}</h4>
+                                    <small class="text-muted">Buildouts</small>
                                 </div>
                             </div>
                         </div>

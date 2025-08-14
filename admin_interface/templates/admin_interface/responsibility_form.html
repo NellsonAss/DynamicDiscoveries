@@ -1,0 +1,110 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-plus-circle me-2"></i>{{ title }}
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Role
+        </a>
+    </div>
+</div>
+
+<div class="admin-card p-4">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label">
+                        <strong>Responsibility Name</strong>
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="text-danger">
+                            {% for error in form.name.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.frequency_type.id_for_label }}" class="form-label">
+                        <strong>Frequency</strong>
+                    </label>
+                    {{ form.frequency_type }}
+                    {% if form.frequency_type.errors %}
+                        <div class="text-danger">
+                            {% for error in form.frequency_type.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.hours.id_for_label }}" class="form-label">
+                        <strong>Hours per Frequency</strong>
+                    </label>
+                    {{ form.hours }}
+                    {% if form.hours.errors %}
+                        <div class="text-danger">
+                            {% for error in form.hours.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="text-muted">Hours per frequency unit (e.g., per workshop, per session)</small>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                        <strong>Description</strong>
+                    </label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <div class="text-danger">
+                            {% for error in form.description.errors %}
+                                <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Frequency Help -->
+        <div class="alert alert-info">
+            <h6><i class="bi bi-info-circle me-2"></i>Frequency Types:</h6>
+            <ul class="mb-0">
+                <li><strong>Per Workshop Concept:</strong> Hours per new workshop concept developed</li>
+                <li><strong>Per New Facilitator:</strong> Hours per new facilitator hired</li>
+                <li><strong>Per Workshop:</strong> Hours per workshop delivered</li>
+                <li><strong>Per Session:</strong> Hours per individual session within a workshop</li>
+            </ul>
+        </div>
+        
+        <!-- Submit Buttons -->
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="bi bi-check-circle me-2"></i>{{ action }} Responsibility
+            </button>
+            <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary btn-lg ms-2">
+                <i class="bi bi-x-circle me-2"></i>Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

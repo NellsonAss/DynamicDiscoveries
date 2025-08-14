@@ -63,7 +63,7 @@
                                             <td>
                                                 <strong>{{ program.program_type.name }}</strong>
                                                 <br>
-                                                <small class="text-muted">{{ program.program_type.target_grade_levels }}</small>
+                                                <small class="text-muted">{{ program.program_type.description|truncatechars:100 }}</small>
                                             </td>
                                             <td>
                                                 {{ program.start_date|date:"M d" }} - {{ program.end_date|date:"M d, Y" }}

@@ -5,7 +5,9 @@
 <style>
     .admin-sidebar {
         min-height: calc(100vh - 76px);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        position: relative;
+        z-index: 1030;
     }
     
     .admin-sidebar .nav-link {
@@ -130,6 +132,38 @@
     .admin-content {
         z-index: 1020;
     }
+    
+    /* Additional sidebar styling to ensure background is visible */
+    .admin-sidebar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        box-shadow: inset -2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .admin-sidebar .nav-link {
+        background: transparent !important;
+    }
+    
+    .admin-sidebar .nav-link:hover,
+    .admin-sidebar .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    /* Ensure sidebar container has proper styling */
+    .col-md-3.col-lg-2.px-0 .admin-sidebar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    /* Force sidebar background with high specificity */
+    .container-fluid .row .col-md-3.col-lg-2 .admin-sidebar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        min-height: calc(100vh - 76px);
+        position: relative;
+    }
+    
+    /* Ensure the sidebar column itself has the background */
+    .col-md-3.col-lg-2.px-0 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
 </style>
 {% endblock %}
 
@@ -162,15 +196,15 @@
                     </div>
                     <a class="nav-link {% if 'program_type' in request.resolver_match.url_name %}active{% endif %}" 
                        href="{% url 'admin_interface:program_type_management' %}">
-                        <i class="bi bi-collection"></i>Program Types
-                    </a>
-                    <a class="nav-link {% if 'program_instance' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'admin_interface:program_instance_management' %}">
-                        <i class="bi bi-calendar-event"></i>Program Instances
+                        <i class="bi bi-collection"></i>Types
                     </a>
                     <a class="nav-link {% if 'buildout' in request.resolver_match.url_name %}active{% endif %}" 
                        href="{% url 'admin_interface:buildout_management' %}">
                         <i class="bi bi-diagram-3"></i>Buildouts
+                    </a>
+                    <a class="nav-link {% if 'program_instance' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:program_instance_management' %}">
+                        <i class="bi bi-calendar-event"></i>Instances
                     </a>
                     
                     <div class="mt-3 mb-2">

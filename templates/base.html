@@ -109,6 +109,13 @@
                                     <li><a class="dropdown-item" href="{% url 'admin_interface:user_management' %}">
                                         <i class="bi bi-people me-2"></i>User Management
                                     </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:role_management' %}">
+                                        <i class="bi bi-shield-check me-2"></i>Role Management
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:cost_management' %}">
+                                        <i class="bi bi-currency-dollar me-2"></i>Cost Management
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="{% url 'admin_interface:program_instance_management' %}">
                                         <i class="bi bi-calendar-event me-2"></i>Program Instances
                                     </a></li>
@@ -177,6 +184,12 @@
                                 {% if 'Admin' in user.get_role_names %}
                                     <li><a class="dropdown-item" href="{% url 'accounts:user_list' %}">
                                         <i class="bi bi-people me-2"></i>User Management
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:role_management' %}">
+                                        <i class="bi bi-shield-check me-2"></i>Role Management
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:cost_management' %}">
+                                        <i class="bi bi-currency-dollar me-2"></i>Cost Management
                                     </a></li>
                                 {% endif %}
                                 

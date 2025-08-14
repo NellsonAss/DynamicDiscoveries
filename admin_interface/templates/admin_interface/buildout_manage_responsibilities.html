@@ -1,0 +1,166 @@
+{% extends 'admin_interface/base_admin.html' %}
+{% load math_filters %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-table me-2"></i>Manage Responsibilities
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Buildout
+        </a>
+    </div>
+</div>
+
+<!-- Instructions -->
+<div class="admin-card p-4 mb-4">
+    <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Instructions:</strong> Adjust the hours for each responsibility below. The system will automatically calculate yearly totals based on your buildout parameters.
+    </div>
+</div>
+
+<!-- Excel-like Responsibility Management -->
+<form method="post">
+    {% csrf_token %}
+    <div class="admin-card p-4">
+        <h5 class="mb-3"><i class="bi bi-table me-2"></i>Responsibility Hours Management</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 25%;">Role/Responsibility</th>
+                        <th style="width: 20%;">Description</th>
+                        <th class="text-center" style="width: 12%;">Hrs/New Workshop Concept</th>
+                        <th class="text-center" style="width: 12%;">Hrs/New Worker</th>
+                        <th class="text-center" style="width: 12%;">Hrs/Workshop</th>
+                        <th class="text-center" style="width: 12%;">Hrs/Workshop/Session</th>
+                        <th class="text-center" style="width: 7%;">Total Hrs/Year</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role_data in roles_data %}
+                        <!-- Role Header -->
+                        <tr class="table-primary">
+                            <td colspan="7">
+                                <div class="d-flex align-items-center">
+                                    <strong>{{ role_data.role.title }}:</strong> {{ role_data.role.description }}
+                                    {% if role_data.is_assigned %}
+                                        <span class="badge bg-success ms-2">Assigned</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary ms-2">Not Assigned</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- Responsibilities -->
+                        {% for responsibility in role_data.responsibilities %}
+                            <tr>
+                                <td class="ps-4">{{ responsibility.name }}</td>
+                                <td>{{ responsibility.description|truncatewords:8 }}</td>
+                                <td class="text-center">
+                                    {% if responsibility.frequency_type == 'PER_WORKSHOP_CONCEPT' %}
+                                        <input type="number" 
+                                               name="responsibility_{{ responsibility.id }}" 
+                                               value="{{ responsibility.hours|floatformat:2 }}" 
+                                               step="0.01" 
+                                               min="0" 
+                                               class="form-control form-control-sm text-center"
+                                               style="width: 80px;">
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if responsibility.frequency_type == 'PER_NEW_FACILITATOR' %}
+                                        <input type="number" 
+                                               name="responsibility_{{ responsibility.id }}" 
+                                               value="{{ responsibility.hours|floatformat:2 }}" 
+                                               step="0.01" 
+                                               min="0" 
+                                               class="form-control form-control-sm text-center"
+                                               style="width: 80px;">
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if responsibility.frequency_type == 'PER_WORKSHOP' %}
+                                        <input type="number" 
+                                               name="responsibility_{{ responsibility.id }}" 
+                                               value="{{ responsibility.hours|floatformat:2 }}" 
+                                               step="0.01" 
+                                               min="0" 
+                                               class="form-control form-control-sm text-center"
+                                               style="width: 80px;">
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if responsibility.frequency_type == 'PER_SESSION' %}
+                                        <input type="number" 
+                                               name="responsibility_{{ responsibility.id }}" 
+                                               value="{{ responsibility.hours|floatformat:2 }}" 
+                                               step="0.01" 
+                                               min="0" 
+                                               class="form-control form-control-sm text-center"
+                                               style="width: 80px;">
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if responsibility.frequency_type == 'PER_WORKSHOP_CONCEPT' %}
+                                        {{ responsibility.hours|multiply:buildout.new_workshop_concepts_per_year|floatformat:2 }}
+                                    {% elif responsibility.frequency_type == 'PER_NEW_FACILITATOR' %}
+                                        {{ responsibility.hours|multiply:buildout.num_new_facilitators|floatformat:2 }}
+                                    {% elif responsibility.frequency_type == 'PER_WORKSHOP' %}
+                                        {{ responsibility.hours|multiply:buildout.num_workshops_per_year|floatformat:2 }}
+                                    {% elif responsibility.frequency_type == 'PER_SESSION' %}
+                                        {{ responsibility.hours|multiply:buildout.total_sessions_per_year|floatformat:2 }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        
+                        <!-- Empty row for spacing -->
+                        <tr><td colspan="7" style="height: 10px;"></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Buildout Context -->
+    <div class="admin-card p-4 mt-4">
+        <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Buildout Context</h5>
+        <div class="row">
+            <div class="col-md-3">
+                <strong>New Workshop Concepts per Year:</strong> {{ buildout.new_workshop_concepts_per_year }}
+            </div>
+            <div class="col-md-3">
+                <strong>New Workers:</strong> {{ buildout.num_new_facilitators }}
+            </div>
+            <div class="col-md-3">
+                <strong>Workshops per Year:</strong> {{ buildout.num_workshops_per_year }}
+            </div>
+            <div class="col-md-3">
+                <strong>Total Sessions per Year:</strong> {{ buildout.total_sessions_per_year }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="text-center mt-4">
+        <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-check-circle me-2"></i>Save Changes
+        </button>
+        <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary btn-lg ms-2">
+            <i class="bi bi-x-circle me-2"></i>Cancel
+        </a>
+    </div>
+</form>
+{% endblock %}

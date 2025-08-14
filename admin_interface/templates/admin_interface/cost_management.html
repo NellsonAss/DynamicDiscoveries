@@ -1,69 +1,12 @@
 {% extends 'admin_interface/base_admin.html' %}
 
-{% block extra_head %}
-<style>
-    /* Ensure modals work properly in admin interface */
-    .modal-backdrop {
-        z-index: 1040 !important;
-    }
-    
-    .modal {
-        z-index: 1050 !important;
-    }
-    
-    .modal-dialog {
-        z-index: 1055 !important;
-    }
-    
-    .modal-content {
-        z-index: 1060 !important;
-        position: relative;
-    }
-    
-    /* Fix any potential stacking context issues */
-    .admin-content {
-        position: relative;
-        z-index: 1;
-    }
-    
-    /* Ensure table doesn't interfere with modals */
-    .table-responsive {
-        position: relative;
-        z-index: 1;
-    }
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Fix modal backdrop issues
-    document.addEventListener('show.bs.modal', function(event) {
-        const modal = event.target;
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) {
-            backdrop.style.zIndex = '1040';
-        }
-        modal.style.zIndex = '1050';
-    });
-    
-    // Ensure modals are properly positioned
-    document.addEventListener('shown.bs.modal', function(event) {
-        const modal = event.target;
-        const modalDialog = modal.querySelector('.modal-dialog');
-        if (modalDialog) {
-            modalDialog.style.zIndex = '1055';
-        }
-    });
-});
-</script>
-{% endblock %}
-
 {% block admin_content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0">
         <i class="bi bi-currency-dollar me-2"></i>Cost Management
     </h2>
     <div class="text-muted">
-        <i class="bi bi-info-circle me-1"></i>{{ costs|length }} total costs
+        <i class="bi bi-info-circle me-1"></i>{{ total_costs }} total costs
     </div>
 </div>
 
@@ -88,10 +31,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Costs Table -->
 <div class="admin-card">
-    <div class="card-header bg-transparent border-0">
+    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
         <h6 class="mb-0">
             <i class="bi bi-table me-2"></i>Base Costs
         </h6>
+        <a href="{% url 'admin_interface:cost_create' %}" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Add Cost
+        </a>
     </div>
     <div class="card-body p-0">
         {% if costs %}
@@ -100,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <thead>
                         <tr>
                             <th>Cost Name</th>
-                            <th>Amount & Frequency</th>
+                            <th>Rate & Frequency</th>
                             <th>Description</th>
                             <th>Actions</th>
                         </tr>
@@ -109,22 +55,25 @@ document.addEventListener('DOMContentLoaded', function() {
                         {% for cost in costs %}
                         <tr>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-sm bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3">
-                                        <i class="bi bi-currency-dollar"></i>
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-0">{{ cost.name }}</h6>
-                                        <small class="text-muted">ID: {{ cost.id }}</small>
-                                    </div>
+                                <div>
+                                    <h6 class="mb-0">{{ cost.name }}</h6>
+                                    <small class="text-muted">ID: {{ cost.id }}</small>
                                 </div>
                             </td>
                             <td>
-                                <span class="fw-bold text-success">${{ cost.amount }}</span>
-                                <small class="text-muted d-block">{{ cost.get_frequency_display }}</small>
+                                <div class="text-center">
+                                    <h6 class="text-success mb-0">${{ cost.rate }}</h6>
+                                    <small class="text-muted">{{ cost.get_frequency_display }}</small>
+                                </div>
                             </td>
                             <td>
-                                <span class="text-break">{{ cost.description|truncatechars:100 }}</span>
+                                {% if cost.description %}
+                                    <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ cost.description }}">
+                                        {{ cost.description|truncatechars:80 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">No description</span>
+                                {% endif %}
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
@@ -132,177 +81,106 @@ document.addEventListener('DOMContentLoaded', function() {
                                             data-bs-toggle="modal" data-bs-target="#costDetailModal{{ cost.id }}">
                                         <i class="bi bi-eye me-1"></i>View
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary">
+                                    <a href="{% url 'admin_interface:cost_edit' cost.id %}" 
+                                       class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-pencil me-1"></i>Edit
-                                    </button>
+                                    </a>
+                                    <a href="{% url 'admin_interface:cost_delete' cost.id %}" 
+                                       class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </a>
                                 </div>
                             </td>
                         </tr>
-                        
-                        <!-- Cost Detail Modal -->
-                        <div class="modal fade" id="costDetailModal{{ cost.id }}" tabindex="-1" aria-labelledby="costDetailModalLabel{{ cost.id }}" aria-hidden="true">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="costDetailModalLabel{{ cost.id }}">
-                                            <i class="bi bi-currency-dollar me-2"></i>{{ cost.name }}
-                                        </h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <h6 class="text-muted mb-2">Cost Details</h6>
-                                                <p><strong>Amount:</strong> ${{ cost.amount }}</p>
-                                                <p><strong>Frequency:</strong> {{ cost.get_frequency_display }}</p>
-                                                <p><strong>Description:</strong></p>
-                                                <p class="text-muted">{{ cost.description }}</p>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <h6 class="text-muted mb-2">Buildout Assignments</h6>
-                                                {% if cost.buildoutbasecost_set.all %}
-                                                    <ul class="list-unstyled">
-                                                    {% for buildout_cost in cost.buildoutbasecost_set.all %}
-                                                        <li class="mb-2">
-                                                            <span class="badge bg-primary me-2">{{ buildout_cost.buildout.program_type.name }}</span>
-                                                            <small class="text-muted">{{ buildout_cost.buildout.title }} ({{ buildout_cost.multiplier }}x)</small>
-                                                        </li>
-                                                    {% endfor %}
-                                                    </ul>
-                                                {% else %}
-                                                    <p class="text-muted">No buildout assignments</p>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                        <button type="button" class="btn btn-primary">
-                                            <i class="bi bi-pencil me-1"></i>Edit Cost
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         {% else %}
             <div class="text-center py-5">
-                <i class="bi bi-currency-dollar display-1 text-muted mb-3"></i>
-                <h5 class="text-muted">No costs found</h5>
-                <p class="text-muted">No base costs match your search criteria.</p>
-                {% if search %}
-                    <a href="{% url 'admin_interface:cost_management' %}" class="btn btn-outline-primary">
-                        <i class="bi bi-arrow-left me-1"></i>Clear Search
-                    </a>
-                {% endif %}
+                <i class="bi bi-currency-dollar text-muted" style="font-size: 3rem;"></i>
+                <h5 class="text-muted mt-3">No costs found</h5>
+                <p class="text-muted">Start by adding your first base cost.</p>
+                <a href="{% url 'admin_interface:cost_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-1"></i>Add First Cost
+                </a>
             </div>
         {% endif %}
     </div>
 </div>
 
-<!-- Add New Cost Button -->
-<div class="text-center mt-4">
-    <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#addCostModal">
-        <i class="bi bi-plus-circle me-2"></i>Add New Base Cost
-    </button>
-</div>
-
-<!-- Add Cost Modal -->
-<div class="modal fade" id="addCostModal" tabindex="-1" aria-labelledby="addCostModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- Cost Detail Modals -->
+{% for cost in costs %}
+<div class="modal fade" id="costDetailModal{{ cost.id }}" tabindex="-1" aria-labelledby="costDetailModalLabel{{ cost.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addCostModalLabel">
-                    <i class="bi bi-plus-circle me-2"></i>Add New Base Cost
+                <h5 class="modal-title" id="costDetailModalLabel{{ cost.id }}">
+                    <i class="bi bi-currency-dollar me-2"></i>{{ cost.name }}
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" action="{% url 'admin_interface:cost_management' %}">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="costName" class="form-label">Cost Name</label>
-                        <input type="text" class="form-control" id="costName" name="name" required>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Cost Details</h6>
+                        <p><strong>Rate:</strong> ${{ cost.rate }}</p>
+                        <p><strong>Frequency:</strong> {{ cost.get_frequency_display }}</p>
+                        <p><strong>Description:</strong></p>
+                        <p class="text-muted">{{ cost.description }}</p>
                     </div>
-                    <div class="mb-3">
-                        <label for="costAmount" class="form-label">Amount</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="costAmount" name="amount" 
-                                   step="0.01" min="0" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="costFrequency" class="form-label">Frequency</label>
-                        <select class="form-control" id="costFrequency" name="frequency" required>
-                            <option value="">Select frequency...</option>
-                            <option value="PER_WORKSHOP_CONCEPT">Per Workshop Concept</option>
-                            <option value="PER_NEW_FACILITATOR">Per New Facilitator</option>
-                            <option value="PER_WORKSHOP">Per Workshop</option>
-                            <option value="PER_SESSION">Per Session</option>
-                            <option value="PER_STUDENT">Per Student</option>
-                            <option value="PER_YEAR">Per Year</option>
-                            <option value="ADMIN_FLAT">Admin Flat</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="costDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="costDescription" name="description" rows="3" required></textarea>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Buildout Assignments</h6>
+                        {% if cost.buildoutbasecost_set.all %}
+                            <ul class="list-unstyled">
+                            {% for buildout_cost in cost.buildoutbasecost_set.all %}
+                                <li class="mb-2">
+                                    <span class="badge bg-primary me-2">{{ buildout_cost.buildout.program_type.name }}</span>
+                                    <small class="text-muted">{{ buildout_cost.buildout.title }} ({{ buildout_cost.multiplier }}x)</small>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">No buildout assignments</p>
+                        {% endif %}
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-plus-circle me-1"></i>Add Cost
-                    </button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{% url 'admin_interface:cost_edit' cost.id %}" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i>Edit Cost
+                </a>
+                <a href="{% url 'admin_interface:cost_delete' cost.id %}" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i>Delete Cost
+                </a>
+            </div>
         </div>
     </div>
 </div>
+{% endfor %}
 
-<!-- Summary Cards -->
+<!-- Summary Statistics -->
 <div class="row mt-4">
     <div class="col-md-4">
-        <div class="admin-stats-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="mb-1">Total Costs</h6>
-                    <h3 class="mb-0">{{ costs|length }}</h3>
-                </div>
-                <i class="bi bi-currency-dollar display-6"></i>
-            </div>
+        <div class="admin-stats-card text-center">
+            <i class="bi bi-currency-dollar mb-3"></i>
+            <h6>Total Costs</h6>
+            <h3>{{ total_costs }}</h3>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="admin-stats-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="mb-1">Average Cost</h6>
-                    <h3 class="mb-0">
-                        ${{ costs|length|default:0|floatformat:2 }}
-                    </h3>
-                </div>
-                <i class="bi bi-calculator display-6"></i>
-            </div>
+        <div class="admin-stats-card text-center">
+            <i class="bi bi-calculator mb-3"></i>
+            <h6>Average Cost</h6>
+            <h3>${{ average_cost|floatformat:2 }}</h3>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="admin-stats-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="mb-1">Active Programs</h6>
-                    <h3 class="mb-0">
-                        {% with total_programs=0 %}
-                            {{ total_programs }}
-                        {% endwith %}
-                    </h3>
-                </div>
-                <i class="bi bi-diagram-3 display-6"></i>
-            </div>
+        <div class="admin-stats-card text-center">
+            <i class="bi bi-diagram-3 mb-3"></i>
+            <h6>Active Programs</h6>
+            <h3>0</h3>
         </div>
     </div>
 </div>

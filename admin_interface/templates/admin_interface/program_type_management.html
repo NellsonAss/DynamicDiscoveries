@@ -46,12 +46,10 @@
                     <thead>
                         <tr>
                             <th>Program Type</th>
-                            <th>Target Grades</th>
-                            <th>Rate per Student</th>
-                            <th>Roles</th>
-                            <th>Base Costs</th>
-                            <th>Instances</th>
+                            <th>Description</th>
                             <th>Buildouts</th>
+                            <th>Instances</th>
+                            <th>Created</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -61,53 +59,25 @@
                             <td>
                                 <div>
                                     <h6 class="mb-0">{{ program_type.name }}</h6>
-                                    <small class="text-muted">{{ program_type.description|truncatechars:80 }}</small>
                                 </div>
                             </td>
                             <td>
-                                <span class="badge bg-info">{{ program_type.target_grade_levels }}</span>
+                                <small class="text-muted">{{ program_type.description|truncatechars:80 }}</small>
                             </td>
                             <td>
                                 <div class="text-center">
-                                    <h6 class="text-success mb-0">${{ program_type.rate_per_student }}</h6>
-                                    <small class="text-muted">per student</small>
+                                    <h6 class="text-success mb-0">{{ program_type.buildouts.count }}</h6>
+                                    <small class="text-muted">buildouts</small>
                                 </div>
                             </td>
                             <td>
-                                {% for buildout in program_type.buildouts.all %}
-                                    {% for role_assignment in buildout.role_assignments.all %}
-                                        <div class="mb-1">
-                                            <span class="badge bg-secondary">{{ role_assignment.role.name }}</span>
-                                            <small class="text-muted">${{ role_assignment.role.hourly_rate }}/hr</small>
-                                        </div>
-                                    {% endfor %}
-                                {% empty %}
-                                    <span class="text-muted">No roles</span>
-                                {% endfor %}
-                            </td>
-                            <td>
-                                {% for buildout in program_type.buildouts.all %}
-                                    {% for cost_assignment in buildout.baseline_costs.all %}
-                                        <div class="mb-1">
-                                            <span class="badge bg-warning">{{ cost_assignment.base_cost.name }}</span>
-                                            <small class="text-muted">${{ cost_assignment.base_cost.amount }}</small>
-                                        </div>
-                                    {% endfor %}
-                                {% empty %}
-                                    <span class="text-muted">No costs</span>
-                                {% endfor %}
-                            </td>
-                            <td>
                                 <div class="text-center">
-                                    <h6 class="mb-0">{{ program_type.instances.count }}</h6>
+                                    <h6 class="mb-0">{{ program_type.instance_count }}</h6>
                                     <small class="text-muted">instances</small>
                                 </div>
                             </td>
                             <td>
-                                <div class="text-center">
-                                    <h6 class="mb-0">{{ program_type.buildouts.count }}</h6>
-                                    <small class="text-muted">buildouts</small>
-                                </div>
+                                <small class="text-muted">{{ program_type.created_at|date:"M d, Y" }}</small>
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
@@ -116,12 +86,6 @@
                                     </button>
                                     <button class="btn btn-outline-secondary btn-sm" onclick="editProgramType({{ program_type.id }})">
                                         <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="btn btn-outline-info btn-sm" onclick="manageRoles({{ program_type.id }})">
-                                        <i class="bi bi-people"></i>
-                                    </button>
-                                    <button class="btn btn-outline-warning btn-sm" onclick="manageCosts({{ program_type.id }})">
-                                        <i class="bi bi-currency-dollar"></i>
                                     </button>
                                     <button class="btn btn-outline-danger btn-sm" onclick="deleteProgramType({{ program_type.id }})">
                                         <i class="bi bi-trash"></i>
@@ -215,19 +179,7 @@
                     <i class="bi bi-calendar-event" style="font-size: 2rem;"></i>
                 </div>
                 <div>
-                    <h4 class="mb-0">
-                        {% with total_instances=0 %}
-                            {% for program_type in page_obj %}
-                                {% with instances_count=program_type.instances.count %}
-                                    {% if forloop.first %}
-                                        {{ instances_count }}
-                                    {% else %}
-                                        {{ total_instances|add:instances_count }}
-                                    {% endif %}
-                                {% endwith %}
-                            {% endfor %}
-                        {% endwith %}
-                    </h4>
+                    <h4 class="mb-0">{{ total_instances }}</h4>
                     <small>Total Instances</small>
                 </div>
             </div>
@@ -237,23 +189,11 @@
         <div class="admin-stats-card">
             <div class="d-flex align-items-center">
                 <div class="me-3">
-                    <i class="bi bi-people" style="font-size: 2rem;"></i>
+                    <i class="bi bi-diagram-3" style="font-size: 2rem;"></i>
                 </div>
                 <div>
-                    <h4 class="mb-0">
-                        {% with total_roles=0 %}
-                            {% for program_type in page_obj %}
-                                {% with roles_count=program_type.roles.count %}
-                                    {% if forloop.first %}
-                                        {{ roles_count }}
-                                    {% else %}
-                                        {{ total_roles|add:roles_count }}
-                                    {% endif %}
-                                {% endwith %}
-                            {% endfor %}
-                        {% endwith %}
-                    </h4>
-                    <small>Total Roles</small>
+                    <h4 class="mb-0">{{ total_buildouts }}</h4>
+                    <small>Total Buildouts</small>
                 </div>
             </div>
         </div>
@@ -262,19 +202,11 @@
         <div class="admin-stats-card">
             <div class="d-flex align-items-center">
                 <div class="me-3">
-                    <i class="bi bi-currency-dollar" style="font-size: 2rem;"></i>
+                    <i class="bi bi-clock" style="font-size: 2rem;"></i>
                 </div>
                 <div>
-                    <h4 class="mb-0">
-                        {% with total_rate=0 %}
-                            {% for program_type in page_obj %}
-                                {% if forloop.first %}
-                                    ${{ program_type.rate_per_student }}
-                                {% endif %}
-                            {% endfor %}
-                        {% endwith %}
-                    </h4>
-                    <small>Avg Rate per Student</small>
+                    <h4 class="mb-0">{{ page_obj.0.created_at|date:"M Y" }}</h4>
+                    <small>Latest Created</small>
                 </div>
             </div>
         </div>
@@ -294,13 +226,9 @@ function editProgramType(id) {
     window.location.href = `/admin-interface/program-types/${id}/edit/`;
 }
 
-function manageRoles(id) {
-    window.location.href = `/admin-interface/program-types/${id}/manage-roles/`;
-}
 
-function manageCosts(id) {
-    window.location.href = `/admin-interface/program-types/${id}/manage-costs/`;
-}
+
+
 
 function deleteProgramType(id) {
     if (confirm('Are you sure you want to delete this program type? This action cannot be undone.')) {

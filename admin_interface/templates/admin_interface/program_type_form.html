@@ -18,25 +18,12 @@
                     <form method="post">
                         {% csrf_token %}
                         
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label for="{{ form.name.id_for_label }}" class="form-label">Program Type Name</label>
-                                    {{ form.name }}
-                                    {% if form.name.errors %}
-                                        <div class="text-danger">{{ form.name.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="{{ form.target_grade_levels.id_for_label }}" class="form-label">Target Grade Levels</label>
-                                    {{ form.target_grade_levels }}
-                                    {% if form.target_grade_levels.errors %}
-                                        <div class="text-danger">{{ form.target_grade_levels.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Program Type Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
                         </div>
                         
                         <div class="mb-3">
@@ -45,97 +32,6 @@
                             {% if form.description.errors %}
                                 <div class="text-danger">{{ form.description.errors }}</div>
                             {% endif %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.scope.id_for_label }}" class="form-label">Learning Scope</label>
-                            {{ form.scope }}
-                            {% if form.scope.errors %}
-                                <div class="text-danger">{{ form.scope.errors }}</div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.rate_per_student.id_for_label }}" class="form-label">Rate per Student</label>
-                                    {{ form.rate_per_student }}
-                                    {% if form.rate_per_student.errors %}
-                                        <div class="text-danger">{{ form.rate_per_student.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.default_registration_form.id_for_label }}" class="form-label">Default Registration Form</label>
-                                    {{ form.default_registration_form }}
-                                    {% if form.default_registration_form.errors %}
-                                        <div class="text-danger">{{ form.default_registration_form.errors }}</div>
-                                    {% endif %}
-                                    <div class="form-text">Optional default form for this program type</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <h5 class="mt-4 mb-3">Default Counts for New Buildouts</h5>
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label for="{{ form.default_num_facilitators.id_for_label }}" class="form-label">Default Facilitators</label>
-                                    {{ form.default_num_facilitators }}
-                                    {% if form.default_num_facilitators.errors %}
-                                        <div class="text-danger">{{ form.default_num_facilitators.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label for="{{ form.default_num_new_facilitators.id_for_label }}" class="form-label">New Facilitators</label>
-                                    {{ form.default_num_new_facilitators }}
-                                    {% if form.default_num_new_facilitators.errors %}
-                                        <div class="text-danger">{{ form.default_num_new_facilitators.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label for="{{ form.default_workshops_per_facilitator_per_year.id_for_label }}" class="form-label">Workshops per Facilitator</label>
-                                    {{ form.default_workshops_per_facilitator_per_year }}
-                                    {% if form.default_workshops_per_facilitator_per_year.errors %}
-                                        <div class="text-danger">{{ form.default_workshops_per_facilitator_per_year.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label for="{{ form.default_students_per_workshop.id_for_label }}" class="form-label">Students per Workshop</label>
-                                    {{ form.default_students_per_workshop }}
-                                    {% if form.default_students_per_workshop.errors %}
-                                        <div class="text-danger">{{ form.default_students_per_workshop.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.default_sessions_per_workshop.id_for_label }}" class="form-label">Sessions per Workshop</label>
-                                    {{ form.default_sessions_per_workshop }}
-                                    {% if form.default_sessions_per_workshop.errors %}
-                                        <div class="text-danger">{{ form.default_sessions_per_workshop.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.default_new_workshop_concepts_per_year.id_for_label }}" class="form-label">New Concepts per Year</label>
-                                    {{ form.default_new_workshop_concepts_per_year }}
-                                    {% if form.default_new_workshop_concepts_per_year.errors %}
-                                        <div class="text-danger">{{ form.default_new_workshop_concepts_per_year.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
                         </div>
                         
                         <div class="d-flex justify-content-between">

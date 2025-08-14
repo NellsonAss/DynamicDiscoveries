@@ -18,33 +18,29 @@
                     <form method="post">
                         {% csrf_token %}
                         
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label for="{{ form.name.id_for_label }}" class="form-label">Role Name</label>
-                                    {{ form.name }}
-                                    {% if form.name.errors %}
-                                        <div class="text-danger">{{ form.name.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="{{ form.hourly_rate.id_for_label }}" class="form-label">Hourly Rate</label>
-                                    {{ form.hourly_rate }}
-                                    {% if form.hourly_rate.errors %}
-                                        <div class="text-danger">{{ form.hourly_rate.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">Role Title</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                                <div class="text-danger">{{ form.title.errors }}</div>
+                            {% endif %}
                         </div>
                         
                         <div class="mb-3">
-                            <label for="{{ form.responsibilities.id_for_label }}" class="form-label">Responsibilities</label>
-                            {{ form.responsibilities }}
-                            {% if form.responsibilities.errors %}
-                                <div class="text-danger">{{ form.responsibilities.errors }}</div>
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <div class="text-danger">{{ form.description.errors }}</div>
                             {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.default_responsibilities.id_for_label }}" class="form-label">Default Responsibilities</label>
+                            {{ form.default_responsibilities }}
+                            {% if form.default_responsibilities.errors %}
+                                <div class="text-danger">{{ form.default_responsibilities.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Default responsibilities used as templates when included in a buildout</div>
                         </div>
                         
                         <div class="d-flex justify-content-between">

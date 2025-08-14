@@ -17,8 +17,9 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <p><strong>Description:</strong> {{ program_instance.program_type.description }}</p>
-                            <p><strong>Target Grades:</strong> {{ program_instance.program_type.target_grade_levels }}</p>
+                            <h5>Program Information</h5>
+                            <p><strong>Program Type:</strong> {{ program_instance.program_type.name }}</p>
+                            <p><strong>Buildout:</strong> {{ program_instance.buildout.title }}</p>
                             <p><strong>Location:</strong> {{ program_instance.location }}</p>
                         </div>
                         <div class="col-md-6">

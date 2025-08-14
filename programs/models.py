@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
+from django.utils import timezone
 from decimal import Decimal
 import uuid
 
@@ -10,35 +11,9 @@ User = get_user_model()
 
 
 class ProgramType(models.Model):
-    """Template for program types like 'STEAM' or 'Literary'."""
+    """Template for program types like 'STEAM' or 'Literary' - simplified to contain only name and description."""
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField()
-    scope = models.TextField(help_text="Learning scope and objectives")
-    target_grade_levels = models.CharField(
-        max_length=200,
-        help_text="Comma-separated grade levels (e.g., 'K-2, 3-5')"
-    )
-    rate_per_student = models.DecimalField(
-        max_digits=8, 
-        decimal_places=2,
-        help_text="Base rate charged per student"
-    )
-    
-    # Default counts for new buildouts
-    default_num_facilitators = models.PositiveIntegerField(default=1)
-    default_num_new_facilitators = models.PositiveIntegerField(default=0)
-    default_workshops_per_facilitator_per_year = models.PositiveIntegerField(default=4)
-    default_students_per_workshop = models.PositiveIntegerField(default=12)
-    default_sessions_per_workshop = models.PositiveIntegerField(default=8)
-    default_new_workshop_concepts_per_year = models.PositiveIntegerField(default=1)
-    
-    default_registration_form = models.ForeignKey(
-        'RegistrationForm',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='default_for_program_types'
-    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -49,41 +24,17 @@ class ProgramType(models.Model):
         return self.name
 
     def get_absolute_url(self):
-        return reverse('programs:program_instance_detail', kwargs={'pk': self.pk})
-
-    def calculate_revenue(self, student_count):
-        """Calculate total revenue for given number of students."""
-        from decimal import Decimal
-        return self.rate_per_student * Decimal(str(student_count))
+        return reverse('programs:program_type_detail', kwargs={'pk': self.pk})
 
 
 class Role(models.Model):
-    """Defines roles that can be assigned to program types."""
-    name = models.CharField(max_length=100, unique=True)
-    hourly_rate = models.DecimalField(
-        max_digits=8, 
-        decimal_places=2,
-        help_text="Hourly rate for this role"
+    """Reusable role definition with title, description, and optional default responsibilities."""
+    title = models.CharField(max_length=100, unique=True)
+    description = models.TextField()
+    default_responsibilities = models.TextField(
+        blank=True,
+        help_text="Default responsibilities used as templates when included in a buildout"
     )
-    description = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.name
-
-
-class ProgramBuildout(models.Model):
-    """Specific configuration of a program type with detailed role breakdown."""
-    program_type = models.ForeignKey(ProgramType, on_delete=models.CASCADE, related_name="buildouts")
-    title = models.CharField(max_length=100)
-    
-    # Count fields for calculations
-    num_facilitators = models.PositiveIntegerField(help_text="Number of qualified facilitators working")
-    num_new_facilitators = models.PositiveIntegerField(help_text="Number of new hires/turnover")
-    workshops_per_facilitator_per_year = models.PositiveIntegerField(help_text="Workshops each facilitator runs per year")
-    students_per_workshop = models.PositiveIntegerField(help_text="Students per workshop")
-    sessions_per_workshop = models.PositiveIntegerField(help_text="Sessions per workshop")
-    new_workshop_concepts_per_year = models.PositiveIntegerField(default=1, help_text="New workshop concepts developed per year")
-    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -91,12 +42,88 @@ class ProgramBuildout(models.Model):
         ordering = ['title']
 
     def __str__(self):
-        return f"{self.title} ({self.program_type.name})"
+        return self.title
+
+
+class ResponsibilityFrequency(models.TextChoices):
+    """Frequency options for responsibilities."""
+    PER_WORKSHOP_CONCEPT = 'PER_WORKSHOP_CONCEPT', 'Per Workshop Concept'
+    PER_NEW_FACILITATOR = 'PER_NEW_FACILITATOR', 'Per New Facilitator'
+    PER_WORKSHOP = 'PER_WORKSHOP', 'Per Workshop'
+    PER_SESSION = 'PER_SESSION', 'Per Session'
+
+
+class Responsibility(models.Model):
+    """Individual responsibility with role assignment and frequency-based calculations."""
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='responsibilities')
+    name = models.CharField(max_length=200, help_text="Responsibility name/title")
+    description = models.TextField(blank=True)
+    frequency_type = models.CharField(
+        max_length=32,
+        choices=ResponsibilityFrequency.choices,
+        help_text="How often this responsibility occurs"
+    )
+    hours = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        help_text="Hours per frequency unit"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['role__title', 'name']
+        unique_together = ['role', 'name']
+
+    def __str__(self):
+        return f"{self.role.title} - {self.name}"
+
+
+class ProgramBuildout(models.Model):
+    """Specific configuration of a program type with versioning and cloning support."""
+    program_type = models.ForeignKey(ProgramType, on_delete=models.CASCADE, related_name="buildouts")
+    title = models.CharField(max_length=100)
+    
+    # Versioning support
+    version_number = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+    
+    # Scoping fields
+    is_new_workshop = models.BooleanField(default=False, help_text="Whether this is a new workshop concept")
+    num_facilitators = models.PositiveIntegerField(help_text="Number of qualified facilitators working")
+    num_new_facilitators = models.PositiveIntegerField(help_text="Number of new hires/turnover")
+    students_per_workshop = models.PositiveIntegerField(help_text="Students per workshop")
+    sessions_per_workshop = models.PositiveIntegerField(help_text="Sessions per workshop")
+    new_workshop_concepts_per_year = models.PositiveIntegerField(
+        default=1, 
+        help_text="New workshop concepts developed per year"
+    )
+    rate_per_student = models.DecimalField(
+        max_digits=8, 
+        decimal_places=2,
+        help_text="Rate charged per student"
+    )
+    
+    # Related models
+    roles = models.ManyToManyField(Role, through='BuildoutRoleAssignment', related_name='buildouts')
+    responsibilities = models.ManyToManyField(Responsibility, through='BuildoutResponsibilityAssignment', related_name='buildouts')
+    base_costs = models.ManyToManyField('BaseCost', through='BuildoutBaseCostAssignment', related_name='buildouts')
+    default_forms = models.ManyToManyField('RegistrationForm', blank=True, related_name='default_buildouts')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['title', '-version_number']
+        unique_together = ['program_type', 'title', 'version_number']
+
+    def __str__(self):
+        return f"{self.title} v{self.version_number} ({self.program_type.name})"
 
     @property
     def num_workshops_per_year(self):
         """Calculate total workshops per year."""
-        return self.num_facilitators * self.workshops_per_facilitator_per_year
+        return self.num_facilitators * 4  # Assuming 4 workshops per facilitator per year
 
     @property
     def total_students_per_year(self):
@@ -111,174 +138,148 @@ class ProgramBuildout(models.Model):
     @property
     def total_revenue_per_year(self):
         """Calculate total yearly revenue."""
-        return self.total_students_per_year * self.program_type.rate_per_student
+        return Decimal(str(self.total_students_per_year * self.rate_per_student))
 
-    def calculate_total_role_costs(self):
-        """Calculate total costs for all roles."""
+    def calculate_total_hours_per_role(self, role):
+        """Calculate total hours per role."""
         total = Decimal('0.00')
-        for role_assignment in self.role_assignments.all():
-            total += role_assignment.calculate_yearly_cost()
+        for assignment in self.responsibility_assignments.filter(responsibility__role=role):
+            total += assignment.calculate_yearly_hours()
         return total
 
-    def calculate_total_baseline_costs(self):
-        """Calculate total baseline costs."""
+    def calculate_payout_per_role(self, role):
+        """Calculate payout per role."""
+        hours = self.calculate_total_hours_per_role(role)
+        # Assuming $50/hour rate - this should be configurable
+        return hours * Decimal('50.00')
+
+    def calculate_percent_of_revenue_per_role(self, role):
+        """Calculate percent of revenue per role."""
+        payout = self.calculate_payout_per_role(role)
+        revenue = self.total_revenue_per_year
+        if revenue > 0:
+            return (payout / revenue) * 100
+        return Decimal('0.00')
+
+    def calculate_base_costs_and_overhead(self):
+        """Calculate base costs + total overhead."""
         total = Decimal('0.00')
-        for baseline_cost in self.baseline_costs.all():
-            total += baseline_cost.calculate_yearly_cost()
+        for assignment in self.base_cost_assignments.all():
+            total += assignment.calculate_yearly_cost()
         return total
 
     @property
     def total_yearly_costs(self):
         """Calculate total yearly costs."""
-        return self.calculate_total_role_costs() + self.calculate_total_baseline_costs()
+        role_costs = Decimal('0.00')
+        for role in self.roles.all():
+            role_costs += self.calculate_payout_per_role(role)
+        base_costs = self.calculate_base_costs_and_overhead()
+        return role_costs + base_costs
 
     @property
-    def yearly_profit(self):
-        """Calculate yearly profit."""
+    def expected_profit(self):
+        """Compute expected profit."""
         return self.total_revenue_per_year - self.total_yearly_costs
 
     @property
     def profit_margin(self):
-        """Calculate profit margin as percentage."""
+        """Compute profit margin as percentage."""
         if self.total_revenue_per_year > 0:
-            return (self.yearly_profit / self.total_revenue_per_year) * 100
+            return (self.expected_profit / self.total_revenue_per_year) * 100
         return Decimal('0.00')
 
-
-class ResponsibilityFrequency(models.TextChoices):
-    """Frequency options for responsibilities and costs."""
-    PER_WORKSHOP_CONCEPT = 'PER_WORKSHOP_CONCEPT', 'Per Workshop Concept'
-    PER_NEW_FACILITATOR = 'PER_NEW_FACILITATOR', 'Per New Facilitator'
-    PER_WORKSHOP = 'PER_WORKSHOP', 'Per Workshop'
-    PER_SESSION = 'PER_SESSION', 'Per Session'
-    PER_STUDENT = 'PER_STUDENT', 'Per Student'
-    PER_YEAR = 'PER_YEAR', 'Per Year'
-    ADMIN_FLAT = 'ADMIN_FLAT', 'Admin Flat'
-    OVERRIDE = 'OVERRIDE', 'Manual Override'
-
-
-class BuildoutResponsibility(models.Model):
-    """Individual responsibility within a buildout."""
-    buildout = models.ForeignKey(ProgramBuildout, on_delete=models.CASCADE, related_name='responsibilities')
-    role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    name = models.CharField(max_length=200, help_text="Responsibility name/title")
-    description = models.TextField(blank=True)
-    frequency = models.CharField(
-        max_length=32,
-        choices=ResponsibilityFrequency.choices,
-        help_text="How often this responsibility occurs"
-    )
-    base_hours = models.DecimalField(
-        max_digits=6,
-        decimal_places=2,
-        help_text="Hours per frequency unit"
-    )
-    override_hours = models.DecimalField(
-        max_digits=6,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Manual override for total hours (ignores frequency calculation)"
-    )
-
-    class Meta:
-        ordering = ['role__name', 'name']
-        unique_together = ['buildout', 'role', 'name']
-
-    def __str__(self):
-        return f"{self.role.name} - {self.name}"
-
-    def calculate_yearly_hours(self):
-        """Calculate total yearly hours for this responsibility."""
-        if self.frequency == ResponsibilityFrequency.OVERRIDE and self.override_hours is not None:
-            return self.override_hours
-
-        buildout = self.buildout
+    def clone(self):
+        """Create a new version of this buildout."""
+        new_buildout = ProgramBuildout.objects.create(
+            program_type=self.program_type,
+            title=self.title,
+            version_number=self.version_number + 1,
+            is_new_workshop=self.is_new_workshop,
+            num_facilitators=self.num_facilitators,
+            num_new_facilitators=self.num_new_facilitators,
+            students_per_workshop=self.students_per_workshop,
+            sessions_per_workshop=self.sessions_per_workshop,
+            rate_per_student=self.rate_per_student
+        )
         
-        if self.frequency == ResponsibilityFrequency.PER_WORKSHOP_CONCEPT:
-            return self.base_hours * buildout.new_workshop_concepts_per_year
-        elif self.frequency == ResponsibilityFrequency.PER_NEW_FACILITATOR:
-            return self.base_hours * buildout.num_new_facilitators
-        elif self.frequency == ResponsibilityFrequency.PER_WORKSHOP:
-            return self.base_hours * buildout.num_workshops_per_year
-        elif self.frequency == ResponsibilityFrequency.PER_SESSION:
-            return self.base_hours * buildout.total_sessions_per_year
-        elif self.frequency == ResponsibilityFrequency.PER_STUDENT:
-            return self.base_hours * buildout.total_students_per_year
-        elif self.frequency == ResponsibilityFrequency.PER_YEAR:
-            return self.base_hours
-        elif self.frequency == ResponsibilityFrequency.ADMIN_FLAT:
-            return self.base_hours
-        else:
-            return Decimal('0.00')
-
-    def calculate_yearly_cost(self):
-        """Calculate yearly cost for this responsibility."""
-        hours = self.calculate_yearly_hours()
-        return hours * self.role.hourly_rate
+        # Copy related data
+        new_buildout.roles.set(self.roles.all())
+        new_buildout.responsibilities.set(self.responsibilities.all())
+        new_buildout.base_costs.set(self.base_costs.all())
+        new_buildout.default_forms.set(self.default_forms.all())
+        
+        return new_buildout
 
 
 class BuildoutRoleAssignment(models.Model):
-    """Assignment of a role to a buildout with percentage tracking."""
+    """Assignment of a role to a buildout."""
     buildout = models.ForeignKey(ProgramBuildout, on_delete=models.CASCADE, related_name='role_assignments')
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    percent_of_revenue = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        help_text="Percentage of revenue this role represents"
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ['buildout', 'role']
 
     def __str__(self):
-        return f"{self.role.name} - {self.buildout.title}"
+        return f"{self.role.title} - {self.buildout.title}"
+
+
+class BuildoutResponsibilityAssignment(models.Model):
+    """Assignment of a responsibility to a buildout."""
+    buildout = models.ForeignKey(ProgramBuildout, on_delete=models.CASCADE, related_name='responsibility_assignments')
+    responsibility = models.ForeignKey(Responsibility, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['buildout', 'responsibility']
+
+    def __str__(self):
+        return f"{self.responsibility.name} - {self.buildout.title}"
 
     def calculate_yearly_hours(self):
-        """Calculate total yearly hours for this role."""
-        total = Decimal('0.00')
-        for responsibility in self.buildout.responsibilities.filter(role=self.role):
-            total += responsibility.calculate_yearly_hours()
-        return total
-
-    def calculate_yearly_cost(self):
-        """Calculate yearly cost for this role."""
-        total = Decimal('0.00')
-        for responsibility in self.buildout.responsibilities.filter(role=self.role):
-            total += responsibility.calculate_yearly_cost()
-        return total
-
-    def calculate_percent_of_revenue(self):
-        """Calculate actual percentage of revenue this role represents."""
-        cost = self.calculate_yearly_cost()
-        revenue = self.buildout.total_revenue_per_year
-        if revenue > 0:
-            return (cost / revenue) * 100
-        return Decimal('0.00')
+        """Calculate total yearly hours for this responsibility."""
+        buildout = self.buildout
+        
+        if self.responsibility.frequency_type == ResponsibilityFrequency.PER_WORKSHOP_CONCEPT:
+            return self.responsibility.hours * (1 if buildout.is_new_workshop else 0)
+        elif self.responsibility.frequency_type == ResponsibilityFrequency.PER_NEW_FACILITATOR:
+            return self.responsibility.hours * buildout.num_new_facilitators
+        elif self.responsibility.frequency_type == ResponsibilityFrequency.PER_WORKSHOP:
+            return self.responsibility.hours * buildout.num_workshops_per_year
+        elif self.responsibility.frequency_type == ResponsibilityFrequency.PER_SESSION:
+            return self.responsibility.hours * buildout.total_sessions_per_year
+        else:
+            return Decimal('0.00')
 
 
 class BaseCost(models.Model):
     """Fixed costs that apply to programs (location, insurance, etc.)."""
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    rate = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        help_text="Cost amount per frequency unit"
+    )
     frequency = models.CharField(
         max_length=32,
         choices=ResponsibilityFrequency.choices,
         help_text="How often this cost occurs"
     )
-    amount = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        help_text="Cost amount per frequency unit"
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
 
     def __str__(self):
         return self.name
 
 
-class BuildoutBaseCost(models.Model):
+class BuildoutBaseCostAssignment(models.Model):
     """Assignment of base costs to buildouts."""
-    buildout = models.ForeignKey(ProgramBuildout, on_delete=models.CASCADE, related_name='baseline_costs')
+    buildout = models.ForeignKey(ProgramBuildout, on_delete=models.CASCADE, related_name='base_cost_assignments')
     base_cost = models.ForeignKey(BaseCost, on_delete=models.CASCADE)
     multiplier = models.DecimalField(
         max_digits=6,
@@ -286,6 +287,7 @@ class BuildoutBaseCost(models.Model):
         default=1.00,
         help_text="Multiplier for the base cost"
     )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ['buildout', 'base_cost']
@@ -294,24 +296,18 @@ class BuildoutBaseCost(models.Model):
         return f"{self.base_cost.name} - {self.buildout.title}"
 
     def calculate_yearly_cost(self):
-        """Calculate yearly cost for this baseline cost."""
+        """Calculate yearly cost for this base cost."""
         buildout = self.buildout
-        base_amount = self.base_cost.amount * self.multiplier
+        base_amount = self.base_cost.rate * self.multiplier
 
         if self.base_cost.frequency == ResponsibilityFrequency.PER_WORKSHOP_CONCEPT:
-            return base_amount * buildout.new_workshop_concepts_per_year
+            return base_amount * (1 if buildout.is_new_workshop else 0)
         elif self.base_cost.frequency == ResponsibilityFrequency.PER_NEW_FACILITATOR:
             return base_amount * buildout.num_new_facilitators
         elif self.base_cost.frequency == ResponsibilityFrequency.PER_WORKSHOP:
             return base_amount * buildout.num_workshops_per_year
         elif self.base_cost.frequency == ResponsibilityFrequency.PER_SESSION:
             return base_amount * buildout.total_sessions_per_year
-        elif self.base_cost.frequency == ResponsibilityFrequency.PER_STUDENT:
-            return base_amount * buildout.total_students_per_year
-        elif self.base_cost.frequency == ResponsibilityFrequency.PER_YEAR:
-            return base_amount
-        elif self.base_cost.frequency == ResponsibilityFrequency.ADMIN_FLAT:
-            return base_amount
         else:
             return Decimal('0.00')
 
@@ -371,17 +367,15 @@ class ProgramInstance(models.Model):
     @property
     def actual_revenue(self):
         """Calculate actual revenue based on current enrollment."""
-        return self.buildout.program_type.calculate_revenue(self.current_enrollment)
+        return self.current_enrollment * self.buildout.rate_per_student
 
     def get_effective_counts(self):
         """Get counts with any overrides applied."""
         counts = {
             'num_facilitators': self.buildout.num_facilitators,
             'num_new_facilitators': self.buildout.num_new_facilitators,
-            'workshops_per_facilitator_per_year': self.buildout.workshops_per_facilitator_per_year,
             'students_per_workshop': self.buildout.students_per_workshop,
             'sessions_per_workshop': self.buildout.sessions_per_workshop,
-            'new_workshop_concepts_per_year': self.buildout.new_workshop_concepts_per_year,
         }
         
         if self.override_counts:
@@ -391,23 +385,21 @@ class ProgramInstance(models.Model):
 
     def calculate_expected_payouts(self):
         """Calculate expected payouts based on enrollment vs capacity."""
-        if self.current_enrollment >= self.capacity:
-            # Pay based on hours when at capacity
-            total = Decimal('0.00')
-            for assignment in self.contractor_assignments.all():
-                total += assignment.calculate_hours_payout()
-            return total
-        else:
-            # Pay based on revenue share when below capacity
-            total = Decimal('0.00')
-            for assignment in self.contractor_assignments.all():
-                total += assignment.calculate_revenue_share_payout()
-            return total
+        total = Decimal('0.00')
+        for assignment in self.contractor_assignments.all():
+            total += assignment.calculate_payout()
+        return total
 
     @property
     def expected_profit(self):
         """Calculate expected profit."""
         return self.actual_revenue - self.calculate_expected_payouts()
+
+    def send_communication_to_participants(self, subject, message):
+        """Send communication to all participants."""
+        # Implementation for sending communication
+        # This would integrate with the communications app
+        pass
 
 
 class InstanceRoleAssignment(models.Model):
@@ -429,12 +421,12 @@ class InstanceRoleAssignment(models.Model):
         blank=True,
         help_text="Override hours for this assignment"
     )
-    override_revenue_share = models.DecimalField(
-        max_digits=5,
+    override_rate = models.DecimalField(
+        max_digits=8,
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Override revenue share percentage"
+        help_text="Override hourly rate for this assignment"
     )
     
     # Computed payout
@@ -453,41 +445,29 @@ class InstanceRoleAssignment(models.Model):
         unique_together = ['program_instance', 'role']
 
     def __str__(self):
-        return f"{self.contractor.get_full_name()} - {self.role.name}"
+        return f"{self.contractor.get_full_name()} - {self.role.title}"
 
-    def calculate_hours_payout(self):
-        """Calculate payout based on hours when at capacity."""
+    def calculate_hours(self):
+        """Calculate total hours for this role assignment."""
         if self.override_hours is not None:
-            hours = self.override_hours
-        else:
-            # Calculate hours from buildout responsibilities
-            hours = Decimal('0.00')
-            for responsibility in self.program_instance.buildout.responsibilities.filter(role=self.role):
-                hours += responsibility.calculate_yearly_hours()
+            return self.override_hours
         
-        return hours * self.role.hourly_rate
+        # Calculate hours from buildout responsibilities
+        total_hours = Decimal('0.00')
+        for assignment in self.program_instance.buildout.responsibility_assignments.filter(responsibility__role=self.role):
+            total_hours += assignment.calculate_yearly_hours()
+        
+        return total_hours
 
-    def calculate_revenue_share_payout(self):
-        """Calculate payout based on revenue share when below capacity."""
-        if self.override_revenue_share is not None:
-            share_percentage = self.override_revenue_share
-        else:
-            # Get share percentage from buildout role assignment
-            try:
-                role_assignment = self.program_instance.buildout.role_assignments.get(role=self.role)
-                share_percentage = role_assignment.percent_of_revenue
-            except BuildoutRoleAssignment.DoesNotExist:
-                share_percentage = Decimal('0.00')
-        
-        revenue = self.program_instance.actual_revenue
-        return (revenue * share_percentage) / 100
+    def calculate_payout(self):
+        """Calculate payout for this assignment."""
+        hours = self.calculate_hours()
+        rate = self.override_rate if self.override_rate is not None else Decimal('50.00')  # Default rate
+        return hours * rate
 
     def update_computed_payout(self):
-        """Update the computed payout based on current conditions."""
-        if self.program_instance.current_enrollment >= self.program_instance.capacity:
-            self.computed_payout = self.calculate_hours_payout()
-        else:
-            self.computed_payout = self.calculate_revenue_share_payout()
+        """Update the computed payout."""
+        self.computed_payout = self.calculate_payout()
         self.save(update_fields=['computed_payout'])
 
 

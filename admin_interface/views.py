@@ -1,28 +1,36 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.db.models import Q, Sum, Count
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
-from decimal import Decimal
+from django.db import transaction
+from django.urls import reverse
+from django.http import HttpResponseRedirect
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
+from django.forms import ValidationError as FormValidationError
 
-from accounts.models import User, Profile
 from programs.models import (
-    ProgramType, ProgramInstance, RegistrationForm, FormQuestion,
-    Child, Registration, Role, ProgramBuildout, BuildoutResponsibility, 
-    BuildoutRoleAssignment, BaseCost, BuildoutBaseCost, InstanceRoleAssignment
+    ProgramType, ProgramBuildout, ProgramInstance, Role, Responsibility,
+    BuildoutRoleAssignment, BuildoutResponsibilityAssignment, BaseCost,
+    BuildoutBaseCostAssignment, RegistrationForm, FormQuestion, Child,
+    Registration, InstanceRoleAssignment
 )
 from communications.models import Contact
-from accounts.mixins import role_required
 from programs.forms import (
-    ProgramTypeForm, ChildForm, RegistrationFormForm, RoleForm, ProgramBuildoutForm
+    ProgramTypeForm, ProgramBuildoutForm, RoleForm, ResponsibilityForm,
+    BaseCostForm, BuildoutRoleAssignmentForm, BuildoutResponsibilityAssignmentForm,
+    BuildoutBaseCostAssignmentForm, BuildoutBaseCostAssignmentFormSet, RegistrationFormForm, FormQuestionForm
 )
+from admin_interface.forms import AdminProgramInstanceForm
+from accounts.mixins import role_required
+
+User = get_user_model()
 
 
 @login_required
@@ -170,7 +178,10 @@ def user_edit(request, user_id):
 @role_required(['Admin'])
 def program_type_management(request):
     """Program type management interface."""
-    program_types = ProgramType.objects.prefetch_related('buildouts').order_by('-created_at')
+    program_types = ProgramType.objects.prefetch_related(
+        'buildouts__role_assignments__role',
+        'buildouts__base_cost_assignments__base_cost'
+    ).order_by('-created_at')
     
     # Search functionality
     search = request.GET.get('search', '')
@@ -180,6 +191,15 @@ def program_type_management(request):
             Q(description__icontains=search)
         )
     
+    # Add instance counts to each program type
+    total_instances = 0
+    total_buildouts = 0
+    for program_type in program_types:
+        instance_count = ProgramInstance.objects.filter(buildout__program_type=program_type).count()
+        program_type.instance_count = instance_count
+        total_instances += instance_count
+        total_buildouts += program_type.buildouts.count()
+    
     # Pagination
     paginator = Paginator(program_types, 10)
     page_number = request.GET.get('page')
@@ -188,6 +208,8 @@ def program_type_management(request):
     context = {
         'page_obj': page_obj,
         'search': search,
+        'total_instances': total_instances,
+        'total_buildouts': total_buildouts,
     }
     
     return render(request, 'admin_interface/program_type_management.html', context)
@@ -220,11 +242,14 @@ def program_type_detail(request, program_type_id):
     """View program type details."""
     program_type = get_object_or_404(ProgramType, id=program_type_id)
     
+    # Get instances and buildouts
+    instances = ProgramInstance.objects.filter(buildout__program_type=program_type)
+    buildouts = program_type.buildouts.all()
+    
     context = {
         'program_type': program_type,
-        'instances': program_type.instances.all(),
-        'buildouts': program_type.buildouts.all(),
-        'roles': program_type.roles.all(),
+        'instances': instances,
+        'buildouts': buildouts,
     }
     return render(request, 'admin_interface/program_type_detail.html', context)
 
@@ -265,6 +290,9 @@ def program_type_delete(request, program_type_id):
         messages.success(request, f"Program type '{name}' deleted successfully!")
         return redirect('admin_interface:program_type_management')
     
+    # Add instance count
+    program_type.instance_count = ProgramInstance.objects.filter(buildout__program_type=program_type).count()
+    
     context = {
         'program_type': program_type,
     }
@@ -274,55 +302,13 @@ def program_type_delete(request, program_type_id):
 @login_required
 @role_required(['Admin'])
 def program_type_manage_roles(request, program_type_id):
-    """Manage roles for a program type."""
+    """Manage roles for a program type - redirects to buildout management."""
     program_type = get_object_or_404(ProgramType, id=program_type_id)
-    
-    if request.method == 'POST':
-        role_ids = request.POST.getlist('roles')
-        # Note: In the new model structure, roles are managed through buildouts
-        # This function now just shows which roles are available for the program type
-        messages.success(request, f"Role management is now handled through buildouts for '{program_type.name}'")
-        return redirect('admin_interface:program_type_detail', program_type_id=program_type.id)
-    
-    all_roles = Role.objects.all()
-    # Get roles that are used in any buildouts for this program type
-    selected_roles = Role.objects.filter(
-        buildoutroleassignment__buildout__program_type=program_type
-    ).distinct()
-    
-    context = {
-        'program_type': program_type,
-        'all_roles': all_roles,
-        'selected_roles': selected_roles,
-    }
-    return render(request, 'admin_interface/program_type_manage_roles.html', context)
+    messages.info(request, f"Role management for '{program_type.name}' is now handled through buildouts. Redirecting to buildout management.")
+    return redirect('admin_interface:buildout_management')
 
 
-@login_required
-@role_required(['Admin'])
-def program_type_manage_costs(request, program_type_id):
-    """Manage costs for a program type."""
-    program_type = get_object_or_404(ProgramType, id=program_type_id)
-    
-    if request.method == 'POST':
-        cost_ids = request.POST.getlist('costs')
-        # Note: In the new model structure, costs are managed through buildouts
-        # This function now just shows which costs are available for the program type
-        messages.success(request, f"Cost management is now handled through buildouts for '{program_type.name}'")
-        return redirect('admin_interface:program_type_detail', program_type_id=program_type.id)
-    
-    all_costs = BaseCost.objects.all()
-    # Get costs that are used in any buildouts for this program type
-    selected_costs = BaseCost.objects.filter(
-        buildoutbasecost__buildout__program_type=program_type
-    ).distinct()
-    
-    context = {
-        'program_type': program_type,
-        'all_costs': all_costs,
-        'selected_costs': selected_costs,
-    }
-    return render(request, 'admin_interface/program_type_manage_costs.html', context)
+
 
 
 @login_required
@@ -368,7 +354,7 @@ def program_instance_management(request):
 def registration_management(request):
     """Registration management interface."""
     registrations = Registration.objects.select_related(
-        'child', 'program_instance', 'program_instance__program_type'
+        'child', 'program_instance', 'program_instance__buildout', 'program_instance__buildout__program_type'
     ).order_by('-registered_at')
     
     # Search functionality
@@ -378,7 +364,7 @@ def registration_management(request):
             Q(child__first_name__icontains=search) |
             Q(child__last_name__icontains=search) |
             Q(child__parent__email__icontains=search) |
-            Q(program_instance__program_type__name__icontains=search)
+            Q(program_instance__buildout__program_type__name__icontains=search)
         )
     
     # Filter by status
@@ -444,18 +430,24 @@ def contact_management(request):
 @role_required(['Admin'])
 def role_management(request):
     """Role management interface."""
-    roles = Role.objects.order_by('name')
+    roles = Role.objects.order_by('title')
     
     # Search functionality
     search = request.GET.get('search', '')
     if search:
         roles = roles.filter(
-            Q(name__icontains=search) |
-            Q(responsibilities__icontains=search)
+            Q(title__icontains=search) |
+            Q(description__icontains=search) |
+            Q(default_responsibilities__icontains=search)
         )
     
+    # Pagination
+    paginator = Paginator(roles, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'roles': roles,
+        'page_obj': page_obj,
         'search': search,
     }
     
@@ -470,7 +462,7 @@ def role_create(request):
         form = RoleForm(request.POST)
         if form.is_valid():
             role = form.save()
-            messages.success(request, f"Role '{role.name}' created successfully!")
+            messages.success(request, f"Role '{role.title}' created successfully!")
             return redirect('admin_interface:role_detail', role_id=role.id)
     else:
         form = RoleForm()
@@ -489,15 +481,20 @@ def role_detail(request, role_id):
     """View role details."""
     role = get_object_or_404(Role, id=role_id)
     
-    # Get program types through ProgramRole
-    program_types = [pr.program_type for pr in ProgramRole.objects.filter(role=role)]
+    # Get program types through buildouts
+    program_types = ProgramType.objects.filter(
+        buildouts__role_assignments__role=role
+    ).distinct()
     # Get users through groups (since Role doesn't have direct user relationship)
-    users = User.objects.filter(groups__name=role.name)
+    users = User.objects.filter(groups__name=role.title)
+    # Get responsibilities for this role
+    responsibilities = role.responsibilities.all()
     
     context = {
         'role': role,
         'program_types': program_types,
         'users': users,
+        'responsibilities': responsibilities,
     }
     return render(request, 'admin_interface/role_detail.html', context)
 
@@ -512,7 +509,7 @@ def role_edit(request, role_id):
         form = RoleForm(request.POST, instance=role)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Role '{role.name}' updated successfully!")
+            messages.success(request, f"Role '{role.title}' updated successfully!")
             return redirect('admin_interface:role_detail', role_id=role.id)
     else:
         form = RoleForm(instance=role)
@@ -520,7 +517,7 @@ def role_edit(request, role_id):
     context = {
         'form': form,
         'role': role,
-        'title': f'Edit Role: {role.name}',
+        'title': f'Edit Role: {role.title}',
         'action': 'Update',
     }
     return render(request, 'admin_interface/role_form.html', context)
@@ -533,42 +530,15 @@ def role_delete(request, role_id):
     role = get_object_or_404(Role, id=role_id)
     
     if request.method == 'POST':
-        name = role.name
+        title = role.title
         role.delete()
-        messages.success(request, f"Role '{name}' deleted successfully!")
+        messages.success(request, f"Role '{title}' deleted successfully!")
         return redirect('admin_interface:role_management')
     
     context = {
         'role': role,
     }
     return render(request, 'admin_interface/role_confirm_delete.html', context)
-
-
-@login_required
-@role_required(['Admin'])
-def role_manage_program_types(request, role_id):
-    """Manage program types for a role."""
-    role = get_object_or_404(Role, id=role_id)
-    
-    if request.method == 'POST':
-        program_type_ids = request.POST.getlist('program_types')
-        # Note: In the new model structure, role-program type relationships are managed through buildouts
-        # This function now just shows which program types use this role
-        messages.success(request, f"Role-program type management is now handled through buildouts for '{role.name}'")
-        return redirect('admin_interface:role_detail', role_id=role.id)
-    
-    all_program_types = ProgramType.objects.all()
-    # Get program types that use this role in any buildouts
-    selected_program_types = ProgramType.objects.filter(
-        buildouts__role_assignments__role=role
-    ).distinct()
-    
-    context = {
-        'role': role,
-        'all_program_types': all_program_types,
-        'selected_program_types': selected_program_types,
-    }
-    return render(request, 'admin_interface/role_manage_program_types.html', context)
 
 
 @login_required
@@ -601,6 +571,28 @@ def role_manage_users(request, role_id):
 @role_required(['Admin'])
 def cost_management(request):
     """Base cost management interface."""
+    if request.method == 'POST':
+        # Handle cost creation
+        name = request.POST.get('name')
+        rate = request.POST.get('rate')
+        frequency = request.POST.get('frequency')
+        description = request.POST.get('description')
+        
+        if name and rate and frequency:
+            try:
+                BaseCost.objects.create(
+                    name=name,
+                    rate=rate,
+                    frequency=frequency,
+                    description=description or ''
+                )
+                messages.success(request, f"Base cost '{name}' created successfully!")
+                return redirect('admin_interface:cost_management')
+            except Exception as e:
+                messages.error(request, f"Error creating cost: {str(e)}")
+        else:
+            messages.error(request, "Please fill in all required fields.")
+    
     costs = BaseCost.objects.order_by('name')
     
     # Search functionality
@@ -611,12 +603,98 @@ def cost_management(request):
             Q(description__icontains=search)
         )
     
+    # Calculate statistics
+    total_costs = costs.count()
+    if total_costs > 0:
+        average_cost = sum(cost.rate for cost in costs) / total_costs
+    else:
+        average_cost = 0
+    
     context = {
         'costs': costs,
         'search': search,
+        'total_costs': total_costs,
+        'average_cost': average_cost,
     }
     
     return render(request, 'admin_interface/cost_management.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def cost_create(request):
+    """Create a new base cost."""
+    if request.method == 'POST':
+        form = BaseCostForm(request.POST)
+        if form.is_valid():
+            cost = form.save()
+            messages.success(request, f"Base cost '{cost.name}' created successfully!")
+            return redirect('admin_interface:cost_management')
+    else:
+        form = BaseCostForm()
+    
+    context = {
+        'form': form,
+        'action': 'Create',
+    }
+    return render(request, 'admin_interface/cost_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def cost_detail(request, cost_id):
+    """View cost details."""
+    cost = get_object_or_404(BaseCost, id=cost_id)
+    
+    # Get buildout assignments
+    buildout_assignments = cost.buildoutbasecost_set.select_related('buildout__program_type').all()
+    
+    context = {
+        'cost': cost,
+        'buildout_assignments': buildout_assignments,
+    }
+    return render(request, 'admin_interface/cost_detail.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def cost_edit(request, cost_id):
+    """Edit a base cost."""
+    cost = get_object_or_404(BaseCost, id=cost_id)
+    
+    if request.method == 'POST':
+        form = BaseCostForm(request.POST, instance=cost)
+        if form.is_valid():
+            cost = form.save()
+            messages.success(request, f"Cost '{cost.name}' updated successfully!")
+            return redirect('admin_interface:cost_management')
+    else:
+        form = BaseCostForm(instance=cost)
+    
+    context = {
+        'form': form,
+        'cost': cost,
+        'action': 'Edit',
+    }
+    return render(request, 'admin_interface/cost_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def cost_delete(request, cost_id):
+    """Delete a base cost."""
+    cost = get_object_or_404(BaseCost, id=cost_id)
+    
+    if request.method == 'POST':
+        name = cost.name
+        cost.delete()
+        messages.success(request, f"Cost '{name}' deleted successfully!")
+        return redirect('admin_interface:cost_management')
+    
+    context = {
+        'cost': cost,
+    }
+    return render(request, 'admin_interface/cost_confirm_delete.html', context)
 
 
 @login_required
@@ -679,11 +757,86 @@ def buildout_create(request):
 @login_required
 @role_required(['Admin'])
 def buildout_detail(request, buildout_id):
-    """View buildout details."""
+    """View buildout details with Excel-like role and responsibility breakdown."""
     buildout = get_object_or_404(ProgramBuildout, id=buildout_id)
     
     # Get related program instances
     instances = ProgramInstance.objects.filter(buildout=buildout)
+    
+    # Calculate summary statistics using the new model structure
+    total_hours = sum(
+        buildout.calculate_total_hours_per_role(role) 
+        for role in buildout.roles.all()
+    )
+    total_revenue = buildout.total_revenue_per_year
+    total_payouts = buildout.total_yearly_costs
+    
+    # Prepare detailed role data with responsibilities for Excel-like display
+    roles_data = []
+    for role in buildout.roles.all().order_by('title'):
+        # Get all responsibilities for this role
+        responsibilities = role.responsibilities.all().order_by('name')
+        
+        # Calculate hours per scope for this role
+        hours_per_workshop_concept = sum(
+            resp.hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_WORKSHOP_CONCEPT'
+        )
+        hours_per_new_worker = sum(
+            resp.hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_NEW_FACILITATOR'
+        )
+        hours_per_workshop = sum(
+            resp.hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_WORKSHOP'
+        )
+        hours_per_session = sum(
+            resp.hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_SESSION'
+        )
+        
+        # Calculate yearly totals
+        yearly_hours = (
+            hours_per_workshop_concept * buildout.new_workshop_concepts_per_year +
+            hours_per_new_worker * buildout.num_new_facilitators +
+            hours_per_workshop * buildout.num_workshops_per_year +
+            hours_per_session * buildout.total_sessions_per_year
+        )
+        
+        # Calculate financial data
+        payout = buildout.calculate_payout_per_role(role)
+        percentage = buildout.calculate_percent_of_revenue_per_role(role)
+        
+        roles_data.append({
+            'role': role,
+            'responsibilities': responsibilities,
+            'hours_per_workshop_concept': hours_per_workshop_concept,
+            'hours_per_new_worker': hours_per_new_worker,
+            'hours_per_workshop': hours_per_workshop,
+            'hours_per_session': hours_per_session,
+            'yearly_hours': yearly_hours,
+            'payout': payout,
+            'percentage': percentage
+        })
+    
+    # Calculate base costs and overhead
+    base_costs_data = []
+    total_base_costs = 0
+    for base_cost_assignment in buildout.base_cost_assignments.all():
+        yearly_cost = base_cost_assignment.calculate_yearly_cost()
+        total_base_costs += yearly_cost
+        
+        base_costs_data.append({
+            'base_cost': base_cost_assignment.base_cost,
+            'multiplier': base_cost_assignment.multiplier,
+            'yearly_cost': yearly_cost,
+            'percentage': (yearly_cost / total_revenue * 100) if total_revenue > 0 else 0
+        })
+    
+    # Calculate total costs including base costs
+    total_all_costs = total_payouts + total_base_costs
+    total_profit = total_revenue - total_all_costs
+    total_profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
     
     # Calculate total sessions per year
     total_sessions_per_year = buildout.total_sessions_per_year
@@ -692,6 +845,15 @@ def buildout_detail(request, buildout_id):
         'buildout': buildout,
         'instances': instances,
         'total_sessions_per_year': total_sessions_per_year,
+        'total_hours': total_hours,
+        'total_revenue': total_revenue,
+        'total_payouts': total_payouts,
+        'total_base_costs': total_base_costs,
+        'total_all_costs': total_all_costs,
+        'total_profit': total_profit,
+        'total_profit_margin': total_profit_margin,
+        'roles_data': roles_data,
+        'base_costs_data': base_costs_data,
     }
     return render(request, 'admin_interface/buildout_detail.html', context)
 
@@ -704,15 +866,20 @@ def buildout_edit(request, buildout_id):
     
     if request.method == 'POST':
         form = ProgramBuildoutForm(request.POST, instance=buildout)
-        if form.is_valid():
+        cost_formset = BuildoutBaseCostAssignmentFormSet(request.POST, instance=buildout)
+        
+        if form.is_valid() and cost_formset.is_valid():
             buildout = form.save()
+            cost_formset.save()
             messages.success(request, f"Buildout '{buildout.title}' updated successfully!")
             return redirect('admin_interface:buildout_detail', buildout_id=buildout.id)
     else:
         form = ProgramBuildoutForm(instance=buildout)
+        cost_formset = BuildoutBaseCostAssignmentFormSet(instance=buildout)
     
     context = {
         'form': form,
+        'cost_formset': cost_formset,
         'buildout': buildout,
         'action': 'Edit',
     }
@@ -1081,3 +1248,268 @@ def update_registration_status(request, registration_id):
         })
     
     return JsonResponse({'success': False, 'message': 'Invalid status'}, status=400)
+
+
+@login_required
+@role_required(['Admin'])
+def buildout_manage_responsibilities(request, buildout_id):
+    """Manage responsibilities and hours for a buildout with Excel-like interface."""
+    buildout = get_object_or_404(ProgramBuildout, id=buildout_id)
+    
+    if request.method == 'POST':
+        # Handle responsibility hour updates
+        for key, value in request.POST.items():
+            if key.startswith('responsibility_'):
+                responsibility_id = key.split('_')[1]
+                try:
+                    responsibility = Responsibility.objects.get(id=responsibility_id)
+                    new_hours = Decimal(value)
+                    if new_hours >= 0:
+                        responsibility.hours = new_hours
+                        responsibility.save()
+                except (Responsibility.DoesNotExist, ValueError):
+                    continue
+        
+        messages.success(request, "Responsibility hours updated successfully!")
+        return redirect('admin_interface:buildout_detail', buildout_id=buildout.id)
+    
+    # Get all roles with their responsibilities
+    roles_data = []
+    for role in Role.objects.all().order_by('title'):
+        responsibilities = role.responsibilities.all().order_by('name')
+        roles_data.append({
+            'role': role,
+            'responsibilities': responsibilities,
+            'is_assigned': buildout.roles.filter(id=role.id).exists()
+        })
+    
+    context = {
+        'buildout': buildout,
+        'roles_data': roles_data,
+    }
+    
+    return render(request, 'admin_interface/buildout_manage_responsibilities.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def buildout_assign_roles(request, buildout_id):
+    """Assign roles to a buildout."""
+    buildout = get_object_or_404(ProgramBuildout, id=buildout_id)
+    
+    if request.method == 'POST':
+        # Get selected roles
+        selected_roles = request.POST.getlist('roles')
+        
+        # Clear existing assignments
+        buildout.roles.clear()
+        
+        # Add selected roles
+        for role_id in selected_roles:
+            try:
+                role = Role.objects.get(id=role_id)
+                buildout.roles.add(role)
+            except Role.DoesNotExist:
+                continue
+        
+        messages.success(request, f"Assigned {len(selected_roles)} roles to buildout.")
+        return redirect('admin_interface:buildout_detail', buildout_id=buildout.id)
+    
+    # Get all available roles
+    all_roles = Role.objects.all().order_by('title')
+    assigned_roles = buildout.roles.all()
+    
+    context = {
+        'buildout': buildout,
+        'all_roles': all_roles,
+        'assigned_roles': assigned_roles,
+    }
+    
+    return render(request, 'admin_interface/buildout_assign_roles.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def role_manage_responsibilities(request, role_id):
+    """Manage responsibilities for a role with Excel-like interface."""
+    role = get_object_or_404(Role, id=role_id)
+    
+    if request.method == 'POST':
+        # Handle responsibility hour updates
+        for key, value in request.POST.items():
+            if key.startswith('responsibility_'):
+                responsibility_id = key.split('_')[1]
+                try:
+                    responsibility = Responsibility.objects.get(id=responsibility_id)
+                    new_hours = Decimal(value)
+                    if new_hours >= 0:
+                        responsibility.hours = new_hours
+                        responsibility.save()
+                except (Responsibility.DoesNotExist, ValueError):
+                    continue
+        
+        messages.success(request, "Responsibility hours updated successfully!")
+        return redirect('admin_interface:role_detail', role_id=role.id)
+    
+    # Get all responsibilities for this role
+    responsibilities = role.responsibilities.all().order_by('name')
+    
+    context = {
+        'role': role,
+        'responsibilities': responsibilities,
+    }
+    
+    return render(request, 'admin_interface/role_manage_responsibilities.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def role_add_responsibility(request, role_id):
+    """Add a new responsibility to a role."""
+    role = get_object_or_404(Role, id=role_id)
+    
+    if request.method == 'POST':
+        form = ResponsibilityForm(request.POST)
+        if form.is_valid():
+            responsibility = form.save(commit=False)
+            responsibility.role = role
+            responsibility.save()
+            messages.success(request, f"Responsibility '{responsibility.name}' added to role '{role.title}' successfully!")
+            return redirect('admin_interface:role_detail', role_id=role.id)
+    else:
+        form = ResponsibilityForm()
+    
+    context = {
+        'form': form,
+        'role': role,
+        'title': f'Add Responsibility to {role.title}',
+        'action': 'Add',
+    }
+    
+    return render(request, 'admin_interface/responsibility_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def program_instance_create_from_buildout(request, buildout_id):
+    """Create a new program instance from a specific buildout using a custom form."""
+    buildout = get_object_or_404(ProgramBuildout, id=buildout_id)
+
+    if request.method == 'POST':
+        form = AdminProgramInstanceForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    instance = form.save(commit=False)
+                    instance.buildout = buildout
+                    instance.save()
+                    messages.success(request, f"Program instance '{instance.title}' created successfully!")
+                    return redirect('admin_interface:program_instance_detail', instance_id=instance.id)
+            except ValidationError as e:
+                messages.error(request, f"Error creating program instance: {e}")
+            except Exception as e:
+                messages.error(request, f"An unexpected error occurred: {e}")
+        else:
+            messages.error(request, "Please correct the errors in the form.")
+    else:
+        form = AdminProgramInstanceForm(initial={'buildout': buildout})
+
+    context = {
+        'form': form,
+        'buildout': buildout,
+        'title': 'Create Program Instance',
+        'action': 'Create',
+    }
+    return render(request, 'admin_interface/program_instance_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def program_instance_create(request):
+    """Create a new program instance without a specific buildout using a custom form."""
+    if request.method == 'POST':
+        form = AdminProgramInstanceForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    instance = form.save()
+                    messages.success(request, f"Program instance '{instance.title}' created successfully!")
+                    return redirect('admin_interface:program_instance_detail', instance_id=instance.id)
+            except ValidationError as e:
+                messages.error(request, f"Error creating program instance: {e}")
+            except Exception as e:
+                messages.error(request, f"An unexpected error occurred: {e}")
+        else:
+            messages.error(request, "Please correct the errors in the form.")
+    else:
+        form = AdminProgramInstanceForm()
+
+    context = {
+        'form': form,
+        'title': 'Create Program Instance',
+        'action': 'Create',
+    }
+    return render(request, 'admin_interface/program_instance_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def program_instance_edit(request, instance_id):
+    """Edit an existing program instance using a custom form."""
+    instance = get_object_or_404(ProgramInstance, id=instance_id)
+
+    if request.method == 'POST':
+        form = AdminProgramInstanceForm(request.POST, instance=instance)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    instance = form.save()
+                    messages.success(request, f"Program instance '{instance.title}' updated successfully!")
+                    return redirect('admin_interface:program_instance_detail', instance_id=instance.id)
+            except ValidationError as e:
+                messages.error(request, f"Error updating program instance: {e}")
+            except Exception as e:
+                messages.error(request, f"An unexpected error occurred: {e}")
+        else:
+            messages.error(request, "Please correct the errors in the form.")
+    else:
+        form = AdminProgramInstanceForm(instance=instance)
+
+    context = {
+        'form': form,
+        'instance': instance,
+        'title': f'Edit Program Instance: {instance.title}',
+        'action': 'Edit',
+    }
+    return render(request, 'admin_interface/program_instance_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def program_instance_detail(request, instance_id):
+    """View program instance details."""
+    instance = get_object_or_404(ProgramInstance, id=instance_id)
+    
+    context = {
+        'instance': instance,
+        'registrations': instance.registrations.all().order_by('-registered_at'),
+    }
+    return render(request, 'admin_interface/program_instance_detail.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def program_instance_delete(request, instance_id):
+    """Delete a program instance."""
+    instance = get_object_or_404(ProgramInstance, id=instance_id)
+    
+    if request.method == 'POST':
+        title = instance.title
+        instance.delete()
+        messages.success(request, f"Program instance '{title}' deleted successfully!")
+        return redirect('admin_interface:program_instance_management')
+    
+    context = {
+        'instance': instance,
+    }
+    return render(request, 'admin_interface/program_instance_confirm_delete.html', context)

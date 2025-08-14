@@ -1,14 +1,15 @@
 /* Custom styles */
 .navbar {
-    margin-bottom: 2rem;
+    margin-bottom: 0;
 }
 
 .card {
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .card:hover {
     transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
 }
 
 .btn-primary {
@@ -28,4 +29,79 @@
 }
 .htmx-request.htmx-indicator {
     display: inline;
+}
+
+/* Jexida Homepage Styles */
+.hero-section {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+}
+
+.hero-section h1 {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hero-section .btn {
+    transition: all 0.3s ease;
+}
+
+.hero-section .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Section styling */
+section {
+    position: relative;
+}
+
+section h2 {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Card enhancements */
+.card.border-0.shadow-sm {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card.border-0.shadow-sm .card-body {
+    padding: 2rem 1.5rem;
+}
+
+/* Icon styling */
+.bi {
+    transition: transform 0.3s ease;
+}
+
+.card:hover .bi {
+    transform: scale(1.1);
+}
+
+/* Footer styling */
+footer {
+    margin-top: 0;
+}
+
+footer a:hover {
+    opacity: 0.8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        min-height: 50vh;
+        padding: 3rem 0;
+    }
+    
+    .hero-section h1 {
+        font-size: 2.5rem;
+    }
+    
+    .card.border-0.shadow-sm .card-body {
+        padding: 1.5rem 1rem;
+    }
 } 

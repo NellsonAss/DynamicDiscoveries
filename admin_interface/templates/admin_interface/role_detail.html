@@ -1,15 +1,22 @@
 {% extends "admin_interface/base_admin.html" %}
+{% load math_filters %}
 
-{% block title %}{{ role.name }} - Role Details{% endblock %}
+{% block title %}{{ role.title }} - Role Details{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0">{{ role.name }}</h1>
+                <h1 class="h3 mb-0">{{ role.title }}</h1>
                 <div class="btn-group">
-                    <a href="{% url 'admin_interface:role_edit' role.id %}" class="btn btn-outline-primary">
+                    <a href="{% url 'admin_interface:role_manage_responsibilities' role.id %}" class="btn btn-outline-success">
+                        <i class="bi bi-table me-1"></i>Manage Responsibilities
+                    </a>
+                    <a href="{% url 'admin_interface:role_add_responsibility' role.id %}" class="btn btn-outline-primary">
+                        <i class="bi bi-plus-circle me-1"></i>Add Responsibility
+                    </a>
+                    <a href="{% url 'admin_interface:role_edit' role.id %}" class="btn btn-outline-warning">
                         <i class="bi bi-pencil me-1"></i>Edit
                     </a>
                     <a href="{% url 'admin_interface:role_management' %}" class="btn btn-outline-secondary">
@@ -30,8 +37,8 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <p><strong>Name:</strong> {{ role.name }}</p>
-                                    <p><strong>Hourly Rate:</strong> ${{ role.hourly_rate }}/hr</p>
+                                    <p><strong>Title:</strong> {{ role.title }}</p>
+                                    <p><strong>Default Rate:</strong> $50.00/hr</p>
                                 </div>
                                 <div class="col-md-6">
                                     <p><strong>Program Types:</strong> {{ program_types.count }}</p>
@@ -39,10 +46,65 @@
                                 </div>
                             </div>
                             
-                            {% if role.responsibilities %}
+                            {% if role.description %}
                                 <div class="mt-3">
-                                    <strong>Responsibilities:</strong>
-                                    <p class="mb-0">{{ role.responsibilities }}</p>
+                                    <strong>Description:</strong>
+                                    <p class="mb-0">{{ role.description }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Responsibilities -->
+                    <div class="admin-card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-list-task me-2"></i>Responsibilities
+                            </h5>
+                            <span class="badge bg-primary">{{ responsibilities.count }}</span>
+                        </div>
+                        <div class="card-body">
+                            {% if responsibilities %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Responsibility</th>
+                                                <th>Description</th>
+                                                <th>Frequency</th>
+                                                <th>Hours</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for responsibility in responsibilities %}
+                                                <tr>
+                                                    <td><strong>{{ responsibility.name }}</strong></td>
+                                                    <td>{{ responsibility.description|truncatewords:10 }}</td>
+                                                    <td>
+                                                        <span class="badge bg-info">{{ responsibility.get_frequency_type_display }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-success">{{ responsibility.hours|floatformat:2 }}h</span>
+                                                    </td>
+                                                    <td>
+                                                        <a href="#" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="bi bi-list-task text-muted" style="font-size: 3rem;"></i>
+                                    <h5 class="text-muted mt-3">No Responsibilities</h5>
+                                    <p class="text-muted">This role doesn't have any responsibilities defined yet.</p>
+                                    <a href="{% url 'admin_interface:role_add_responsibility' role.id %}" class="btn btn-primary">
+                                        <i class="bi bi-plus-circle me-2"></i>Add First Responsibility
+                                    </a>
                                 </div>
                             {% endif %}
                         </div>
@@ -63,8 +125,7 @@
                                         <thead>
                                             <tr>
                                                 <th>Program Type</th>
-                                                <th>Target Grades</th>
-                                                <th>Rate per Student</th>
+                                                <th>Buildouts</th>
                                                 <th>Actions</th>
                                             </tr>
                                         </thead>
@@ -72,8 +133,7 @@
                                             {% for program_type in program_types %}
                                                 <tr>
                                                     <td>{{ program_type.name }}</td>
-                                                    <td>{{ program_type.target_grade_levels }}</td>
-                                                    <td>${{ program_type.rate_per_student }}</td>
+                                                    <td>{{ program_type.buildouts.count }} buildouts</td>
                                                     <td>
                                                         <a href="{% url 'admin_interface:program_type_detail' program_type.id %}" class="btn btn-sm btn-outline-primary">
                                                             <i class="bi bi-eye"></i>
@@ -85,7 +145,8 @@
                                     </table>
                                 </div>
                             {% else %}
-                                <p class="text-muted">No program types assigned to this role.</p>
+                                <p class="text-muted">No program types use this role in any buildouts.</p>
+                                <p class="text-muted small">Roles are now assigned to buildouts, not directly to program types.</p>
                             {% endif %}
                         </div>
                     </div>
@@ -149,10 +210,13 @@
                         </div>
                         <div class="card-body">
                             <div class="d-grid gap-2">
-                                <a href="{% url 'admin_interface:role_manage_program_types' role.id %}" class="btn btn-outline-primary">
-                                    <i class="bi bi-collection me-1"></i>Manage Program Types
+                                <a href="{% url 'admin_interface:role_manage_responsibilities' role.id %}" class="btn btn-outline-success">
+                                    <i class="bi bi-table me-1"></i>Manage Responsibilities
                                 </a>
-                                <a href="{% url 'admin_interface:role_manage_users' role.id %}" class="btn btn-outline-success">
+                                <a href="{% url 'admin_interface:role_add_responsibility' role.id %}" class="btn btn-outline-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Responsibility
+                                </a>
+                                <a href="{% url 'admin_interface:role_manage_users' role.id %}" class="btn btn-outline-warning">
                                     <i class="bi bi-people me-1"></i>Manage Users
                                 </a>
                             </div>
@@ -169,12 +233,22 @@
                         <div class="card-body">
                             <div class="row text-center">
                                 <div class="col-6">
-                                    <h4 class="text-primary mb-0">{{ program_types.count }}</h4>
-                                    <small class="text-muted">Program Types</small>
+                                    <h4 class="text-primary mb-0">{{ responsibilities.count }}</h4>
+                                    <small class="text-muted">Responsibilities</small>
                                 </div>
                                 <div class="col-6">
-                                    <h4 class="text-success mb-0">{{ users.count }}</h4>
+                                    <h4 class="text-success mb-0">{{ program_types.count }}</h4>
+                                    <small class="text-muted">Program Types</small>
+                                </div>
+                            </div>
+                            <div class="row text-center mt-3">
+                                <div class="col-6">
+                                    <h4 class="text-info mb-0">{{ users.count }}</h4>
                                     <small class="text-muted">Users</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-warning mb-0">{{ responsibilities.count|multiply:50|floatformat:0 }}</h4>
+                                    <small class="text-muted">Total Hours</small>
                                 </div>
                             </div>
                         </div>

@@ -297,13 +297,13 @@ function editBuildout(id) {
 }
 
 function manageRoles(id) {
-    // Buildouts don't have direct role management - roles are managed at the program type level
-    alert('Role management is handled at the program type level. Please edit the program type to manage roles.');
+    // Redirect to buildout edit page where roles can be managed
+    window.location.href = `/admin-interface/buildouts/${id}/edit/`;
 }
 
 function manageCosts(id) {
-    // Buildouts don't have direct cost management - costs are managed at the program type level
-    alert('Cost management is handled at the program type level. Please edit the program type to manage costs.');
+    // Redirect to buildout edit page where costs can be managed
+    window.location.href = `/admin-interface/buildouts/${id}/edit/`;
 }
 
 function deleteBuildout(id) {

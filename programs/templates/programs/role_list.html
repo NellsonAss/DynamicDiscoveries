@@ -19,15 +19,21 @@
                         <div class="col-md-6 col-lg-4 mb-4">
                             <div class="card h-100">
                                 <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h5 class="card-title mb-0">{{ role.name }}</h5>
-                                    <span class="badge bg-primary">{{ role.default_percent_of_revenue }}%</span>
+                                    <h5 class="card-title mb-0">{{ role.title }}</h5>
+                                    <span class="badge bg-primary">{{ role.responsibilities.count }} responsibilities</span>
                                 </div>
                                 <div class="card-body">
-                                    <p class="card-text">{{ role.responsibilities|truncatewords:30 }}</p>
+                                    <p class="card-text">{{ role.description|truncatewords:30 }}</p>
+                                    {% if role.default_responsibilities %}
+                                        <small class="text-muted">
+                                            <strong>Default Responsibilities:</strong><br>
+                                            {{ role.default_responsibilities|truncatewords:20 }}
+                                        </small>
+                                    {% endif %}
                                 </div>
                                 <div class="card-footer">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">Default Revenue Share</small>
+                                        <small class="text-muted">Created {{ role.created_at|date:"M j, Y" }}</small>
                                         <a href="{% url 'admin:programs_role_change' role.pk %}" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil me-1"></i>Edit
                                         </a>

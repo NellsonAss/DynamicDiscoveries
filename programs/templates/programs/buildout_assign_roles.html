@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Assign Roles - {{ buildout.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="bi bi-people me-2"></i>Assign Roles</h1>
+                    <p class="text-muted mb-0">{{ buildout.title }} - {{ buildout.program_type.name }}</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'programs:buildout_detail' buildout.pk %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Buildout
+                    </a>
+                    <a href="{% url 'programs:buildout_manage_responsibilities' buildout.pk %}" class="btn btn-primary">
+                        <i class="bi bi-table me-2"></i>Manage Responsibilities
+                    </a>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Instructions:</strong> Select the roles you want to assign to this buildout. Only assigned roles will appear in the buildout calculations.
+            </div>
+
+            <!-- Role Assignment Form -->
+            <form method="post">
+                {% csrf_token %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-check-square me-2"></i>Select Roles</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for role in all_roles %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100 {% if role in assigned_roles %}border-success{% endif %}">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       name="roles" 
+                                                       value="{{ role.id }}" 
+                                                       id="role_{{ role.id }}"
+                                                       {% if role in assigned_roles %}checked{% endif %}>
+                                                <label class="form-check-label" for="role_{{ role.id }}">
+                                                    <h6 class="card-title mb-1">{{ role.title }}</h6>
+                                                    <p class="card-text text-muted small mb-2">{{ role.description }}</p>
+                                                    <small class="text-muted">
+                                                        <strong>{{ role.responsibilities.count }}</strong> responsibilities
+                                                    </small>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="row mt-4">
+                    <div class="col-12 text-center">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Save Role Assignments
+                        </button>
+                        <a href="{% url 'programs:buildout_detail' buildout.pk %}" class="btn btn-outline-secondary btn-lg ms-2">
+                            <i class="bi bi-x-circle me-2"></i>Cancel
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

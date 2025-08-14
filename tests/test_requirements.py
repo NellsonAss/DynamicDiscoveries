@@ -401,15 +401,12 @@ class RequirementsAcceptanceTests(TestCase):
         """Test REQ-010: Program management system."""
         # Test program type creation
         from programs.models import ProgramType, Role, BaseCost
-        role = Role.objects.create(name="Instructor", hourly_rate=25.00)
-        base_cost = BaseCost.objects.create(name="Base Cost", amount=10.00, frequency="PER_STUDENT", description="Test cost")
+        role = Role.objects.create(title="Instructor", description="Test instructor role")
+        base_cost = BaseCost.objects.create(name="Base Cost", rate=10.00, frequency="PER_SESSION", description="Test cost")
         
         program_type = ProgramType.objects.create(
             name="Test Program",
-            description="Test Description",
-            scope="Test scope",
-            target_grade_levels="K-5",
-            rate_per_student=25.00
+            description="Test Description"
         )
         
         # Create buildout
@@ -419,44 +416,39 @@ class RequirementsAcceptanceTests(TestCase):
             title="Test Buildout",
             num_facilitators=2,
             num_new_facilitators=1,
-            workshops_per_facilitator_per_year=4,
             students_per_workshop=12,
             sessions_per_workshop=8,
-            new_workshop_concepts_per_year=1
+            rate_per_student=25.00
         )
         
         # Create buildout role assignment
         from programs.models import BuildoutRoleAssignment
         role_assignment = BuildoutRoleAssignment.objects.create(
             buildout=buildout,
-            role=role,
-            percent_of_revenue=25.00
+            role=role
         )
         
         # Create buildout base cost
-        from programs.models import BuildoutBaseCost
-        buildout_base_cost = BuildoutBaseCost.objects.create(
+        from programs.models import BuildoutBaseCostAssignment
+        buildout_base_cost = BuildoutBaseCostAssignment.objects.create(
             buildout=buildout,
             base_cost=base_cost,
             multiplier=1.00
         )
         
         self.assertEqual(program_type.name, "Test Program")
-        self.assertEqual(buildout.role_assignments.count(), 1)
-        self.assertEqual(buildout.baseline_costs.count(), 1)
+        self.assertEqual(buildout.roles.count(), 1)
+        self.assertEqual(buildout.base_costs.count(), 1)
     
     def test_REQ_011_program_type_templates(self):
         """Test REQ-011: Program type templates."""
         from programs.models import ProgramType, Role, BaseCost
-        role = Role.objects.create(name="Instructor", hourly_rate=25.00)
-        base_cost = BaseCost.objects.create(name="Base Cost", amount=10.00, frequency="PER_STUDENT", description="Test cost")
+        role = Role.objects.create(title="Instructor", description="Test instructor role")
+        base_cost = BaseCost.objects.create(name="Base Cost", rate=10.00, frequency="PER_SESSION", description="Test cost")
         
         program_type = ProgramType.objects.create(
             name="Test Program",
-            description="Test Description",
-            scope="Test scope",
-            target_grade_levels="K-5",
-            rate_per_student=25.00
+            description="Test Description"
         )
         
         # Create buildout
@@ -466,100 +458,69 @@ class RequirementsAcceptanceTests(TestCase):
             title="Test Buildout",
             num_facilitators=2,
             num_new_facilitators=1,
-            workshops_per_facilitator_per_year=4,
             students_per_workshop=12,
             sessions_per_workshop=8,
-            new_workshop_concepts_per_year=1
+            rate_per_student=25.00
         )
         
         # Create buildout role assignment
         from programs.models import BuildoutRoleAssignment
         role_assignment = BuildoutRoleAssignment.objects.create(
             buildout=buildout,
-            role=role,
-            percent_of_revenue=25.00
+            role=role
         )
         
         # Create buildout base cost
-        from programs.models import BuildoutBaseCost
-        buildout_base_cost = BuildoutBaseCost.objects.create(
+        from programs.models import BuildoutBaseCostAssignment
+        buildout_base_cost = BuildoutBaseCostAssignment.objects.create(
             buildout=buildout,
             base_cost=base_cost,
             multiplier=1.00
         )
         
         # Test role assignment
-        self.assertEqual(buildout.role_assignments.count(), 1)
-        self.assertEqual(role.hourly_rate, 25.00)
+        self.assertEqual(buildout.roles.count(), 1)
+        self.assertEqual(role.title, "Instructor")
         
         # Test cost assignment
-        self.assertEqual(buildout.baseline_costs.count(), 1)
-        self.assertEqual(base_cost.amount, 10.00)
+        self.assertEqual(buildout.base_costs.count(), 1)
+        self.assertEqual(base_cost.rate, 10.00)
     
     def test_REQ_012_role_and_payout_management(self):
         """Test REQ-012: Role and payout management."""
-        from programs.models import Role, BaseCost
-        role = Role.objects.create(name="Instructor", hourly_rate=25.00)
-        base_cost = BaseCost.objects.create(name="Base Cost", amount=10.00, frequency="PER_STUDENT", description="Test cost")
+        from programs.models import Role, Responsibility
+        role = Role.objects.create(title="Instructor", description="Test instructor role")
         
-        # Test role creation
-        self.assertEqual(role.name, "Instructor")
-        self.assertEqual(role.hourly_rate, 25.00)
+        # Create responsibility
+        responsibility = Responsibility.objects.create(
+            role=role,
+            name="Teaching",
+            description="Teaching responsibilities",
+            frequency_type="PER_SESSION",
+            hours=2.0
+        )
         
-        # Test cost creation
-        self.assertEqual(base_cost.name, "Base Cost")
-        self.assertEqual(base_cost.amount, 10.00)
+        self.assertEqual(role.title, "Instructor")
+        self.assertEqual(responsibility.hours, 2.0)
+        self.assertEqual(responsibility.frequency_type, "PER_SESSION")
     
     def test_REQ_013_cost_management_system(self):
         """Test REQ-013: Cost management system."""
-        from programs.models import BaseCost, ProgramType
-        base_cost = BaseCost.objects.create(name="Base Cost", amount=10.00, frequency="PER_STUDENT", description="Test cost")
+        from programs.models import BaseCost
+        base_cost = BaseCost.objects.create(name="Base Cost", rate=10.00, frequency="PER_SESSION", description="Test cost")
         
-        program_type = ProgramType.objects.create(
-            name="Test Program",
-            description="Test Description",
-            scope="Test scope",
-            target_grade_levels="K-5",
-            rate_per_student=25.00
-        )
-        
-        # Create buildout
-        from programs.models import ProgramBuildout
-        buildout = ProgramBuildout.objects.create(
-            program_type=program_type,
-            title="Test Buildout",
-            num_facilitators=2,
-            num_new_facilitators=1,
-            workshops_per_facilitator_per_year=4,
-            students_per_workshop=12,
-            sessions_per_workshop=8,
-            new_workshop_concepts_per_year=1
-        )
-        
-        # Create buildout base cost
-        from programs.models import BuildoutBaseCost
-        buildout_base_cost = BuildoutBaseCost.objects.create(
-            buildout=buildout,
-            base_cost=base_cost,
-            multiplier=1.00
-        )
-        
-        # Test cost assignment to buildout
-        self.assertEqual(buildout.baseline_costs.count(), 1)
-        self.assertEqual(base_cost.amount, 10.00)
+        self.assertEqual(base_cost.name, "Base Cost")
+        self.assertEqual(base_cost.rate, 10.00)
+        self.assertEqual(base_cost.frequency, "PER_SESSION")
     
     def test_REQ_014_program_buildout_configuration(self):
         """Test REQ-014: Program buildout configuration."""
-        from programs.models import ProgramType, ProgramBuildout, Role, BaseCost
-        role = Role.objects.create(name="Instructor", hourly_rate=25.00)
-        base_cost = BaseCost.objects.create(name="Base Cost", amount=10.00, frequency="PER_STUDENT", description="Test cost")
+        from programs.models import ProgramType, Role, ProgramBuildout
+        role = Role.objects.create(title="Instructor", description="Test instructor role")
         
         program_type = ProgramType.objects.create(
             name="Test Program",
-            description="Test Description",
-            scope="Test scope",
-            target_grade_levels="K-5",
-            rate_per_student=25.00
+            description="Test Description"
         )
         
         # Create buildout
@@ -568,75 +529,86 @@ class RequirementsAcceptanceTests(TestCase):
             title="Test Buildout",
             num_facilitators=2,
             num_new_facilitators=1,
-            workshops_per_facilitator_per_year=4,
             students_per_workshop=12,
             sessions_per_workshop=8,
-            new_workshop_concepts_per_year=1
+            rate_per_student=25.00
         )
         
         # Create buildout role assignment
         from programs.models import BuildoutRoleAssignment
         role_assignment = BuildoutRoleAssignment.objects.create(
             buildout=buildout,
-            role=role,
-            percent_of_revenue=25.00
+            role=role
         )
         
-        # Create buildout base cost
-        from programs.models import BuildoutBaseCost
-        buildout_base_cost = BuildoutBaseCost.objects.create(
-            buildout=buildout,
-            base_cost=base_cost,
-            multiplier=1.00
-        )
-        
-        self.assertEqual(buildout.program_type, program_type)
+        # Test buildout creation
+        self.assertEqual(buildout.title, "Test Buildout")
         self.assertEqual(buildout.num_facilitators, 2)
         self.assertEqual(buildout.students_per_workshop, 12)
+        self.assertEqual(buildout.rate_per_student, 25.00)
+        
+        # Test role assignment
+        self.assertEqual(buildout.roles.count(), 1)
+        self.assertEqual(buildout.roles.first(), role)
     
     def test_REQ_015_program_instance_management(self):
         """Test REQ-015: Program instance management."""
-        from programs.models import ProgramType, ProgramInstance, Role, BaseCost
-        from datetime import datetime, timedelta
-        role = Role.objects.create(name="Instructor", hourly_rate=25.00)
-        base_cost = BaseCost.objects.create(name="Base Cost", amount=10.00, frequency="PER_STUDENT", description="Test cost")
+        from programs.models import ProgramType, Role, ProgramBuildout, ProgramInstance
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        User = get_user_model()
+        
+        role = Role.objects.create(title="Instructor", description="Test instructor role")
         
         program_type = ProgramType.objects.create(
             name="Test Program",
-            description="Test Description",
-            scope="Test scope",
-            target_grade_levels="K-5",
-            rate_per_student=25.00
+            description="Test Description"
         )
         
         # Create buildout
-        from programs.models import ProgramBuildout
         buildout = ProgramBuildout.objects.create(
             program_type=program_type,
             title="Test Buildout",
             num_facilitators=2,
             num_new_facilitators=1,
-            workshops_per_facilitator_per_year=4,
             students_per_workshop=12,
             sessions_per_workshop=8,
-            new_workshop_concepts_per_year=1
+            rate_per_student=25.00
         )
         
-        start_date = datetime.now()
+        # Create user
+        user = User.objects.create_user(
+            email="test@example.com",
+            password="testpass123"
+        )
+        
+        # Create program instance
+        start_date = timezone.now()
         end_date = start_date + timedelta(days=30)
         
-        instance = ProgramInstance.objects.create(
+        program_instance = ProgramInstance.objects.create(
             buildout=buildout,
             title="Test Instance",
-            location="Test Location",
             start_date=start_date,
             end_date=end_date,
+            location="Test Location",
             capacity=20
         )
         
-        self.assertEqual(instance.buildout, buildout)
-        self.assertEqual(instance.location, "Test Location")
-        self.assertEqual(instance.capacity, 20)
+        # Create instance role assignment
+        from programs.models import InstanceRoleAssignment
+        instance_role = InstanceRoleAssignment.objects.create(
+            program_instance=program_instance,
+            role=role,
+            contractor=user
+        )
+        
+        self.assertEqual(program_instance.title, "Test Instance")
+        self.assertEqual(program_instance.location, "Test Location")
+        self.assertEqual(program_instance.capacity, 20)
+        self.assertEqual(program_instance.contractor_assignments.count(), 1)
     
     def test_REQ_016_registration_form_builder(self):
         """Test REQ-016: Registration form builder."""
@@ -674,73 +646,88 @@ class RequirementsAcceptanceTests(TestCase):
     
     def test_REQ_018_program_registration_system(self):
         """Test REQ-018: Program registration system."""
-        from programs.models import Child, ProgramInstance, Registration, ProgramType, Role, BaseCost
-        from datetime import datetime, timedelta, date
-        role = Role.objects.create(name="Instructor", hourly_rate=25.00)
-        base_cost = BaseCost.objects.create(name="Base Cost", amount=10.00, frequency="PER_STUDENT", description="Test cost")
+        from programs.models import ProgramType, Role, ProgramBuildout, ProgramInstance, Child, Registration
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        User = get_user_model()
+        
+        role = Role.objects.create(title="Instructor", description="Test instructor role")
         
         program_type = ProgramType.objects.create(
             name="Test Program",
-            description="Test Description",
-            scope="Test scope",
-            target_grade_levels="K-5",
-            rate_per_student=25.00
+            description="Test Description"
         )
         
         # Create buildout
-        from programs.models import ProgramBuildout
         buildout = ProgramBuildout.objects.create(
             program_type=program_type,
             title="Test Buildout",
             num_facilitators=2,
             num_new_facilitators=1,
-            workshops_per_facilitator_per_year=4,
             students_per_workshop=12,
             sessions_per_workshop=8,
-            new_workshop_concepts_per_year=1
+            rate_per_student=25.00
         )
         
-        start_date = datetime.now()
+        # Create parent user
+        parent = User.objects.create_user(
+            email="parent@example.com",
+            password="testpass123"
+        )
+        
+        # Create child
+        child = Child.objects.create(
+            parent=parent,
+            first_name="Test",
+            last_name="Child",
+            date_of_birth="2015-01-01"
+        )
+        
+        # Create program instance
+        start_date = timezone.now()
         end_date = start_date + timedelta(days=30)
         
-        instance = ProgramInstance.objects.create(
+        program_instance = ProgramInstance.objects.create(
             buildout=buildout,
             title="Test Instance",
-            location="Test Location",
             start_date=start_date,
             end_date=end_date,
+            location="Test Location",
             capacity=20
         )
         
-        child = Child.objects.create(
-            parent=self.parent_user,
-            first_name="Test",
-            last_name="Child",
-            date_of_birth=date(2015, 1, 1)
-        )
-        
+        # Create registration
         registration = Registration.objects.create(
             child=child,
-            program_instance=instance,
+            program_instance=program_instance,
             status="pending"
         )
         
         self.assertEqual(registration.child, child)
-        self.assertEqual(registration.program_instance, instance)
+        self.assertEqual(registration.program_instance, program_instance)
         self.assertEqual(registration.status, "pending")
     
     def test_REQ_019_financial_calculation_engine(self):
         """Test REQ-019: Financial calculation engine."""
-        from programs.models import ProgramType, Role, BaseCost, ProgramBuildout
-        role = Role.objects.create(name="Instructor", hourly_rate=25.00)
-        base_cost = BaseCost.objects.create(name="Base Cost", amount=10.00, frequency="PER_STUDENT", description="Test cost")
+        from programs.models import ProgramType, Role, Responsibility, ProgramBuildout
+        from decimal import Decimal
+        
+        role = Role.objects.create(title="Instructor", description="Test instructor role")
+        
+        # Create responsibility
+        responsibility = Responsibility.objects.create(
+            role=role,
+            name="Teaching",
+            description="Teaching responsibilities",
+            frequency_type="PER_SESSION",
+            hours=2.0
+        )
         
         program_type = ProgramType.objects.create(
             name="Test Program",
-            description="Test Description",
-            scope="Test scope",
-            target_grade_levels="K-5",
-            rate_per_student=25.00
+            description="Test Description"
         )
         
         # Create buildout
@@ -749,16 +736,16 @@ class RequirementsAcceptanceTests(TestCase):
             title="Test Buildout",
             num_facilitators=2,
             num_new_facilitators=1,
-            workshops_per_facilitator_per_year=4,
             students_per_workshop=12,
             sessions_per_workshop=8,
-            new_workshop_concepts_per_year=1
+            rate_per_student=25.00
         )
         
-        # Test that buildout can calculate financial projections
-        self.assertIsNotNone(buildout.program_type)
-        self.assertEqual(buildout.num_facilitators, 2)
-        self.assertEqual(buildout.students_per_workshop, 12)
+        # Test financial calculations
+        self.assertEqual(buildout.total_students_per_year, 96)  # 2 facilitators * 4 workshops * 12 students
+        self.assertEqual(buildout.total_revenue_per_year, Decimal('2400.00'))  # 96 students * $25
+        self.assertIsInstance(buildout.expected_profit, Decimal)
+        self.assertIsInstance(buildout.profit_margin, Decimal)
     
     def test_REQ_020_dashboard_interface(self):
         """Test REQ-020: Dashboard interface."""

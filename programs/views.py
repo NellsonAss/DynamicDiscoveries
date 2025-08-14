@@ -12,11 +12,13 @@ from django.contrib.auth import get_user_model
 from django.forms import modelformset_factory
 from django.db import transaction
 import json
+from decimal import Decimal
 
 from .models import (
     ProgramType, ProgramInstance, RegistrationForm, FormQuestion,
-    Child, Registration, Role, ProgramBuildout, BuildoutResponsibility, 
-    BuildoutRoleAssignment, BaseCost, BuildoutBaseCost, InstanceRoleAssignment
+    Child, Registration, Role, Responsibility, ProgramBuildout, 
+    BuildoutResponsibilityAssignment, BuildoutRoleAssignment, BaseCost, 
+    BuildoutBaseCostAssignment, InstanceRoleAssignment
 )
 from .forms import (
     ChildForm, RegistrationFormForm,
@@ -233,12 +235,12 @@ def contractor_dashboard(request):
         messages.error(request, "Access denied. Contractor or Admin role required.")
         return redirect('dashboard')
     
-    # Get programs where user is instructor
+    # Get programs where user is assigned as a contractor
     if user_is_contractor(request.user):
         programs = ProgramInstance.objects.filter(
-            instructor=request.user,
+            contractor_assignments__contractor=request.user,
             is_active=True
-        ).order_by('-start_date')
+        ).distinct().order_by('-start_date')
     else:
         # Admin can see all programs
         programs = ProgramInstance.objects.filter(
@@ -407,9 +409,9 @@ def view_registrations(request, program_instance_pk):
     
     program_instance = get_object_or_404(ProgramInstance, pk=program_instance_pk)
     
-    # Check if user is instructor or admin
-    if user_is_contractor(request.user) and program_instance.instructor != request.user:
-        messages.error(request, "Access denied. You can only view registrations for your own programs.")
+    # Check if user is assigned to this program or is admin
+    if user_is_contractor(request.user) and not program_instance.contractor_assignments.filter(contractor=request.user).exists():
+        messages.error(request, "Access denied. You can only view registrations for programs you are assigned to.")
         return redirect('programs:contractor_dashboard')
     
     registrations = program_instance.registrations.all().select_related(
@@ -458,9 +460,9 @@ def send_form_to_participants(request, program_instance_pk):
     
     program_instance = get_object_or_404(ProgramInstance, pk=program_instance_pk)
     
-    # Check if user is instructor or admin
-    if user_is_contractor(request.user) and program_instance.instructor != request.user:
-        messages.error(request, "Access denied. You can only send forms for your own programs.")
+    # Check if user is assigned to this program or is admin
+    if user_is_contractor(request.user) and not program_instance.contractor_assignments.filter(contractor=request.user).exists():
+        messages.error(request, "Access denied. You can only send forms for programs you are assigned to.")
         return redirect('programs:contractor_dashboard')
     
     if not program_instance.assigned_form:
@@ -493,7 +495,7 @@ def role_list(request):
         messages.error(request, "Access denied. Admin role required.")
         return redirect('dashboard')
     
-    roles = Role.objects.all().order_by('name')
+    roles = Role.objects.all().order_by('title')  # Changed from 'name' to 'title'
     
     context = {
         'roles': roles,
@@ -520,7 +522,7 @@ def buildout_list(request):
 
 @login_required
 def buildout_detail(request, buildout_pk):
-    """Show detailed view of a program buildout."""
+    """Show detailed view of a program buildout with Excel-like structure."""
     if not (user_is_admin(request.user) or user_is_contractor(request.user)):
         messages.error(request, "Access denied. Admin or Contractor role required.")
         return redirect('dashboard')
@@ -529,53 +531,181 @@ def buildout_detail(request, buildout_pk):
     
     # Calculate summary statistics using the new model structure
     total_hours = sum(
-        role.calculate_total_hours(
-            buildout.expected_students, 
-            buildout.num_days, 
-            buildout.sessions_per_day
-        ) for role in buildout.program_type.roles.all()
+        buildout.calculate_total_hours_per_role(role) 
+        for role in buildout.roles.all()
     )
-    total_revenue = buildout.total_revenue
-    total_payouts = buildout.total_payouts
-    profit = buildout.profit
+    total_revenue = buildout.total_revenue_per_year
+    total_payouts = buildout.total_yearly_costs
+    profit = buildout.expected_profit
     profit_margin = buildout.profit_margin
     
-    # Prepare role data for template
+    # Prepare detailed role data with responsibilities for Excel-like display
     roles_data = []
-    for role in buildout.program_type.roles.all():
-        hours = role.calculate_total_hours(
-            buildout.expected_students, 
-            buildout.num_days, 
-            buildout.sessions_per_day
+    for role in buildout.roles.all().order_by('title'):
+        # Get all responsibilities for this role
+        responsibilities = role.responsibilities.all().order_by('name')
+        
+        # Calculate hours per scope for this role
+        hours_per_workshop_concept = sum(
+            resp.hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_WORKSHOP_CONCEPT'
         )
-        payout = role.calculate_payout(
-            buildout.expected_students, 
-            buildout.num_days, 
-            buildout.sessions_per_day
+        hours_per_new_worker = sum(
+            resp.hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_NEW_FACILITATOR'
         )
-        percentage = role.calculate_percentage_of_revenue(
-            buildout.expected_students, 
-            buildout.num_days, 
-            buildout.sessions_per_day
+        hours_per_workshop = sum(
+            resp.hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_WORKSHOP'
         )
+        hours_per_session = sum(
+            resp.hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_SESSION'
+        )
+        
+        # Calculate yearly totals
+        yearly_hours = (
+            hours_per_workshop_concept * buildout.new_workshop_concepts_per_year +
+            hours_per_new_worker * buildout.num_new_facilitators +
+            hours_per_workshop * buildout.num_workshops_per_year +
+            hours_per_session * buildout.total_sessions_per_year
+        )
+        
+        # Calculate financial data
+        payout = buildout.calculate_payout_per_role(role)
+        percentage = buildout.calculate_percent_of_revenue_per_role(role)
+        
         roles_data.append({
             'role': role,
-            'hours': hours,
+            'responsibilities': responsibilities,
+            'hours_per_workshop_concept': hours_per_workshop_concept,
+            'hours_per_new_worker': hours_per_new_worker,
+            'hours_per_workshop': hours_per_workshop,
+            'hours_per_session': hours_per_session,
+            'yearly_hours': yearly_hours,
             'payout': payout,
             'percentage': percentage
         })
+    
+    # Calculate base costs and overhead
+    base_costs_data = []
+    total_base_costs = 0
+    for base_cost_assignment in buildout.base_cost_assignments.all():
+        yearly_cost = base_cost_assignment.calculate_yearly_cost()
+        total_base_costs += yearly_cost
+        
+        base_costs_data.append({
+            'base_cost': base_cost_assignment.base_cost,
+            'multiplier': base_cost_assignment.multiplier,
+            'yearly_cost': yearly_cost,
+            'percentage': (yearly_cost / total_revenue * 100) if total_revenue > 0 else 0
+        })
+    
+    # Calculate total costs including base costs
+    total_all_costs = total_payouts + total_base_costs
+    total_profit = total_revenue - total_all_costs
+    total_profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
     
     context = {
         'buildout': buildout,
         'total_hours': total_hours,
         'total_revenue': total_revenue,
         'total_payouts': total_payouts,
+        'total_base_costs': total_base_costs,
+        'total_all_costs': total_all_costs,
         'profit': profit,
+        'total_profit': total_profit,
         'profit_margin': profit_margin,
+        'total_profit_margin': total_profit_margin,
         'roles_data': roles_data,
+        'base_costs_data': base_costs_data,
     }
     
     return render(request, 'programs/buildout_detail.html', context)
+
+
+@login_required
+def buildout_manage_responsibilities(request, buildout_pk):
+    """Manage responsibilities and hours for a buildout with Excel-like interface."""
+    if not (user_is_admin(request.user) or user_is_contractor(request.user)):
+        messages.error(request, "Access denied. Admin or Contractor role required.")
+        return redirect('dashboard')
+    
+    buildout = get_object_or_404(ProgramBuildout, pk=buildout_pk)
+    
+    if request.method == 'POST':
+        # Handle responsibility hour updates
+        for key, value in request.POST.items():
+            if key.startswith('responsibility_'):
+                responsibility_id = key.split('_')[1]
+                try:
+                    responsibility = Responsibility.objects.get(id=responsibility_id)
+                    new_hours = Decimal(value)
+                    if new_hours >= 0:
+                        responsibility.hours = new_hours
+                        responsibility.save()
+                except (Responsibility.DoesNotExist, ValueError):
+                    continue
+        
+        messages.success(request, "Responsibility hours updated successfully!")
+        return redirect('programs:buildout_detail', buildout_pk=buildout_pk)
+    
+    # Get all roles with their responsibilities
+    roles_data = []
+    for role in Role.objects.all().order_by('title'):
+        responsibilities = role.responsibilities.all().order_by('name')
+        roles_data.append({
+            'role': role,
+            'responsibilities': responsibilities,
+            'is_assigned': buildout.roles.filter(id=role.id).exists()
+        })
+    
+    context = {
+        'buildout': buildout,
+        'roles_data': roles_data,
+    }
+    
+    return render(request, 'programs/buildout_manage_responsibilities.html', context)
+
+
+@login_required
+def buildout_assign_roles(request, buildout_pk):
+    """Assign roles to a buildout."""
+    if not (user_is_admin(request.user) or user_is_contractor(request.user)):
+        messages.error(request, "Access denied. Admin or Contractor role required.")
+        return redirect('dashboard')
+    
+    buildout = get_object_or_404(ProgramBuildout, pk=buildout_pk)
+    
+    if request.method == 'POST':
+        # Get selected roles
+        selected_roles = request.POST.getlist('roles')
+        
+        # Clear existing assignments
+        buildout.roles.clear()
+        
+        # Add selected roles
+        for role_id in selected_roles:
+            try:
+                role = Role.objects.get(id=role_id)
+                buildout.roles.add(role)
+            except Role.DoesNotExist:
+                continue
+        
+        messages.success(request, f"Assigned {len(selected_roles)} roles to buildout.")
+        return redirect('programs:buildout_detail', buildout_pk=buildout_pk)
+    
+    # Get all available roles
+    all_roles = Role.objects.all().order_by('title')
+    assigned_roles = buildout.roles.all()
+    
+    context = {
+        'buildout': buildout,
+        'all_roles': all_roles,
+        'assigned_roles': assigned_roles,
+    }
+    
+    return render(request, 'programs/buildout_assign_roles.html', context)
 
 
 @login_required

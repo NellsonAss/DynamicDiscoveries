@@ -37,6 +37,42 @@
                         <div class="text-danger small">{{ form.program_type.errors.0 }}</div>
                     {% endif %}
                 </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.version_number.id_for_label }}" class="form-label">Version Number</label>
+                    {{ form.version_number }}
+                    {% if form.version_number.errors %}
+                        <div class="text-danger small">{{ form.version_number.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        {{ form.is_active }}
+                        <label for="{{ form.is_active.id_for_label }}" class="form-check-label">Active</label>
+                        {% if form.is_active.errors %}
+                            <div class="text-danger small">{{ form.is_active.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        {{ form.is_new_workshop }}
+                        <label for="{{ form.is_new_workshop.id_for_label }}" class="form-check-label">New Workshop Concept</label>
+                        {% if form.is_new_workshop.errors %}
+                            <div class="text-danger small">{{ form.is_new_workshop.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.new_workshop_concepts_per_year.id_for_label }}" class="form-label">New Workshop Concepts per Year</label>
+                    {{ form.new_workshop_concepts_per_year }}
+                    {% if form.new_workshop_concepts_per_year.errors %}
+                        <div class="text-danger small">{{ form.new_workshop_concepts_per_year.errors.0 }}</div>
+                    {% endif %}
+                </div>
             </div>
             
             <div class="col-md-6">
@@ -70,28 +106,6 @@
         <div class="row mt-4">
             <div class="col-md-6">
                 <h5 class="mb-3">
-                    <i class="bi bi-calendar-event me-2"></i>Workshop Configuration
-                </h5>
-                
-                <div class="mb-3">
-                    <label for="{{ form.workshops_per_facilitator_per_year.id_for_label }}" class="form-label">Workshops per Facilitator per Year</label>
-                    {{ form.workshops_per_facilitator_per_year }}
-                    {% if form.workshops_per_facilitator_per_year.errors %}
-                        <div class="text-danger small">{{ form.workshops_per_facilitator_per_year.errors.0 }}</div>
-                    {% endif %}
-                </div>
-                
-                <div class="mb-3">
-                    <label for="{{ form.new_workshop_concepts_per_year.id_for_label }}" class="form-label">New Workshop Concepts per Year</label>
-                    {{ form.new_workshop_concepts_per_year }}
-                    {% if form.new_workshop_concepts_per_year.errors %}
-                        <div class="text-danger small">{{ form.new_workshop_concepts_per_year.errors.0 }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <h5 class="mb-3">
                     <i class="bi bi-person-check me-2"></i>Student Configuration
                 </h5>
                 
@@ -108,6 +122,20 @@
                     {{ form.sessions_per_workshop }}
                     {% if form.sessions_per_workshop.errors %}
                         <div class="text-danger small">{{ form.sessions_per_workshop.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h5 class="mb-3">
+                    <i class="bi bi-currency-dollar me-2"></i>Financial Configuration
+                </h5>
+                
+                <div class="mb-3">
+                    <label for="{{ form.rate_per_student.id_for_label }}" class="form-label">Rate per Student</label>
+                    {{ form.rate_per_student }}
+                    {% if form.rate_per_student.errors %}
+                        <div class="text-danger small">{{ form.rate_per_student.errors.0 }}</div>
                     {% endif %}
                 </div>
             </div>
@@ -140,10 +168,10 @@
                     <div class="col-md-3">
                         <div class="admin-stats-card">
                             <div class="text-center">
-                                <h4 class="{% if buildout.yearly_profit >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
-                                    ${{ buildout.yearly_profit|floatformat:0 }}
+                                <h4 class="{% if buildout.expected_profit >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                                    ${{ buildout.expected_profit|floatformat:0 }}
                                 </h4>
-                                <small>Yearly Profit</small>
+                                <small>Expected Profit</small>
                             </div>
                         </div>
                     </div>
@@ -158,6 +186,72 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if cost_formset %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5 class="mb-3">
+                    <i class="bi bi-currency-dollar me-2"></i>Cost Management
+                </h5>
+                
+                {{ cost_formset.management_form }}
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Base Cost</th>
+                                <th>Multiplier</th>
+                                <th>Yearly Cost</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cost_form in cost_formset %}
+                                <tr>
+                                    <td>
+                                        {{ cost_form.base_cost }}
+                                        {% if cost_form.base_cost.errors %}
+                                            <div class="text-danger small">{{ cost_form.base_cost.errors.0 }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ cost_form.multiplier }}
+                                        {% if cost_form.multiplier.errors %}
+                                            <div class="text-danger small">{{ cost_form.multiplier.errors.0 }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if cost_form.instance.pk and cost_form.instance.base_cost %}
+                                            <span class="text-success">${{ cost_form.instance.calculate_yearly_cost|floatformat:2 }}</span>
+                                        {% else %}
+                                            <span class="text-muted">Save to calculate</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if cost_form.instance.pk %}
+                                            <div class="form-check">
+                                                {{ cost_form.DELETE }}
+                                                <label class="form-check-label" for="{{ cost_form.DELETE.id_for_label }}">
+                                                    Delete
+                                                </label>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if cost_formset.non_form_errors %}
+                    <div class="alert alert-danger">
+                        {{ cost_formset.non_form_errors }}
+                    </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}

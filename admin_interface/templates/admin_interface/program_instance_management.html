@@ -5,8 +5,13 @@
     <h2 class="mb-0">
         <i class="bi bi-calendar-event me-2"></i>Program Instance Management
     </h2>
-    <div class="text-muted">
-        <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total instances
+    <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'admin_interface:program_instance_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Create Instance
+        </a>
+        <div class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>{{ page_obj.paginator.count }} total instances
+        </div>
     </div>
 </div>
 

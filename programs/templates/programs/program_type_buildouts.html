@@ -85,17 +85,17 @@
                                         </div>
                                         <div class="col-md-2">
                                             <div class="text-muted small">Roles</div>
-                                            <div class="fw-bold">{{ buildout.program_type.roles.count }}</div>
+                                            <div class="fw-bold">{{ buildout.roles.count }}</div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="text-muted small">Role Breakdown</div>
-                                            {% if buildout.program_type.roles.exists %}
+                                            {% if buildout.roles.exists %}
                                                 <div class="small">
-                                                    {% for program_role in buildout.program_type.roles.all|slice:":3" %}
-                                                        <span class="badge bg-secondary me-1">{{ program_role.role.name }}</span>
+                                                    {% for role in buildout.roles.all|slice:":3" %}
+                                                        <span class="badge bg-secondary me-1">{{ role.title }}</span>
                                                     {% endfor %}
-                                                    {% if buildout.program_type.roles.count > 3 %}
-                                                        <small class="text-muted">+{{ buildout.program_type.roles.count|add:"-3" }} more roles</small>
+                                                    {% if buildout.roles.count > 3 %}
+                                                        <small class="text-muted">+{{ buildout.roles.count|add:"-3" }} more roles</small>
                                                     {% endif %}
                                                 </div>
                                             {% else %}

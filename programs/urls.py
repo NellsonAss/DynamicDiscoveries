@@ -33,5 +33,7 @@ urlpatterns = [
     path('roles/', views.role_list, name='role_list'),
     path('buildouts/', views.buildout_list, name='buildout_list'),
     path('buildouts/<int:buildout_pk>/', views.buildout_detail, name='buildout_detail'),
+    path('buildouts/<int:buildout_pk>/manage-responsibilities/', views.buildout_manage_responsibilities, name='buildout_manage_responsibilities'),
+    path('buildouts/<int:buildout_pk>/assign-roles/', views.buildout_assign_roles, name='buildout_assign_roles'),
     path('program-types/<int:program_type_pk>/buildouts/', views.program_type_buildouts, name='program_type_buildouts'),
 ] 
