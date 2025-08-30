@@ -130,6 +130,18 @@ def contact_list(request):
     
     return render(request, 'communications/contact_list.html', context)
 
+
+@login_required
+@role_required(['Admin', 'Consultant'])
+@require_http_methods(['GET'])
+def contact_list_widget(request):
+    """HTMX-friendly partial (no base include) for dashboard widget."""
+    contacts = Contact.objects.order_by('-created_at')[:5]
+    return render(request, 'communications/partials/contact_list_widget.html', {
+        'contacts': contacts,
+        'new_count': Contact.objects.filter(status='new').count(),
+    })
+
 @login_required
 @role_required(['Admin', 'Consultant'])
 def contact_detail(request, contact_id):

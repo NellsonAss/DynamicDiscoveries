@@ -64,7 +64,10 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "dashboard.apps.DashboardConfig",
     "communications",
+    "people.apps.PeopleConfig",
+    "contracts.apps.ContractsConfig",
     "programs",
+    "notes.apps.NotesConfig",
     "utils.apps.UtilsConfig",
     "admin_interface.apps.AdminInterfaceConfig",
 ]
@@ -153,6 +156,9 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -201,6 +207,26 @@ if not DEBUG:
 # Azure Communication Service settings
 AZURE_COMMUNICATION_CONNECTION_STRING = env('AZURE_COMMUNICATION_CONNECTION_STRING', default='')
 AZURE_COMMUNICATION_SENDER_ADDRESS = env('AZURE_COMMUNICATION_SENDER_ADDRESS', default='')
+
+# Optional Azure Storage for private files (W-9, signed contracts)
+DEFAULT_FILE_STORAGE = env('DEFAULT_FILE_STORAGE', default='django.core.files.storage.FileSystemStorage')
+AZURE_ACCOUNT_NAME = env('AZURE_ACCOUNT_NAME', default='')
+AZURE_ACCOUNT_KEY = env('AZURE_ACCOUNT_KEY', default='')
+AZURE_CONTAINER = env('AZURE_PRIVATE_CONTAINER', default='private')
+AZURE_URL_EXPIRATION_SECS = env.int('AZURE_URL_EXPIRATION_SECS', default=600)
+
+# DocuSign settings
+DOCUSIGN_BASE_URL = env('DOCUSIGN_BASE_URL', default='')
+DOCUSIGN_ACCOUNT_ID = env('DOCUSIGN_ACCOUNT_ID', default='')
+DOCUSIGN_INTEGRATION_KEY = env('DOCUSIGN_INTEGRATION_KEY', default='')
+DOCUSIGN_USER_ID = env('DOCUSIGN_USER_ID', default='')
+DOCUSIGN_PRIVATE_KEY = env('DOCUSIGN_PRIVATE_KEY', default='')
+DOCUSIGN_WEBHOOK_SECRET = env('DOCUSIGN_WEBHOOK_SECRET', default='')
+DOCUSIGN_RETURN_URL = env('DOCUSIGN_RETURN_URL', default='http://localhost:8000/contracts/return')
+DOCUSIGN_WEBHOOK_URL = env('DOCUSIGN_WEBHOOK_URL', default='http://localhost:8000/contracts/webhook')
+
+# Feature flags
+USE_SIMPLE_ACK = env.bool('USE_SIMPLE_ACK', default=False)
 
 # Logging Configuration
 LOGGING = {

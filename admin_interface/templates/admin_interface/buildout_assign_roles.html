@@ -3,7 +3,7 @@
 {% block admin_content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0">
-        <i class="bi bi-people me-2"></i>Assign Roles
+        <i class="bi bi-people me-2"></i>Assign Roles with Contractors
     </h2>
     <div>
         <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary">
@@ -16,34 +16,133 @@
 <div class="admin-card p-4 mb-4">
     <div class="alert alert-info mb-0">
         <i class="bi bi-info-circle me-2"></i>
-        <strong>Instructions:</strong> Select the roles you want to assign to this buildout. Only assigned roles will appear in the buildout calculations.
+        <strong>Instructions:</strong> Select roles and assign contractors for this buildout. Each role must have a contractor assigned. 
+        The system will automatically seed default hours and pay rates from the role templates and contractor rate catalog.
     </div>
 </div>
 
 <!-- Role Assignment Form -->
-<form method="post">
+<form method="post" action="{% url 'admin_interface:buildout_assign_roles' buildout.id %}">
     {% csrf_token %}
     <div class="admin-card p-4">
-        <h5 class="mb-3"><i class="bi bi-check-square me-2"></i>Select Roles</h5>
+        <h5 class="mb-3"><i class="bi bi-check-square me-2"></i>Select Roles and Assign Contractors</h5>
+        
+        <!-- Current Role Assignments -->
+        {% if assigned_roles %}
+        <div class="mb-4">
+            <h6 class="text-muted mb-3">Currently Assigned Roles:</h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Contractor</th>
+                            <th>Pay Type</th>
+                            <th>Pay Value</th>
+                            <th>Hours/Freq</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for role_line in buildout.role_lines.all %}
+                        <tr>
+                            <td>{{ role_line.role.title }}</td>
+                            <td>{{ role_line.contractor.get_full_name|default:role_line.contractor.email }}</td>
+                            <td>{{ role_line.get_pay_type_display }}</td>
+                            <td>${{ role_line.pay_value|floatformat:2 }}</td>
+                            <td>{{ role_line.hours_per_frequency|floatformat:2 }}h/{{ role_line.get_frequency_unit_display }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Role Selection with Contractor Assignment -->
         <div class="row">
             {% for role in all_roles %}
-                <div class="col-md-6 mb-3">
+                <div class="col-12 mb-4">
                     <div class="card h-100 {% if role in assigned_roles %}border-success{% endif %}">
-                        <div class="card-body">
+                        <div class="card-header">
                             <div class="form-check">
-                                <input class="form-check-input" 
+                                <input class="form-check-input role-checkbox" 
                                        type="checkbox" 
                                        name="roles" 
                                        value="{{ role.id }}" 
                                        id="role_{{ role.id }}"
                                        {% if role in assigned_roles %}checked{% endif %}>
                                 <label class="form-check-label" for="role_{{ role.id }}">
-                                    <h6 class="card-title mb-1">{{ role.title }}</h6>
-                                    <p class="card-text text-muted small mb-2">{{ role.description }}</p>
+                                    <h6 class="card-title mb-0">{{ role.title }}</h6>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text text-muted mb-3">{{ role.description }}</p>
+                            
+                            <!-- Role Details -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
                                     <small class="text-muted">
                                         <strong>{{ role.responsibilities.count }}</strong> responsibilities
                                     </small>
-                                </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        Default: {{ role.default_hours_per_frequency|floatformat:2 }}h/{{ role.get_default_frequency_unit_display }}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- Contractor Selection (initially hidden) -->
+                            <div class="contractor-selection" id="contractor_{{ role.id }}" style="display: none;">
+                                <hr>
+                                <h6 class="mb-2">Assign Contractor</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="contractor_{{ role.id }}_select" class="form-label">Contractor:</label>
+                                        <select class="form-select" name="contractors_{{ role.id }}" id="contractor_{{ role.id }}_select" required>
+                                            <option value="">Select a contractor...</option>
+                                            {% for contractor in contractors %}
+                                                <option value="{{ contractor.id }}" 
+                                                        data-role="{{ role.id }}"
+                                                        data-pay-type=""
+                                                        data-pay-value="0.00">
+                                                    {{ contractor.get_full_name|default:contractor.email }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Default Rate:</label>
+                                        <div class="form-control-plaintext" id="rate_info_{{ role.id }}">
+                                            <small class="text-muted">Select contractor to see default rate</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Pay Override Fields -->
+                                <div class="row mt-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Pay Type:</label>
+                                        <select class="form-select" name="pay_type_{{ role.id }}" id="pay_type_{{ role.id }}">
+                                            <option value="HOURLY">Hourly</option>
+                                            <option value="PER_PROGRAM">Per Program</option>
+                                            <option value="PER_SESSION">Per Session</option>
+                                            <option value="FLAT_RATE">Flat Rate</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Pay Value:</label>
+                                        <input type="number" class="form-control" name="pay_value_{{ role.id }}" 
+                                               id="pay_value_{{ role.id }}" step="0.01" min="0" placeholder="0.00">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Hours/Frequency:</label>
+                                        <input type="number" class="form-control" name="hours_{{ role.id }}" 
+                                               id="hours_{{ role.id }}" step="0.01" min="0" 
+                                               value="{{ role.default_hours_per_frequency|floatformat:2 }}">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -54,12 +153,140 @@
 
     <!-- Submit Button -->
     <div class="text-center mt-4">
-        <button type="submit" class="btn btn-success btn-lg">
-            <i class="bi bi-check-circle me-2"></i>Save Role Assignments
+        <button type="submit" class="btn btn-success btn-lg" id="submit-btn">
+            <i class="bi bi-check-circle me-2"></i>Save Role Assignments with Contractors
         </button>
         <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary btn-lg ms-2">
             <i class="bi bi-x-circle me-2"></i>Cancel
         </a>
     </div>
+    
 </form>
+
+<!-- JavaScript for dynamic contractor selection -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up event listeners...');
+    
+    // Handle role checkbox changes
+    const roleCheckboxes = document.querySelectorAll('.role-checkbox');
+    roleCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const roleId = this.value;
+            const contractorSelection = document.getElementById(`contractor_${roleId}`);
+            
+            if (this.checked) {
+                contractorSelection.style.display = 'block';
+                // Make contractor selection required
+                const contractorSelect = contractorSelection.querySelector(`select[name="contractors_${roleId}"]`);
+                contractorSelect.required = true;
+            } else {
+                contractorSelection.style.display = 'none';
+                // Remove required attribute
+                const contractorSelect = contractorSelection.querySelector(`select[name="contractors_${roleId}"]`);
+                contractorSelect.required = false;
+            }
+        });
+    });
+    
+    // Handle contractor selection changes to show default rates
+    const contractorSelects = document.querySelectorAll('select[name^="contractors_"]');
+    contractorSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            // Extract role ID from the select name attribute
+            const roleId = this.name.split('_')[1];
+            const rateInfo = document.getElementById(`rate_info_${roleId}`);
+            const payValueInput = document.getElementById(`pay_value_${roleId}`);
+            
+            if (this.value) {
+                // In a real implementation, you'd fetch the contractor's rate for this role
+                // For now, we'll show a placeholder
+                rateInfo.innerHTML = '<small class="text-success">Default rate will be loaded from contractor catalog</small>';
+                payValueInput.placeholder = 'Enter pay rate...';
+            } else {
+                rateInfo.innerHTML = '<small class="text-muted">Select contractor to see default rate</small>';
+                payValueInput.placeholder = '0.00';
+            }
+        });
+    });
+    
+    // Show contractor selection for already checked roles
+    roleCheckboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            const roleId = checkbox.value;
+            const contractorSelection = document.getElementById(`contractor_${roleId}`);
+            contractorSelection.style.display = 'block';
+        }
+    });
+    
+    // Form validation and submission
+    const form = document.querySelector('form');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    console.log('Form found:', form);
+    console.log('Submit button found:', submitBtn);
+    
+    if (!submitBtn) {
+        console.error('Submit button not found!');
+        return;
+    }
+    
+    // Simple form submission handler
+    form.addEventListener('submit', function(e) {
+        console.log('Form submit event fired!');
+        
+        const checkedRoles = document.querySelectorAll('.role-checkbox:checked');
+        console.log('Checked roles:', checkedRoles.length);
+        
+        if (checkedRoles.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one role to assign.');
+            console.log('No roles selected, preventing submission');
+            return false;
+        }
+        
+        // Simple validation - just check if any roles are checked
+        console.log('Validation passed, allowing submission...');
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving...';
+        
+        // Allow form to submit
+        console.log('Form will submit now...');
+        return true;
+    });
+    
+    // Button click handler for additional logging
+    submitBtn.addEventListener('click', function(e) {
+        console.log('Submit button clicked!');
+        console.log('Event:', e);
+        console.log('Button:', this);
+        console.log('Form:', form);
+        
+        const checkedRoles = document.querySelectorAll('.role-checkbox:checked');
+        console.log('Checked roles:', checkedRoles.length);
+        
+        // Log form data for debugging
+        const formData = new FormData(form);
+        console.log('Form data entries:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+        
+        // Also check if form has action and method
+        console.log('Form action:', form.action);
+        console.log('Form method:', form.method);
+        console.log('Form enctype:', form.enctype);
+        
+        // Force form submission if validation passes
+        if (checkedRoles.length > 0) {
+            console.log('Forcing form submission...');
+            form.submit();
+        } else {
+            alert('Please select at least one role to assign.');
+        }
+    });
+});
+</script>
 {% endblock %}

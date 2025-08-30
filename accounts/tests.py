@@ -20,6 +20,8 @@ class AccountsTests(TestCase):
         # Set up session
         session = self.client.session
         session['login_email'] = 'test@example.com'
+        session['verification_email'] = 'test@example.com'
+        session['verification_code'] = '000000'
         session.save()
         
         response = self.client.get(reverse('accounts:verify_code'))

@@ -10,10 +10,11 @@
             <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1><i class="bi bi-table me-2"></i>TT After School Workshops</h1>
+                    <h1><i class="bi bi-table me-2"></i>TT After School Programs</h1>
                     <p class="text-muted mb-0">{{ buildout.title }} - {{ buildout.program_type.name }}</p>
                 </div>
                 <div class="d-flex gap-2">
+                    <span class="badge bg-secondary align-self-center">Status: {{ buildout.get_status_display }}</span>
                     <a href="{% url 'programs:buildout_assign_roles' buildout.pk %}" class="btn btn-primary">
                         <i class="bi bi-people me-2"></i>Assign Roles
                     </a>
@@ -26,6 +27,24 @@
                     <a href="{% url 'programs:buildout_list' %}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left me-2"></i>Back to List
                     </a>
+                    {% if buildout.status == 'in_progress' %}
+                    <form method="post" action="{% url 'programs:buildout_mark_ready' buildout_pk=buildout.pk %}">
+                        {% csrf_token %}
+                        <button class="btn btn-outline-primary">Mark Ready</button>
+                    </form>
+                    {% endif %}
+                    {% if buildout.status == 'ready' and buildout.assigned_contractor %}
+                    <form method="post" action="{% url 'programs:present_to_contractor' buildout_pk=buildout.pk %}">
+                        {% csrf_token %}
+                        <button class="btn btn-success">Present to Contractor</button>
+                    </form>
+                    {% endif %}
+                    {% if buildout.status == 'awaiting_signatures' %}
+                    <span class="badge bg-warning text-dark align-self-center">Awaiting Signatures</span>
+                    {% endif %}
+                    {% if buildout.status == 'active' %}
+                    <span class="badge bg-success align-self-center">Active</span>
+                    {% endif %}
                 </div>
             </div>
 
@@ -50,24 +69,24 @@
                 <div class="col-md-2 mb-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="card-title text-info">{{ buildout.num_workshops_per_year }}</h3>
-                            <p class="card-text text-muted">Workshops/Year</p>
+                            <h3 class="card-title text-info">{{ buildout.num_programs_per_year }}</h3>
+                            <p class="card-text text-muted">Programs/Year</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2 mb-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="card-title text-warning">{{ buildout.students_per_workshop }}</h3>
-                            <p class="card-text text-muted">Students/Workshop</p>
+                            <h3 class="card-title text-warning">{{ buildout.students_per_program }}</h3>
+                            <p class="card-text text-muted">Students/Program</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2 mb-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="card-title text-danger">{{ buildout.sessions_per_workshop }}</h3>
-                            <p class="card-text text-muted">Sessions/Workshop</p>
+                            <h3 class="card-title text-danger">{{ buildout.sessions_per_program }}</h3>
+                            <p class="card-text text-muted">Sessions/Program</p>
                         </div>
                     </div>
                 </div>
@@ -91,8 +110,8 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-3">
-                                    <h6>Revenue per Workshop:</h6>
-                                    <p class="h4 text-success">${{ buildout.total_revenue_per_year|divide:buildout.num_workshops_per_year|floatformat:2 }}</p>
+                                    <h6>Revenue per Program:</h6>
+                                    <p class="h4 text-success">${{ buildout.total_revenue_per_year|divide:buildout.num_programs_per_year|floatformat:2 }}</p>
                                 </div>
                                 <div class="col-md-3">
                                     <h6>Total Revenue per Year:</h6>
@@ -127,10 +146,10 @@
                                             <tr>
                                                 <th style="width: 25%;">Role/Responsibility</th>
                                                 <th style="width: 20%;">Description</th>
-                                                <th class="text-center" style="width: 12%;">Hrs/New Workshop Concept</th>
+                                                <th class="text-center" style="width: 12%;">Hrs/New Program Concept</th>
                                                 <th class="text-center" style="width: 12%;">Hrs/New Worker</th>
-                                                <th class="text-center" style="width: 12%;">Hrs/Workshop</th>
-                                                <th class="text-center" style="width: 12%;">Hrs/Workshop/Session</th>
+                                                <th class="text-center" style="width: 12%;">Hrs/Program</th>
+                                                <th class="text-center" style="width: 12%;">Hrs/Program/Session</th>
                                                 <th class="text-center" style="width: 7%;">Total Hrs/Year</th>
                                             </tr>
                                         </thead>
@@ -149,7 +168,7 @@
                                                         <td class="ps-4">{{ responsibility.name }}</td>
                                                         <td>{{ responsibility.description|truncatewords:8 }}</td>
                                                         <td class="text-center">
-                                                            {% if responsibility.frequency_type == 'PER_WORKSHOP_CONCEPT' %}
+                                                            {% if responsibility.frequency_type == 'PER_PROGRAM_CONCEPT' %}
                                                                 {{ responsibility.hours|floatformat:2 }}
                                                             {% else %}
                                                                 -
@@ -163,7 +182,7 @@
                                                             {% endif %}
                                                         </td>
                                                         <td class="text-center">
-                                                            {% if responsibility.frequency_type == 'PER_WORKSHOP' %}
+                                                            {% if responsibility.frequency_type == 'PER_PROGRAM' %}
                                                                 {{ responsibility.hours|floatformat:2 }}
                                                             {% else %}
                                                                 -
@@ -177,12 +196,12 @@
                                                             {% endif %}
                                                         </td>
                                                         <td class="text-center">
-                                                            {% if responsibility.frequency_type == 'PER_WORKSHOP_CONCEPT' %}
-                                                                {{ responsibility.hours|multiply:buildout.new_workshop_concepts_per_year|floatformat:2 }}
+                                                            {% if responsibility.frequency_type == 'PER_PROGRAM_CONCEPT' %}
+                                                                {{ responsibility.hours|multiply:buildout.new_program_concepts_per_year|floatformat:2 }}
                                                             {% elif responsibility.frequency_type == 'PER_NEW_FACILITATOR' %}
                                                                 {{ responsibility.hours|multiply:buildout.num_new_facilitators|floatformat:2 }}
-                                                            {% elif responsibility.frequency_type == 'PER_WORKSHOP' %}
-                                                                {{ responsibility.hours|multiply:buildout.num_workshops_per_year|floatformat:2 }}
+                                                            {% elif responsibility.frequency_type == 'PER_PROGRAM' %}
+                                                                {{ responsibility.hours|multiply:buildout.num_programs_per_year|floatformat:2 }}
                                                             {% elif responsibility.frequency_type == 'PER_SESSION' %}
                                                                 {{ responsibility.hours|multiply:buildout.total_sessions_per_year|floatformat:2 }}
                                                             {% endif %}
@@ -194,9 +213,9 @@
                                                 <tr class="table-secondary">
                                                     <td><strong>Total</strong></td>
                                                     <td></td>
-                                                    <td class="text-center"><strong>{{ role_data.hours_per_workshop_concept|floatformat:2 }}</strong></td>
+                                                    <td class="text-center"><strong>{{ role_data.hours_per_program_concept|floatformat:2 }}</strong></td>
                                                     <td class="text-center"><strong>{{ role_data.hours_per_new_worker|floatformat:2 }}</strong></td>
-                                                    <td class="text-center"><strong>{{ role_data.hours_per_workshop|floatformat:2 }}</strong></td>
+                                                    <td class="text-center"><strong>{{ role_data.hours_per_program|floatformat:2 }}</strong></td>
                                                     <td class="text-center"><strong>{{ role_data.hours_per_session|floatformat:2 }}</strong></td>
                                                     <td class="text-center"><strong>{{ role_data.yearly_hours|floatformat:2 }}</strong></td>
                                                 </tr>
@@ -279,7 +298,7 @@
                                             <thead>
                                                 <tr>
                                                     <th>Cost Item</th>
-                                                    <th>Cost/Workshop</th>
+                                                    <th>Cost/Program</th>
                                                     <th>Cost/Year</th>
                                                     <th>% Rev</th>
                                                 </tr>
@@ -332,6 +351,217 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Program Instances Section -->
+            {% if instances %}
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            {% if is_contractor_view %}
+                                My Program Instances
+                            {% else %}
+                                Program Instances
+                            {% endif %}
+                        </h5>
+                        {% if not is_contractor_view %}
+                            <a href="{% url 'admin_interface:program_instance_create_from_buildout' buildout.id %}" class="btn btn-primary">
+                                <i class="bi bi-plus"></i> Create Instance
+                            </a>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Dates</th>
+                                        <th>Location</th>
+                                        <th>Enrollment</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for instance in instances %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ instance.title }}</strong>
+                                                {% if is_contractor_view and contractor_roles %}
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        Your roles: 
+                                                        {% for role_line in contractor_roles %}
+                                                            <span class="badge bg-secondary">{{ role_line.role.title }}</span>
+                                                        {% endfor %}
+                                                    </small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {{ instance.start_date|date:"M d, Y" }}<br>
+                                                <small class="text-muted">to {{ instance.end_date|date:"M d, Y" }}</small>
+                                            </td>
+                                            <td>{{ instance.location }}</td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         style="width: {% widthratio instance.current_enrollment instance.capacity 100 %}%">
+                                                        {{ instance.current_enrollment }}/{{ instance.capacity }}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if instance.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    {% if is_contractor_view %}
+                                                        <a href="{% url 'programs:contractor_instance_schedule' instance.pk %}" class="btn btn-outline-success" title="Schedule Availability">
+                                                            <i class="bi bi-calendar-week"></i>
+                                                        </a>
+                                                        <a href="{% url 'programs:view_registrations' instance.pk %}" class="btn btn-outline-primary" title="View Registrations">
+                                                            <i class="bi bi-people"></i>
+                                                        </a>
+                                                    {% else %}
+                                                        <a href="{% url 'admin_interface:program_instance_detail' instance.id %}" class="btn btn-outline-primary" title="View Details">
+                                                            <i class="bi bi-eye"></i>
+                                                        </a>
+                                                        <a href="{% url 'admin_interface:program_instance_edit' instance.id %}" class="btn btn-outline-secondary" title="Edit">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Program Instances</h5>
+                        {% if not is_contractor_view %}
+                            <a href="{% url 'admin_interface:program_instance_create_from_buildout' buildout.id %}" class="btn btn-primary">
+                                <i class="bi bi-plus"></i> Create Instance
+                            </a>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x display-1 text-muted mb-3"></i>
+                            <h6>
+                                {% if is_contractor_view %}
+                                    No Assigned Instances
+                                {% else %}
+                                    No Instances Created
+                                {% endif %}
+                            </h6>
+                            <p class="text-muted">
+                                {% if is_contractor_view %}
+                                    You haven't been assigned to any instances of this buildout yet.
+                                {% else %}
+                                    No program instances have been created from this buildout yet.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if is_contractor_view %}
+                <!-- Contractor Help Section -->
+                <div class="card border-info mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Contractor Guidelines</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>What You Can Do:</h6>
+                                <ul>
+                                    <li>View your assigned roles and responsibilities</li>
+                                    <li>Create availability for your program instances</li>
+                                    <li>Schedule sessions for parents to book</li>
+                                    <li>Manage registrations and communicate with parents</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>What You Cannot Do:</h6>
+                                <ul>
+                                    <li>Edit buildout details or financial information</li>
+                                    <li>Modify instance details (dates, location, capacity)</li>
+                                    <li>Change role assignments or responsibilities</li>
+                                    <li>Access financial or profit information</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning mt-3">
+                            <strong>Note:</strong> You are viewing this buildout because you've been assigned to it by an administrator. 
+                            Contact your administrator if you need any changes to the program details or your role assignments.
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Contracts Panel -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Contracts</h5>
+                </div>
+                <div class="card-body">
+                    {% if buildout.contracts.all %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Envelope ID</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for c in buildout.contracts.all %}
+                                        <tr>
+                                            <td>{{ c.template_key|title }}</td>
+                                            <td>
+                                                <span class="badge bg-{% if c.status == 'completed' %}success{% elif c.status == 'sent' %}warning text-dark{% else %}secondary{% endif %}">{{ c.status|title }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="text" class="form-control" value="{{ c.envelope_id }}" readonly>
+                                                    <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('{{ c.envelope_id }}')">Copy</button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    {% if c.admin_note_url %}
+                                                        <a href="{{ c.admin_note_url }}" target="_blank" class="btn btn-outline-primary">Open DocuSign</a>
+                                                    {% endif %}
+                                                    {% if c.signed_pdf %}
+                                                        <a href="{{ c.signed_pdf.url }}" class="btn btn-outline-success">Download PDF</a>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="4" class="text-muted">No contracts yet.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No contracts created yet.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>

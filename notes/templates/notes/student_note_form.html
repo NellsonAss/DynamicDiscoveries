@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}{{ action }} Note for {{ student.full_name }} - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'programs:manage_children' %}">Children</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'notes:student_notes_list' student.id %}">{{ student.full_name }} Notes</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ action }} Note</li>
+                </ol>
+            </nav>
+            
+            {% include 'notes/partials/_student_note_form.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}

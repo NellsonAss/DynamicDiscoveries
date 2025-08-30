@@ -67,6 +67,20 @@
             </div>
         </div>
     </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="admin-stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-1">{{ total_sessions|default:"0" }}</h3>
+                    <p class="mb-0 opacity-75">Active Sessions</p>
+                </div>
+                <div class="fs-1 opacity-50">
+                    <i class="bi bi-calendar-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Financial Overview -->
@@ -123,7 +137,7 @@
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <h6 class="mb-1">{{ registration.child.full_name }}</h6>
-                                    <small class="text-muted">{{ registration.program_instance.program_type.name }}</small>
+                                    <small class="text-muted">{{ registration.program_instance.buildout.program_type.name }}</small>
                                 </div>
                                 <span class="status-badge status-{{ registration.status }}">
                                     {{ registration.get_status_display }}
@@ -196,8 +210,8 @@
                         <div class="list-group-item border-0 py-3">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="mb-1">{{ program.program_type.name }}</h6>
-                                    <small class="text-muted">{{ program.instructor.email }}</small>
+                                    <h6 class="mb-1">{{ program.buildout.program_type.name }}</h6>
+                                    <small class="text-muted">{% if program.contractor_assignments.first %}{{ program.contractor_assignments.first.contractor.email }}{% else %}No contractor assigned{% endif %}</small>
                                 </div>
                                 <span class="status-badge {% if program.is_active %}status-active{% else %}status-inactive{% endif %}">
                                     {% if program.is_active %}Active{% else %}Inactive{% endif %}
@@ -246,6 +260,45 @@
                 <div class="col-md-3 mb-2">
                     <a href="{% url 'admin_interface:contact_management' %}" class="btn btn-outline-warning w-100">
                         <i class="bi bi-envelope me-2"></i>View Contacts
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'programs:buildout_list' %}" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-diagram-3 me-2"></i>Buildouts
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'people:contractor_onboarding' %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-file-earmark-text me-2"></i>Contractor Onboarding
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Scheduling Management -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <h6 class="text-muted mb-2">
+                        <i class="bi bi-calendar-alt me-2"></i>Scheduling Management
+                    </h6>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'admin:programs_contractoravailability_changelist' %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-calendar-alt me-2"></i>Contractor Availability
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'admin:programs_programsession_changelist' %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-chalkboard-teacher me-2"></i>Program Sessions
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'admin:programs_sessionbooking_changelist' %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-calendar-check me-2"></i>Session Bookings
+                    </a>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'admin:programs_programbuildoutscheduling_changelist' %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-gear me-2"></i>Scheduling Config
                     </a>
                 </div>
             </div>

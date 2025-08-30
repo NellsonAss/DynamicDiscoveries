@@ -10,3 +10,4 @@ django-otp>=1.2.0  # For passwordless login
 django-otp-yubikey>=1.0.0  # For passwordless login
 azure-communication-email
 django-simple-captcha>=0.5.20
+requests>=2.31.0

@@ -35,19 +35,7 @@ class AdminInterfaceTestCase(TestCase):
         # Create program type
         self.program_type = ProgramType.objects.create(
             name='Test Program',
-            description='A test program',
-            rate_per_student=100.00
-        )
-        
-        # Create program instance
-        self.program_instance = ProgramInstance.objects.create(
-            program_type=self.program_type,
-            instructor=self.contractor,
-            location='Test Location',
-            start_date='2024-01-01',
-            end_date='2024-01-05',
-            capacity=20,
-            is_active=True
+            description='A test program'
         )
         
         # Create parent and child
@@ -66,8 +54,27 @@ class AdminInterfaceTestCase(TestCase):
             parent=self.parent,
             date_of_birth='2015-01-01'
         )
-        
-        # Create registration
+        # Create instance and registration for AJAX tests
+        from programs.models import ProgramBuildout, ProgramInstance
+        buildout = ProgramBuildout.objects.create(
+            program_type=self.program_type,
+            title='BO',
+            num_facilitators=1,
+            num_new_facilitators=0,
+            students_per_program=10,
+            sessions_per_program=5,
+            rate_per_student=10.0,
+        )
+        from django.utils import timezone
+        from datetime import timedelta
+        self.program_instance = ProgramInstance.objects.create(
+            buildout=buildout,
+            title='Inst',
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=1),
+            location='X',
+            capacity=10,
+        )
         self.registration = Registration.objects.create(
             child=self.child,
             program_instance=self.program_instance,
@@ -98,6 +105,91 @@ class AdminInterfaceTestCase(TestCase):
         response = self.client.get(reverse('admin_interface:user_management'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'User Management')
+    
+    def test_responsibility_edit_functionality(self):
+        """Test that admin users can edit responsibilities."""
+        from programs.models import Responsibility
+        
+        # Create a test role and responsibility
+        role = Role.objects.create(
+            title='Test Role',
+            description='A test role'
+        )
+        
+        responsibility = Responsibility.objects.create(
+            role=role,
+            name='Test Responsibility',
+            description='A test responsibility',
+            frequency_type='PER_WORKSHOP',
+            default_hours=2.50
+        )
+        
+        self.client.login(email='admin@test.com', password='testpass123')
+        
+        # Test GET request to edit form
+        response = self.client.get(reverse('admin_interface:responsibility_edit', args=[responsibility.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Edit Responsibility: Test Responsibility')
+        self.assertContains(response, 'Test Responsibility')
+        self.assertContains(response, '2.50')
+        
+        # Test POST request to update responsibility
+        response = self.client.post(reverse('admin_interface:responsibility_edit', args=[responsibility.id]), {
+            'name': 'Updated Responsibility',
+            'description': 'An updated description',
+            'frequency_type': 'PER_SESSION',
+            'default_hours': '3.75'
+        })
+        
+        # Debug: print response content if it's not a redirect
+        if response.status_code != 302:
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.content.decode()}")
+        
+        # Should redirect to role manage responsibilities
+        self.assertRedirects(response, reverse('admin_interface:role_manage_responsibilities', args=[role.id]))
+        
+        # Check that the responsibility was updated
+        responsibility.refresh_from_db()
+        self.assertEqual(responsibility.name, 'Updated Responsibility')
+        self.assertEqual(responsibility.description, 'An updated description')
+        self.assertEqual(responsibility.frequency_type, 'PER_SESSION')
+        self.assertEqual(float(responsibility.default_hours), 3.75)
+    
+    def test_responsibility_delete_functionality(self):
+        """Test that admin users can delete responsibilities."""
+        from programs.models import Responsibility
+        
+        # Create a test role and responsibility
+        role = Role.objects.create(
+            title='Test Role',
+            description='A test role'
+        )
+        
+        responsibility = Responsibility.objects.create(
+            role=role,
+            name='Test Responsibility',
+            description='A test responsibility',
+            frequency_type='PER_WORKSHOP',
+            default_hours=2.50
+        )
+        
+        self.client.login(email='admin@test.com', password='testpass123')
+        
+        # Test GET request to delete confirmation page
+        response = self.client.get(reverse('admin_interface:responsibility_delete', args=[responsibility.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Delete Responsibility')
+        self.assertContains(response, 'Test Responsibility')
+        
+        # Test POST request to delete responsibility
+        response = self.client.post(reverse('admin_interface:responsibility_delete', args=[responsibility.id]))
+        
+        # Should redirect to role manage responsibilities
+        self.assertRedirects(response, reverse('admin_interface:role_manage_responsibilities', args=[role.id]))
+        
+        # Check that the responsibility was deleted
+        self.assertFalse(Responsibility.objects.filter(id=responsibility.id).exists())
     
     def test_contact_management_access(self):
         """Test that admin users can access contact management."""

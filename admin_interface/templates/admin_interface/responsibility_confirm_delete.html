@@ -1,0 +1,64 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-exclamation-triangle me-2"></i>Delete Responsibility
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:role_manage_responsibilities' role.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Responsibilities
+        </a>
+    </div>
+</div>
+
+<div class="admin-card p-4">
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Warning:</strong> You are about to delete the responsibility "<strong>{{ responsibility.name }}</strong>" from the role "<strong>{{ role.title }}</strong>".
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Responsibility Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{ responsibility.name }}</p>
+                    <p><strong>Role:</strong> {{ responsibility.role.title }}</p>
+                    <p><strong>Frequency:</strong> {{ responsibility.get_frequency_type_display }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Default Hours:</strong> {{ responsibility.default_hours }}</p>
+                    <p><strong>Created:</strong> {{ responsibility.created_at|date:"M d, Y" }}</p>
+                    <p><strong>Last Updated:</strong> {{ responsibility.updated_at|date:"M d, Y" }}</p>
+                </div>
+            </div>
+            {% if responsibility.description %}
+                <div class="mt-3">
+                    <p><strong>Description:</strong></p>
+                    <p class="text-muted">{{ responsibility.description }}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="alert alert-warning">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Note:</strong> This action cannot be undone. All data associated with this responsibility will be permanently removed.
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash me-1"></i>Delete Responsibility
+            </button>
+            <a href="{% url 'admin_interface:role_manage_responsibilities' role.id %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x me-1"></i>Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

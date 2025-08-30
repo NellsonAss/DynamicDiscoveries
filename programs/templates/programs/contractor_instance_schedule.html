@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Schedule {{ instance.title }} - Programs{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'programs:contractor_dashboard' %}">Contractor Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'programs:buildout_detail' instance.buildout.pk %}">{{ instance.buildout.title }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Schedule {{ instance.title }}</li>
+                </ol>
+            </nav>
+
+            <h1 class="mb-4">
+                <i class="bi bi-calendar-week"></i> Schedule Program Instance
+            </h1>
+
+            <!-- Instance Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Program Instance Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><strong>{{ instance.title }}</strong></h6>
+                            <p class="text-muted">{{ instance.buildout.program_type.name }}</p>
+                            <p><strong>Location:</strong> {{ instance.location }}</p>
+                            <p><strong>Capacity:</strong> {{ instance.capacity }} students</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Program Dates:</strong><br>
+                               {{ instance.start_date|date:"M d, Y" }} - {{ instance.end_date|date:"M d, Y" }}</p>
+                            <p><strong>Current Enrollment:</strong> {{ instance.current_enrollment }}/{{ instance.capacity }}</p>
+                            <p><strong>Status:</strong> 
+                                {% if instance.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Your Role Assignments -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Role Assignments</h5>
+                </div>
+                <div class="card-body">
+                    {% if contractor_assignments %}
+                        <div class="row">
+                            {% for assignment in contractor_assignments %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ assignment.role.title }}</h6>
+                                            <p class="card-text text-muted">{{ assignment.role.description|truncatewords:15 }}</p>
+                                            {% if assignment.override_hours %}
+                                                <p><strong>Hours:</strong> {{ assignment.override_hours }}</p>
+                                            {% endif %}
+                                            {% if assignment.override_rate %}
+                                                <p><strong>Rate:</strong> ${{ assignment.override_rate }}/hour</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No role assignments found for this instance.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Availability & Scheduling -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">My Availability for This Program</h5>
+                    {% if can_create_availability %}
+                        <a href="{% url 'programs:contractor_availability_create' %}?instance={{ instance.pk }}" class="btn btn-primary">
+                            <i class="bi bi-plus"></i> Add Availability
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if availability_programs %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Duration</th>
+                                        <th>Status</th>
+                                        <th>Remaining Time</th>
+                                        <th>Notes</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for avail_program in availability_programs %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ avail_program.availability.start_datetime|date:"M d, Y" }}</strong><br>
+                                                <small class="text-muted">{{ avail_program.availability.start_datetime|time:"g:i A" }} - {{ avail_program.availability.end_datetime|time:"g:i A" }}</small>
+                                            </td>
+                                            <td>{{ avail_program.session_duration_hours }} hours</td>
+                                            <td>
+                                                <span class="badge bg-{% if avail_program.availability.status == 'available' %}success{% elif avail_program.availability.status == 'partially_booked' %}warning{% elif avail_program.availability.status == 'fully_booked' %}danger{% else %}secondary{% endif %}">
+                                                    {{ avail_program.availability.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>{{ avail_program.availability.remaining_hours|floatformat:1 }} hours</td>
+                                            <td>
+                                                {% if avail_program.availability.notes %}
+                                                    {{ avail_program.availability.notes|truncatewords:10 }}
+                                                {% else %}
+                                                    <span class="text-muted">No notes</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'programs:contractor_availability_detail' avail_program.availability.pk %}" class="btn btn-outline-primary">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                    {% if avail_program.availability.status != 'fully_booked' %}
+                                                        <a href="{% url 'programs:contractor_availability_edit' avail_program.availability.pk %}" class="btn btn-outline-secondary">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x display-1 text-muted mb-3"></i>
+                            <h6>No Availability Set</h6>
+                            <p class="text-muted">You haven't created any availability for this program yet.</p>
+                            {% if can_create_availability %}
+                                <a href="{% url 'programs:contractor_availability_create' %}?instance={{ instance.pk }}" class="btn btn-primary">
+                                    <i class="bi bi-plus"></i> Create Your First Availability
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Help Information -->
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> How to Schedule Programs</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>For Parents You've Contacted:</h6>
+                            <ol>
+                                <li>Create availability slots for specific dates/times</li>
+                                <li>Set status to "Available" so parents can book</li>
+                                <li>Parents will register their children for your sessions</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>For Pre-Scheduled Sessions:</h6>
+                            <ol>
+                                <li>Create availability for the agreed date/time</li>
+                                <li>Contact the parent to register their child</li>
+                                <li>Monitor enrollment through your dashboard</li>
+                            </ol>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning mt-3">
+                        <strong>Note:</strong> You cannot modify the program instance details (dates, location, capacity). 
+                        Only administrators can edit those settings. You can only manage your availability and scheduling.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

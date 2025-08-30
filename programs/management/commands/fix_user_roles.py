@@ -131,7 +131,7 @@ class Command(BaseCommand):
         
         # Create STEAM program type
         steam_program, created = ProgramType.objects.get_or_create(
-            name='STEAM Workshop',
+            name='STEAM Program',
             defaults={
                 'description': 'Science, Technology, Engineering, Arts, and Math activities for curious minds!',
                 'target_grade_levels': '3-5',
@@ -140,7 +140,7 @@ class Command(BaseCommand):
         )
         
         if created:
-            self.stdout.write('✓ Created STEAM Workshop program type')
+            self.stdout.write('✓ Created STEAM Program program type')
 
         # Create Literary program type  
         literary_program, created = ProgramType.objects.get_or_create(
@@ -163,7 +163,7 @@ class Command(BaseCommand):
             start_date = timezone.now() + timedelta(days=7)
             end_date = start_date + timedelta(days=5)
             
-            # STEAM Workshop instance
+            # STEAM Program instance
             steam_instance, created = ProgramInstance.objects.get_or_create(
                 program_type=steam_program,
                 start_date=start_date,
@@ -177,7 +177,7 @@ class Command(BaseCommand):
             )
             
             if created:
-                self.stdout.write('✓ Created STEAM Workshop program instance')
+                self.stdout.write('✓ Created STEAM Program program instance')
 
             # Literary Adventures instance
             literary_start = start_date + timedelta(days=14)

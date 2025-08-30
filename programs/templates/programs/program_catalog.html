@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Program Catalog{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-grid-3x3-gap"></i> Program Catalog</h1>
+                {% if user.is_authenticated %}
+                    <div>
+                        {% if is_parent %}
+                            <span class="badge bg-success">Parent View</span>
+                        {% elif is_contractor %}
+                            <span class="badge bg-info">Contractor View</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Introduction -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5>Explore Our Programs</h5>
+                            <p class="text-muted">
+                                Discover the educational programs we offer. Browse available sessions, 
+                                learn about instructors, and request programs that interest you.
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="h4 text-primary">{{ program_types.count }}</div>
+                                    <small class="text-muted">Program Types</small>
+                                </div>
+                                <div class="col-6">
+                                    <div class="h4 text-success">{{ total_active_sessions }}</div>
+                                    <small class="text-muted">Active Programs</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Program Types -->
+            {% if program_types %}
+                <div class="row">
+                    {% for program_type in program_types %}
+                        <div class="col-lg-6 col-xl-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <h5 class="mb-0">{{ program_type.name }}</h5>
+                                        <div class="text-end">
+                                            {% if program_type.active_instances %}
+                                                <span class="badge bg-success">{{ program_type.active_instances.count }} session{{ program_type.active_instances.count|pluralize }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">No active sessions</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text text-muted">{{ program_type.description|truncatewords:20 }}</p>
+                                    
+                                    <!-- Active Sessions -->
+                                    {% if program_type.active_instances %}
+                                        <h6 class="text-success mb-2">Available Sessions:</h6>
+                                        {% for instance in program_type.active_instances|slice:":3" %}
+                                            <div class="border rounded p-2 mb-2 bg-light">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div class="flex-grow-1">
+                                                        <div class="fw-bold">{{ instance.title }}</div>
+                                                        <small class="text-muted">
+                                                            <i class="bi bi-calendar"></i> {{ instance.start_date|date:"M d" }} - {{ instance.end_date|date:"M d, Y" }}
+                                                        </small>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            <i class="bi bi-geo-alt"></i> {{ instance.location }}
+                                                        </small>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <div class="small">
+                                                            <div class="progress" style="width: 60px; height: 8px;">
+                                                                <div class="progress-bar" role="progressbar" 
+                                                                     style="width: {% widthratio instance.current_enrollment instance.capacity 100 %}%">
+                                                                </div>
+                                                            </div>
+                                                            <small class="text-muted">{{ instance.current_enrollment }}/{{ instance.capacity }}</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Visible Contractors -->
+                                                {% if instance.visible_contractors %}
+                                                    <div class="mt-2">
+                                                        <small class="text-muted">Staff:</small>
+                                                        {% for contractor_info in instance.visible_contractors %}
+                                                            <span class="badge bg-outline-secondary small">
+                                                                {{ contractor_info.role }}: {{ contractor_info.contractor }}
+                                                            </span>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                        
+                                        {% if program_type.active_instances.count > 3 %}
+                                            <small class="text-muted">+ {{ program_type.active_instances.count|add:"-3" }} more session{{ program_type.active_instances.count|add:"-3"|pluralize }}</small>
+                                        {% endif %}
+                                    {% endif %}
+                                    
+                                    <!-- Buildout Information (for contractors) -->
+                                    {% if is_contractor and program_type.active_buildouts %}
+                                        <h6 class="text-info mb-2">Available Buildouts:</h6>
+                                        {% for buildout in program_type.active_buildouts|slice:":2" %}
+                                            <div class="small text-muted">
+                                                <i class="bi bi-tools"></i> {{ buildout.title }}
+                                                <br>
+                                                <span class="badge bg-info">{{ buildout.role_lines.count }} role{{ buildout.role_lines.count|pluralize }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        {% if program_type.active_instances %}
+                                            <a href="{% url 'programs:program_type_instances' program_type.id %}" class="btn btn-primary btn-sm">
+                                                <i class="bi bi-calendar-check"></i> View Programs
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted small">No programs available</span>
+                                        {% endif %}
+                                        
+                                        <a href="{% url 'programs:program_request_create' program_type.id %}" class="btn btn-outline-secondary btn-sm">
+                                            <i class="bi bi-plus-circle"></i> 
+                                            {% if is_contractor %}
+                                                Request Buildout
+                                            {% else %}
+                                                Request Program
+                                            {% endif %}
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-grid-3x3-gap display-1 text-muted mb-3"></i>
+                    <h4>No Programs Available</h4>
+                    <p class="text-muted">There are currently no program types in our catalog.</p>
+                </div>
+            {% endif %}
+
+            <!-- Information Sections -->
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <div class="card border-success">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-people"></i> For Parents</h6>
+                        </div>
+                        <div class="card-body">
+                            <h6>How to Get Started:</h6>
+                            <ol class="small">
+                                <li>Browse available program sessions above</li>
+                                <li>Click "View Sessions" to see detailed schedules</li>
+                                <li>Book sessions that work for your child</li>
+                                <li>Don't see what you want? Use "Request Program" to let us know!</li>
+                            </ol>
+                            <div class="alert alert-info small">
+                                <strong>Note:</strong> Some programs may require advance registration or have prerequisites.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="bi bi-briefcase"></i> For Contractors</h6>
+                        </div>
+                        <div class="card-body">
+                            <h6>Expand Your Teaching:</h6>
+                            <ol class="small">
+                                <li>Browse program types you're interested in teaching</li>
+                                <li>Click "Request Buildout" for programs you want to offer</li>
+                                <li>Provide your experience and proposed location</li>
+                                <li>Our team will work with you to create a program buildout</li>
+                            </ol>
+                            <div class="alert alert-warning small">
+                                <strong>Remember:</strong> Buildout requests require approval and may involve training or certification requirements.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

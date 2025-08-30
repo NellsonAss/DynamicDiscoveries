@@ -4,7 +4,7 @@
 {% block admin_content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0">
-        <i class="bi bi-table me-2"></i>TT After School Workshops
+        <i class="bi bi-table me-2"></i>TT After School Programs
     </h2>
     <div>
         <a href="{% url 'admin_interface:buildout_management' %}" class="btn btn-outline-secondary">
@@ -35,20 +35,20 @@
                 </div>
                 <div class="col-md-2">
                     <div class="text-center">
-                        <h5 class="mb-0 text-info">{{ buildout.num_workshops_per_year }}</h5>
-                        <small class="text-muted">Workshops/Year</small>
+                        <h5 class="mb-0 text-info">{{ buildout.num_programs_per_year }}</h5>
+                        <small class="text-muted">Programs/Year</small>
                     </div>
                 </div>
                 <div class="col-md-2">
                     <div class="text-center">
-                        <h5 class="mb-0 text-warning">{{ buildout.students_per_workshop }}</h5>
-                        <small class="text-muted">Students/Workshop</small>
+                        <h5 class="mb-0 text-warning">{{ buildout.students_per_program }}</h5>
+                        <small class="text-muted">Students/Program</small>
                     </div>
                 </div>
                 <div class="col-md-2">
                     <div class="text-center">
-                        <h5 class="mb-0 text-danger">{{ buildout.sessions_per_workshop }}</h5>
-                        <small class="text-muted">Sessions/Workshop</small>
+                        <h5 class="mb-0 text-danger">{{ buildout.sessions_per_program }}</h5>
+                        <small class="text-muted">Sessions/Program</small>
                     </div>
                 </div>
                 <div class="col-md-2">
@@ -86,8 +86,8 @@
     <h5 class="mb-3"><i class="bi bi-cash-coin me-2"></i>Revenue Summary</h5>
     <div class="row">
         <div class="col-md-3">
-            <h6>Revenue per Workshop:</h6>
-            <p class="h4 text-success">${{ buildout.total_revenue_per_year|divide:buildout.num_workshops_per_year|floatformat:2 }}</p>
+            <h6>Revenue per Program:</h6>
+            <p class="h4 text-success">${{ buildout.total_revenue_per_year|divide:buildout.num_programs_per_year|floatformat:2 }}</p>
         </div>
         <div class="col-md-3">
             <h6>Total Revenue per Year:</h6>
@@ -108,16 +108,59 @@
 {% if roles_data %}
 <div class="admin-card p-4 mb-4">
     <h5 class="mb-3"><i class="bi bi-people me-2"></i>Assigned Roles and Responsibilities</h5>
+    
+    <!-- Contractor Summary -->
+    <div class="mb-4">
+        <h6 class="text-muted mb-3">Contractor Assignments:</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Role</th>
+                        <th>Contractor</th>
+                        <th>Pay Structure</th>
+                        <th>Hours/Frequency</th>
+                        <th>Yearly Hours</th>
+                        <th>Yearly Payout</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role_data in roles_data %}
+                    <tr>
+                        <td><strong>{{ role_data.role.title }}</strong></td>
+                        <td>{{ role_data.role_line.contractor.get_full_name|default:role_data.role_line.contractor.email }}</td>
+                        <td>
+                            {% if role_data.role_line.pay_type == 'HOURLY' %}
+                                ${{ role_data.role_line.pay_value|floatformat:2 }}/hr
+                            {% elif role_data.role_line.pay_type == 'PER_PROGRAM' %}
+                                ${{ role_data.role_line.pay_value|floatformat:2 }}/program
+                            {% elif role_data.role_line.pay_type == 'PER_SESSION' %}
+                                ${{ role_data.role_line.pay_value|floatformat:2 }}/session
+                            {% else %}
+                                ${{ role_data.role_line.pay_value|floatformat:2 }}
+                            {% endif %}
+                        </td>
+                        <td>{{ role_data.role_line.hours_per_frequency|floatformat:2 }}h/{{ role_data.role_line.get_frequency_unit_display }}</td>
+                        <td>{{ role_data.yearly_hours|floatformat:1 }}</td>
+                        <td>${{ role_data.payout|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <hr>
     <div class="table-responsive">
         <table class="table table-bordered table-sm mb-0">
             <thead class="table-light">
                 <tr>
                     <th style="width: 25%;">Role/Responsibility</th>
                     <th style="width: 20%;">Description</th>
-                    <th class="text-center" style="width: 12%;">Hrs/New Workshop Concept</th>
+                    <th class="text-center" style="width: 12%;">Hrs/New Program Concept</th>
                     <th class="text-center" style="width: 12%;">Hrs/New Worker</th>
-                    <th class="text-center" style="width: 12%;">Hrs/Workshop</th>
-                    <th class="text-center" style="width: 12%;">Hrs/Workshop/Session</th>
+                    <th class="text-center" style="width: 12%;">Hrs/Program</th>
+                    <th class="text-center" style="width: 12%;">Hrs/Program/Session</th>
                     <th class="text-center" style="width: 7%;">Total Hrs/Year</th>
                 </tr>
             </thead>
@@ -136,7 +179,7 @@
                             <td class="ps-4">{{ responsibility.name }}</td>
                             <td>{{ responsibility.description|truncatewords:8 }}</td>
                             <td class="text-center">
-                                {% if responsibility.frequency_type == 'PER_WORKSHOP_CONCEPT' %}
+                                {% if responsibility.frequency_type == 'PER_PROGRAM_CONCEPT' %}
                                     {{ responsibility.hours|floatformat:2 }}
                                 {% else %}
                                     -
@@ -150,7 +193,7 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                {% if responsibility.frequency_type == 'PER_WORKSHOP' %}
+                                {% if responsibility.frequency_type == 'PER_PROGRAM' %}
                                     {{ responsibility.hours|floatformat:2 }}
                                 {% else %}
                                     -
@@ -164,12 +207,12 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                {% if responsibility.frequency_type == 'PER_WORKSHOP_CONCEPT' %}
-                                    {{ responsibility.hours|multiply:buildout.new_workshop_concepts_per_year|floatformat:2 }}
+                                {% if responsibility.frequency_type == 'PER_PROGRAM_CONCEPT' %}
+                                    {{ responsibility.hours|multiply:buildout.new_program_concepts_per_year|floatformat:2 }}
                                 {% elif responsibility.frequency_type == 'PER_NEW_FACILITATOR' %}
                                     {{ responsibility.hours|multiply:buildout.num_new_facilitators|floatformat:2 }}
-                                {% elif responsibility.frequency_type == 'PER_WORKSHOP' %}
-                                    {{ responsibility.hours|multiply:buildout.num_workshops_per_year|floatformat:2 }}
+                                {% elif responsibility.frequency_type == 'PER_PROGRAM' %}
+                                    {{ responsibility.hours|multiply:buildout.num_programs_per_year|floatformat:2 }}
                                 {% elif responsibility.frequency_type == 'PER_SESSION' %}
                                     {{ responsibility.hours|multiply:buildout.total_sessions_per_year|floatformat:2 }}
                                 {% endif %}
@@ -181,9 +224,9 @@
                     <tr class="table-secondary">
                         <td><strong>Total</strong></td>
                         <td></td>
-                        <td class="text-center"><strong>{{ role_data.hours_per_workshop_concept|floatformat:2 }}</strong></td>
+                        <td class="text-center"><strong>{{ role_data.hours_per_program_concept|floatformat:2 }}</strong></td>
                         <td class="text-center"><strong>{{ role_data.hours_per_new_worker|floatformat:2 }}</strong></td>
-                        <td class="text-center"><strong>{{ role_data.hours_per_workshop|floatformat:2 }}</strong></td>
+                        <td class="text-center"><strong>{{ role_data.hours_per_program|floatformat:2 }}</strong></td>
                         <td class="text-center"><strong>{{ role_data.hours_per_session|floatformat:2 }}</strong></td>
                         <td class="text-center"><strong>{{ role_data.yearly_hours|floatformat:2 }}</strong></td>
                     </tr>
@@ -230,7 +273,17 @@
                         {% for role_data in roles_data %}
                             <tr>
                                 <td>{{ role_data.role.title }}</td>
-                                <td>$40.00</td>
+                                <td>
+                                    {% if role_data.role_line.pay_type == 'HOURLY' %}
+                                        ${{ role_data.role_line.pay_value|floatformat:2 }}/hr
+                                    {% elif role_data.role_line.pay_type == 'PER_PROGRAM' %}
+                                        ${{ role_data.role_line.pay_value|floatformat:2 }}/program
+                                    {% elif role_data.role_line.pay_type == 'PER_SESSION' %}
+                                        ${{ role_data.role_line.pay_value|floatformat:2 }}/session
+                                    {% else %}
+                                        ${{ role_data.role_line.pay_value|floatformat:2 }}
+                                    {% endif %}
+                                </td>
                                 <td>{{ role_data.yearly_hours|floatformat:1 }}</td>
                                 <td>${{ role_data.payout|floatformat:2 }}</td>
                                 <td>{{ role_data.percentage|floatformat:1 }}%</td>
@@ -254,7 +307,7 @@
                     <thead>
                         <tr>
                             <th>Cost Item</th>
-                            <th>Cost/Workshop</th>
+                            <th>Cost/Program</th>
                             <th>Cost/Year</th>
                             <th>% Rev</th>
                         </tr>

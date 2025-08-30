@@ -38,7 +38,7 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <p><strong>Title:</strong> {{ role.title }}</p>
-                                    <p><strong>Default Rate:</strong> $50.00/hr</p>
+                                    <p><strong>Default Hours:</strong> {{ role.default_hours_per_frequency|floatformat:2 }}h/{{ role.get_default_frequency_unit_display }}</p>
                                 </div>
                                 <div class="col-md-6">
                                     <p><strong>Program Types:</strong> {{ program_types.count }}</p>
@@ -88,7 +88,7 @@
                                                         <span class="badge bg-success">{{ responsibility.hours|floatformat:2 }}h</span>
                                                     </td>
                                                     <td>
-                                                        <a href="#" class="btn btn-sm btn-outline-primary">
+                                                        <a href="{% url 'admin_interface:responsibility_edit' responsibility.id %}" class="btn btn-sm btn-outline-primary">
                                                             <i class="bi bi-pencil"></i>
                                                         </a>
                                                     </td>
@@ -247,8 +247,8 @@
                                     <small class="text-muted">Users</small>
                                 </div>
                                 <div class="col-6">
-                                    <h4 class="text-warning mb-0">{{ responsibilities.count|multiply:50|floatformat:0 }}</h4>
-                                    <small class="text-muted">Total Hours</small>
+                                    <h4 class="text-warning mb-0">{{ role.default_hours_per_frequency|floatformat:1 }}</h4>
+                                    <small class="text-muted">Default Hours/Freq</small>
                                 </div>
                             </div>
                         </div>

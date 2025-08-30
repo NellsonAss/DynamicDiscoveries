@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}{{ action }} Note for {{ parent.get_full_name|default:parent.email }} - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
+                    {% if request.user.is_app_admin %}
+                        <li class="breadcrumb-item"><a href="{% url 'accounts:user_list' %}">Users</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'accounts:user_detail' parent.id %}">{{ parent.get_full_name|default:parent.email }}</a></li>
+                    {% endif %}
+                    <li class="breadcrumb-item"><a href="{% url 'notes:parent_notes_list' parent.id %}">Notes</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ action }} Note</li>
+                </ol>
+            </nav>
+            
+            {% include 'notes/partials/_parent_note_form.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}

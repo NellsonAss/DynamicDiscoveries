@@ -1,0 +1,92 @@
+{% load django_bootstrap5 %}
+
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Notes for {{ parent.get_full_name|default:parent.email }}</h5>
+        {% if can_create %}
+            <button class="btn btn-sm btn-primary" 
+                    hx-get="{% url 'notes:parent_note_create' parent.id %}" 
+                    hx-target="#note-form-container" 
+                    hx-swap="innerHTML">
+                <i class="bi bi-plus-circle"></i> Add Note
+            </button>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div id="note-form-container" class="mb-3"></div>
+        
+        {% if notes %}
+            {% for note in notes %}
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                {% if note.title %}
+                                    <h6 class="card-title">{{ note.title }}</h6>
+                                {% endif %}
+                                <p class="card-text">{{ note.body|linebreaks }}</p>
+                                
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if note.is_public %}
+                                        <span class="badge bg-success">Parent-visible</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Staff-only</span>
+                                    {% endif %}
+                                    
+                                    <small class="text-muted">
+                                        By {{ note.created_by.get_full_name|default:note.created_by.email }} 
+                                        on {{ note.created_at|date:"M j, Y g:i A" }}
+                                        {% if note.edited_by_last %}
+                                            <br><em>Last edited by {{ note.edited_by_last.get_full_name|default:note.edited_by_last.email }} 
+                                            on {{ note.updated_at|date:"M j, Y g:i A" }}</em>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            {% if request.user.is_app_admin %}
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                        Actions
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="#" 
+                                               hx-get="{% url 'notes:parent_note_edit' parent.id note.id %}" 
+                                               hx-target="#note-form-container" 
+                                               hx-swap="innerHTML">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item" 
+                                                    hx-post="{% url 'notes:parent_note_toggle_public' parent.id note.id %}" 
+                                                    hx-target="#parent-notes" 
+                                                    hx-swap="innerHTML"
+                                                    hx-confirm="Are you sure you want to change the visibility of this note?">
+                                                {% if note.is_public %}
+                                                    <i class="bi bi-eye-slash"></i> Make Private
+                                                {% else %}
+                                                    <i class="bi bi-eye"></i> Make Public
+                                                {% endif %}
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-sticky display-4"></i>
+                <p class="mt-2">No notes yet.</p>
+                {% if not can_create %}
+                    <small>You can only see notes marked as public.</small>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>

@@ -14,12 +14,13 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.forms import ValidationError as FormValidationError
+from decimal import Decimal
 
 from programs.models import (
     ProgramType, ProgramBuildout, ProgramInstance, Role, Responsibility,
-    BuildoutRoleAssignment, BuildoutResponsibilityAssignment, BaseCost,
+    BuildoutRoleLine, BuildoutResponsibilityLine, BaseCost,
     BuildoutBaseCostAssignment, RegistrationForm, FormQuestion, Child,
-    Registration, InstanceRoleAssignment
+    Registration, InstanceRoleAssignment, ProgramRequest
 )
 from communications.models import Contact
 from programs.forms import (
@@ -47,7 +48,7 @@ def admin_dashboard(request):
     # Recent activity
     recent_registrations = Registration.objects.select_related('child', 'program_instance').order_by('-registered_at')[:5]
     recent_contacts = Contact.objects.order_by('-created_at')[:5]
-    recent_programs = ProgramInstance.objects.select_related('buildout__program_type').order_by('-created_at')[:5]
+    recent_programs = ProgramInstance.objects.select_related('buildout__program_type').prefetch_related('contractor_assignments__contractor').order_by('-created_at')[:5]
     
     # Financial overview
     active_programs = ProgramInstance.objects.filter(is_active=True)
@@ -179,7 +180,7 @@ def user_edit(request, user_id):
 def program_type_management(request):
     """Program type management interface."""
     program_types = ProgramType.objects.prefetch_related(
-        'buildouts__role_assignments__role',
+        'buildouts__role_lines__role',
         'buildouts__base_cost_assignments__base_cost'
     ).order_by('-created_at')
     
@@ -483,7 +484,7 @@ def role_detail(request, role_id):
     
     # Get program types through buildouts
     program_types = ProgramType.objects.filter(
-        buildouts__role_assignments__role=role
+        buildouts__role_lines__role=role
     ).distinct()
     # Get users through groups (since Role doesn't have direct user relationship)
     users = User.objects.filter(groups__name=role.title)
@@ -765,54 +766,54 @@ def buildout_detail(request, buildout_id):
     
     # Calculate summary statistics using the new model structure
     total_hours = sum(
-        buildout.calculate_total_hours_per_role(role) 
-        for role in buildout.roles.all()
+        role_line.calculate_yearly_hours() 
+        for role_line in buildout.role_lines.all()
     )
     total_revenue = buildout.total_revenue_per_year
-    total_payouts = buildout.total_yearly_costs
+    total_payouts = sum(
+        role_line.calculate_payout() 
+        for role_line in buildout.role_lines.all()
+    )
     
     # Prepare detailed role data with responsibilities for Excel-like display
     roles_data = []
-    for role in buildout.roles.all().order_by('title'):
+    for role_line in buildout.role_lines.all().order_by('role__title'):
+        role = role_line.role
         # Get all responsibilities for this role
         responsibilities = role.responsibilities.all().order_by('name')
         
-        # Calculate hours per scope for this role
-        hours_per_workshop_concept = sum(
-            resp.hours for resp in responsibilities 
-            if resp.frequency_type == 'PER_WORKSHOP_CONCEPT'
+        # Calculate hours per scope for this role using the role line data
+        hours_per_program_concept = sum(
+            resp.default_hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_PROGRAM_CONCEPT'
         )
         hours_per_new_worker = sum(
-            resp.hours for resp in responsibilities 
+            resp.default_hours for resp in responsibilities 
             if resp.frequency_type == 'PER_NEW_FACILITATOR'
         )
-        hours_per_workshop = sum(
-            resp.hours for resp in responsibilities 
-            if resp.frequency_type == 'PER_WORKSHOP'
+        hours_per_program = sum(
+            resp.default_hours for resp in responsibilities 
+            if resp.frequency_type == 'PER_PROGRAM'
         )
         hours_per_session = sum(
-            resp.hours for resp in responsibilities 
+            resp.default_hours for resp in responsibilities 
             if resp.frequency_type == 'PER_SESSION'
         )
         
-        # Calculate yearly totals
-        yearly_hours = (
-            hours_per_workshop_concept * buildout.new_workshop_concepts_per_year +
-            hours_per_new_worker * buildout.num_new_facilitators +
-            hours_per_workshop * buildout.num_workshops_per_year +
-            hours_per_session * buildout.total_sessions_per_year
-        )
+        # Calculate yearly totals using role line frequency and hours
+        yearly_hours = role_line.calculate_yearly_hours()
         
-        # Calculate financial data
-        payout = buildout.calculate_payout_per_role(role)
-        percentage = buildout.calculate_percent_of_revenue_per_role(role)
+        # Calculate financial data using role line
+        payout = role_line.calculate_payout()
+        percentage = (payout / total_revenue * 100) if total_revenue > 0 else 0
         
         roles_data.append({
             'role': role,
+            'role_line': role_line,
             'responsibilities': responsibilities,
-            'hours_per_workshop_concept': hours_per_workshop_concept,
+            'hours_per_program_concept': hours_per_program_concept,
             'hours_per_new_worker': hours_per_new_worker,
-            'hours_per_workshop': hours_per_workshop,
+            'hours_per_program': hours_per_program,
             'hours_per_session': hours_per_session,
             'yearly_hours': yearly_hours,
             'payout': payout,
@@ -1265,7 +1266,7 @@ def buildout_manage_responsibilities(request, buildout_id):
                     responsibility = Responsibility.objects.get(id=responsibility_id)
                     new_hours = Decimal(value)
                     if new_hours >= 0:
-                        responsibility.hours = new_hours
+                        responsibility.default_hours = new_hours
                         responsibility.save()
                 except (Responsibility.DoesNotExist, ValueError):
                     continue
@@ -1294,35 +1295,75 @@ def buildout_manage_responsibilities(request, buildout_id):
 @login_required
 @role_required(['Admin'])
 def buildout_assign_roles(request, buildout_id):
-    """Assign roles to a buildout."""
+    """Assign roles to a buildout with contractor selection."""
     buildout = get_object_or_404(ProgramBuildout, id=buildout_id)
     
     if request.method == 'POST':
         # Get selected roles
         selected_roles = request.POST.getlist('roles')
         
-        # Clear existing assignments
-        buildout.roles.clear()
+        if not selected_roles:
+            messages.error(request, "No roles were selected. Please select at least one role.")
+            return redirect('admin_interface:buildout_assign_roles', buildout_id=buildout_id)
         
-        # Add selected roles
+        # Clear existing role lines and responsibility lines
+        buildout.role_lines.all().delete()
+        buildout.responsibility_lines.all().delete()
+        
+        # Add selected roles with contractors
         for role_id in selected_roles:
             try:
                 role = Role.objects.get(id=role_id)
-                buildout.roles.add(role)
-            except Role.DoesNotExist:
+                
+                # Get contractor for this role
+                contractor_id = request.POST.get(f'contractors_{role_id}')
+                if contractor_id:
+                    contractor = User.objects.get(id=contractor_id)
+                else:
+                    # Skip this role if no contractor selected
+                    continue
+                
+                # Get pay overrides for this role
+                pay_type = request.POST.get(f'pay_type_{role_id}', 'HOURLY')
+                pay_value = Decimal(request.POST.get(f'pay_value_{role_id}', '0.00'))
+                hours_per_frequency = Decimal(request.POST.get(f'hours_{role_id}', str(role.default_hours_per_frequency)))
+                
+                # Create role line with overrides
+                role_line = BuildoutRoleLine.objects.create(
+                    buildout=buildout,
+                    role=role,
+                    contractor=contractor,
+                    pay_type=pay_type,
+                    pay_value=pay_value,
+                    frequency_unit=role.default_frequency_unit,
+                    frequency_count=1,
+                    hours_per_frequency=hours_per_frequency
+                )
+                
+                # Create responsibility lines for this role
+                for responsibility in role.responsibilities.all():
+                    BuildoutResponsibilityLine.objects.create(
+                        buildout=buildout,
+                        responsibility=responsibility,
+                        hours=responsibility.default_hours
+                    )
+                
+            except (Role.DoesNotExist, User.DoesNotExist, ValueError) as e:
                 continue
         
-        messages.success(request, f"Assigned {len(selected_roles)} roles to buildout.")
+        messages.success(request, f"Assigned {len(selected_roles)} roles to buildout with contractors.")
         return redirect('admin_interface:buildout_detail', buildout_id=buildout.id)
     
-    # Get all available roles
+    # Get all available roles and contractors
     all_roles = Role.objects.all().order_by('title')
-    assigned_roles = buildout.roles.all()
+    assigned_roles = [role_line.role for role_line in buildout.role_lines.all()]
+    contractors = User.objects.filter(groups__name__in=['Contractor', 'Admin']).order_by('email')
     
     context = {
         'buildout': buildout,
         'all_roles': all_roles,
         'assigned_roles': assigned_roles,
+        'contractors': contractors,
     }
     
     return render(request, 'admin_interface/buildout_assign_roles.html', context)
@@ -1343,7 +1384,7 @@ def role_manage_responsibilities(request, role_id):
                     responsibility = Responsibility.objects.get(id=responsibility_id)
                     new_hours = Decimal(value)
                     if new_hours >= 0:
-                        responsibility.hours = new_hours
+                        responsibility.default_hours = new_hours
                         responsibility.save()
                 except (Responsibility.DoesNotExist, ValueError):
                     continue
@@ -1370,6 +1411,10 @@ def role_add_responsibility(request, role_id):
     
     if request.method == 'POST':
         form = ResponsibilityForm(request.POST)
+        # Remove role field from form since we'll set it automatically
+        if 'role' in form.fields:
+            del form.fields['role']
+        
         if form.is_valid():
             responsibility = form.save(commit=False)
             responsibility.role = role
@@ -1378,6 +1423,9 @@ def role_add_responsibility(request, role_id):
             return redirect('admin_interface:role_detail', role_id=role.id)
     else:
         form = ResponsibilityForm()
+        # Remove role field from form since we'll set it automatically
+        if 'role' in form.fields:
+            del form.fields['role']
     
     context = {
         'form': form,
@@ -1387,6 +1435,62 @@ def role_add_responsibility(request, role_id):
     }
     
     return render(request, 'admin_interface/responsibility_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def responsibility_edit(request, responsibility_id):
+    """Edit an existing responsibility."""
+    responsibility = get_object_or_404(Responsibility, id=responsibility_id)
+    role = responsibility.role
+    
+    if request.method == 'POST':
+        # Create form without role field for editing
+        form = ResponsibilityForm(request.POST, instance=responsibility)
+        # Remove role field from form since we don't want to change it
+        if 'role' in form.fields:
+            del form.fields['role']
+        
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Responsibility '{responsibility.name}' updated successfully!")
+            return redirect('admin_interface:role_manage_responsibilities', role_id=role.id)
+    else:
+        form = ResponsibilityForm(instance=responsibility)
+        # Remove role field from form since we don't want to change it
+        if 'role' in form.fields:
+            del form.fields['role']
+    
+    context = {
+        'form': form,
+        'role': role,
+        'responsibility': responsibility,
+        'title': f'Edit Responsibility: {responsibility.name}',
+        'action': 'Update',
+    }
+    
+    return render(request, 'admin_interface/responsibility_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def responsibility_delete(request, responsibility_id):
+    """Delete a responsibility."""
+    responsibility = get_object_or_404(Responsibility, id=responsibility_id)
+    role = responsibility.role
+    
+    if request.method == 'POST':
+        responsibility_name = responsibility.name
+        responsibility.delete()
+        messages.success(request, f"Responsibility '{responsibility_name}' deleted successfully!")
+        return redirect('admin_interface:role_manage_responsibilities', role_id=role.id)
+    
+    context = {
+        'responsibility': responsibility,
+        'role': role,
+    }
+    
+    return render(request, 'admin_interface/responsibility_confirm_delete.html', context)
 
 
 @login_required
@@ -1403,7 +1507,20 @@ def program_instance_create_from_buildout(request, buildout_id):
                     instance = form.save(commit=False)
                     instance.buildout = buildout
                     instance.save()
-                    messages.success(request, f"Program instance '{instance.title}' created successfully!")
+                    
+                    # Auto-assign contractors from buildout role lines
+                    for role_line in buildout.role_lines.all():
+                        InstanceRoleAssignment.objects.create(
+                            program_instance=instance,
+                            role=role_line.role,
+                            contractor=role_line.contractor,
+                            # Use buildout role line values as defaults
+                            override_hours=role_line.hours_per_frequency,
+                            override_rate=role_line.pay_value if role_line.pay_type == 'HOURLY' else None,
+                            computed_payout=None  # Will be calculated later
+                        )
+                    
+                    messages.success(request, f"Program instance '{instance.title}' created successfully with {buildout.role_lines.count()} contractors assigned!")
                     return redirect('admin_interface:program_instance_detail', instance_id=instance.id)
             except ValidationError as e:
                 messages.error(request, f"Error creating program instance: {e}")

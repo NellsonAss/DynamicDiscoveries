@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block title %}Session Details - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Session Details</h1>
+                    <p class="text-muted mb-0">{{ session.program_instance.title }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'programs:contractor_sessions_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Sessions
+                    </a>
+                </div>
+            </div>
+
+            <!-- Session Info Card -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>Session Information
+                    </h5>
+                    <span class="badge 
+                        {% if session.status == 'confirmed' %}bg-success
+                        {% elif session.status == 'scheduled' %}bg-info
+                        {% elif session.status == 'in_progress' %}bg-warning
+                        {% elif session.status == 'completed' %}bg-primary
+                        {% else %}bg-secondary{% endif %}">
+                        {{ session.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Schedule</h6>
+                            <p class="mb-2">
+                                <i class="fas fa-calendar me-1"></i>
+                                {{ session.start_datetime|date:"l, F d, Y" }}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-clock me-1"></i>
+                                {{ session.start_datetime|time:"g:i A" }} - {{ session.end_datetime|time:"g:i A" }}
+                            </p>
+                            <p class="mb-3">
+                                <i class="fas fa-hourglass-half me-1"></i>
+                                {{ session.duration_hours }} hour{{ session.duration_hours|floatformat:0|pluralize }}
+                            </p>
+                            
+                            <h6>Location</h6>
+                            <p class="mb-3">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                {{ session.program_instance.location }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Enrollment</h6>
+                            <div class="mb-3">
+                                <div class="progress" style="height: 30px;">
+                                    <div class="progress-bar 
+                                        {% if session.enrolled_count == session.max_capacity %}bg-success
+                                        {% elif session.enrolled_count > session.max_capacity|floatformat:0|mul:0.8 %}bg-warning
+                                        {% else %}bg-info{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {% widthratio session.enrolled_count session.max_capacity 100 %}%">
+                                        {{ session.enrolled_count }}/{{ session.max_capacity }}
+                                    </div>
+                                </div>
+                                {% if session.is_full %}
+                                    <small class="text-success"><i class="fas fa-check-circle"></i> Session is full</small>
+                                {% else %}
+                                    <small class="text-info">{{ session.available_spots }} spot{{ session.available_spots|pluralize }} available</small>
+                                {% endif %}
+                            </div>
+                            
+                            <h6>Program Type</h6>
+                            <p class="mb-3">{{ session.program_instance.buildout.program_type.name }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings List -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>Enrolled Children
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if bookings %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Child</th>
+                                        <th>Parent</th>
+                                        <th>Age</th>
+                                        <th>Status</th>
+                                        <th>Booked</th>
+                                        <th>Notes</th>
+                                        {% if can_manage %}
+                                            <th>Actions</th>
+                                        {% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for booking in bookings %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ booking.child.full_name }}</strong>
+                                            </td>
+                                            <td>
+                                                {{ booking.child.parent.get_full_name|default:booking.child.parent.email }}
+                                                <br>
+                                                <small class="text-muted">{{ booking.child.parent.email }}</small>
+                                            </td>
+                                            <td>{{ booking.child.age }}</td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if booking.status == 'confirmed' %}bg-success
+                                                    {% elif booking.status == 'pending' %}bg-warning
+                                                    {% elif booking.status == 'waitlisted' %}bg-info
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ booking.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {{ booking.booked_at|date:"M d, Y" }}
+                                                <br>
+                                                <small class="text-muted">{{ booking.booked_at|timesince }} ago</small>
+                                            </td>
+                                            <td>
+                                                {% if booking.parent_notes %}
+                                                    <small class="text-muted">{{ booking.parent_notes|truncatechars:50 }}</small>
+                                                {% else %}
+                                                    <small class="text-muted">No notes</small>
+                                                {% endif %}
+                                            </td>
+                                            {% if can_manage %}
+                                                <td>
+                                                    {% if booking.status == 'pending' %}
+                                                        <button class="btn btn-sm btn-success" onclick="confirmBooking({{ booking.pk }})">
+                                                            <i class="fas fa-check"></i> Confirm
+                                                        </button>
+                                                    {% endif %}
+                                                </td>
+                                            {% endif %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Enrollments Yet</h5>
+                            <p class="text-muted">
+                                No children are enrolled in this session yet.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if can_manage %}
+<script>
+function confirmBooking(bookingId) {
+    if (confirm('Confirm this booking?')) {
+        fetch(`/admin/programs/sessionbooking/${bookingId}/change/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                'status': 'confirmed'
+            })
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error confirming booking');
+            }
+        });
+    }
+}
+</script>
+{% endif %}
+{% endblock %}

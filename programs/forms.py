@@ -1,11 +1,15 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.forms import inlineformset_factory
+from datetime import datetime, timedelta
 from .models import (
     Child, RegistrationForm, FormQuestion, ProgramInstance,
     ProgramType, Role, Responsibility, ProgramBuildout, BuildoutResponsibilityAssignment, 
-    BuildoutRoleAssignment, BaseCost, BuildoutBaseCostAssignment
+    BuildoutRoleAssignment, BaseCost, BuildoutBaseCostAssignment,
+    ContractorAvailability, AvailabilityProgram, ProgramSession, SessionBooking,
+    ProgramBuildoutScheduling, ContractorDayOffRequest, ProgramRequest
 )
+from django.db import models
 
 User = get_user_model()
 
@@ -15,7 +19,7 @@ class RoleForm(forms.ModelForm):
     
     class Meta:
         model = Role
-        fields = ['title', 'description', 'default_responsibilities']
+        fields = ['title', 'description', 'visible_to_parents', 'default_responsibilities']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
             'default_responsibilities': forms.Textarea(attrs={'rows': 3}),
@@ -32,11 +36,11 @@ class ResponsibilityForm(forms.ModelForm):
     
     class Meta:
         model = Responsibility
-        fields = ['role', 'name', 'description', 'frequency_type', 'hours']
+        fields = ['role', 'name', 'description', 'frequency_type', 'default_hours']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'Enter responsibility name...'}),
             'description': forms.Textarea(attrs={'rows': 3}),
-            'hours': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'default_hours': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -181,8 +185,8 @@ class ProgramBuildoutForm(forms.ModelForm):
         model = ProgramBuildout
         fields = [
             'program_type', 'title', 'version_number', 'is_active',
-            'is_new_workshop', 'num_facilitators', 'num_new_facilitators',
-            'students_per_workshop', 'sessions_per_workshop', 'new_workshop_concepts_per_year',
+            'is_new_program', 'num_facilitators', 'num_new_facilitators',
+            'students_per_program', 'sessions_per_program', 'new_program_concepts_per_year',
             'rate_per_student'
         ]
         widgets = {
@@ -190,13 +194,13 @@ class ProgramBuildoutForm(forms.ModelForm):
             'version_number': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
             'num_facilitators': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
             'num_new_facilitators': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
-            'students_per_workshop': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'sessions_per_workshop': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'new_workshop_concepts_per_year': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'students_per_program': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'sessions_per_program': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'new_program_concepts_per_year': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'rate_per_student': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
             'program_type': forms.Select(attrs={'class': 'form-select'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_new_workshop': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_new_program': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -387,4 +391,682 @@ class ChildSelectionForm(forms.Form):
     
     def __init__(self, parent_user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['child'].queryset = Child.objects.filter(parent=parent_user) 
+        self.fields['child'].queryset = Child.objects.filter(parent=parent_user)
+
+
+# ============================================================================
+# SCHEDULING FORMS
+# ============================================================================
+
+class ContractorAvailabilityForm(forms.ModelForm):
+    """Form for contractors to set their availability with improved date/time selection and repeating options."""
+    
+    # Availability type choices
+    AVAILABILITY_TYPE_CHOICES = [
+        ('single', 'Single Date'),
+        ('range', 'Date Range'),
+        ('recurring', 'Recurring (Weekly)'),
+    ]
+    
+    availability_type = forms.ChoiceField(
+        choices=AVAILABILITY_TYPE_CHOICES,
+        initial='single',
+        widget=forms.RadioSelect(attrs={
+            'class': 'form-check-input'
+        }),
+        label="Availability Type"
+    )
+    
+    # Single date field
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        label="Date",
+        required=False
+    )
+    
+    # Date range fields
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        label="Start Date",
+        required=False
+    )
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        label="End Date",
+        required=False
+    )
+    
+    # Recurring options
+    WEEKDAY_CHOICES = [
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    ]
+    
+    recurring_weekdays = forms.MultipleChoiceField(
+        choices=WEEKDAY_CHOICES,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'form-check-input'
+        }),
+        label="Days of the Week",
+        required=False
+    )
+    
+    recurring_until = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        label="Repeat Until",
+        required=False,
+        help_text="Last date to create recurring availability"
+    )
+    
+    exclude_holidays = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        }),
+        label="Except for holidays",
+        help_text="Automatically exclude system holidays from recurring availability"
+    )
+    
+    # Time fields
+    start_time = forms.TimeField(
+        widget=forms.TimeInput(attrs={
+            'class': 'form-control',
+            'type': 'time',
+            'step': '900'  # 15-minute intervals
+        }),
+        label="Start Time"
+    )
+    end_time = forms.TimeField(
+        widget=forms.TimeInput(attrs={
+            'class': 'form-control',
+            'type': 'time',
+            'step': '900'  # 15-minute intervals
+        }),
+        label="End Time"
+    )
+    
+    # Common time presets
+    PRESET_CHOICES = [
+        ('', 'Select a preset (optional)'),
+        ('morning', 'Morning (9:00 AM - 12:00 PM)'),
+        ('afternoon', 'Afternoon (1:00 PM - 5:00 PM)'),
+        ('evening', 'Evening (6:00 PM - 9:00 PM)'),
+        ('full_day', 'Full Day (9:00 AM - 5:00 PM)'),
+        ('custom', 'Custom Times'),
+    ]
+    
+    time_preset = forms.ChoiceField(
+        choices=PRESET_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+            'id': 'time-preset'
+        }),
+        label="Quick Time Presets"
+    )
+    
+    class Meta:
+        model = ContractorAvailability
+        fields = ['notes', 'exclude_holidays']
+        widgets = {
+            'notes': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 3,
+                    'placeholder': 'Optional notes about this availability (e.g., "Prefer morning sessions")'
+                }
+            ),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['notes'].required = False
+        
+        # Set initial values if editing existing availability
+        if self.instance and self.instance.pk:
+            self.fields['date'].initial = self.instance.start_datetime.date()
+            self.fields['start_time'].initial = self.instance.start_datetime.time()
+            self.fields['end_time'].initial = self.instance.end_datetime.time()
+            self.fields['availability_type'].initial = 'single'
+        else:
+            # Set default date to today
+            from datetime import date, time
+            self.fields['date'].initial = date.today()
+            self.fields['start_date'].initial = date.today()
+            self.fields['start_time'].initial = time(9, 0)  # 9:00 AM
+            self.fields['end_time'].initial = time(17, 0)   # 5:00 PM
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        availability_type = cleaned_data.get('availability_type')
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+        
+        if not start_time or not end_time:
+            raise forms.ValidationError("Start time and end time are required.")
+        
+        # Validate time range
+        from datetime import datetime, timedelta
+        temp_date = datetime.now().date()
+        start_datetime = datetime.combine(temp_date, start_time)
+        end_datetime = datetime.combine(temp_date, end_time)
+        
+        # Handle overnight availability (end time next day)
+        if end_time <= start_time:
+            end_datetime = datetime.combine(temp_date + timedelta(days=1), end_time)
+        
+        if start_datetime >= end_datetime:
+            raise forms.ValidationError("End time must be after start time.")
+        
+        # Check for minimum duration (30 minutes)
+        if end_datetime - start_datetime < timedelta(minutes=30):
+            raise forms.ValidationError("Availability must be at least 30 minutes long.")
+        
+        # Validate based on availability type
+        if availability_type == 'single':
+            date = cleaned_data.get('date')
+            if not date:
+                raise forms.ValidationError("Date is required for single date availability.")
+            
+            # Check that availability is not in the past (with timezone awareness)
+            from django.utils import timezone
+            start_dt = timezone.make_aware(datetime.combine(date, start_time))
+            if start_dt < timezone.now():
+                raise forms.ValidationError("Availability cannot be set in the past.")
+                
+        elif availability_type == 'range':
+            start_date = cleaned_data.get('start_date')
+            end_date = cleaned_data.get('end_date')
+            
+            if not start_date or not end_date:
+                raise forms.ValidationError("Start date and end date are required for date range availability.")
+            
+            if start_date > end_date:
+                raise forms.ValidationError("End date must be after start date.")
+            
+            # Check that start date is not in the past
+            from django.utils import timezone
+            start_dt = timezone.make_aware(datetime.combine(start_date, start_time))
+            if start_dt < timezone.now():
+                raise forms.ValidationError("Start date cannot be in the past.")
+                
+        elif availability_type == 'recurring':
+            recurring_weekdays = cleaned_data.get('recurring_weekdays')
+            recurring_until = cleaned_data.get('recurring_until')
+            
+            if not recurring_weekdays:
+                raise forms.ValidationError("Please select at least one day of the week for recurring availability.")
+            
+            if not recurring_until:
+                raise forms.ValidationError("Please specify an end date for recurring availability.")
+            
+            # Check that end date is in the future
+            if recurring_until <= datetime.now().date():
+                raise forms.ValidationError("Recurring end date must be in the future.")
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+        
+        availability_type = self.cleaned_data.get('availability_type')
+        start_time = self.cleaned_data.get('start_time')
+        end_time = self.cleaned_data.get('end_time')
+        
+        instances = []
+        
+        if availability_type == 'single':
+            # Create single availability
+            date = self.cleaned_data.get('date')
+            instance = super().save(commit=False)
+            instance.exclude_holidays = self.cleaned_data.get('exclude_holidays', False)
+            
+            # Create timezone-aware datetimes
+            instance.start_datetime = timezone.make_aware(datetime.combine(date, start_time))
+            end_datetime = datetime.combine(date, end_time)
+            if end_time <= start_time:
+                end_datetime = datetime.combine(date + timedelta(days=1), end_time)
+            instance.end_datetime = timezone.make_aware(end_datetime)
+            
+            if commit:
+                instance.save()
+            instances.append(instance)
+            
+        elif availability_type == 'range':
+            # Create availability for each day in range
+            start_date = self.cleaned_data.get('start_date')
+            end_date = self.cleaned_data.get('end_date')
+            current_date = start_date
+            
+            while current_date <= end_date:
+                instance = ContractorAvailability()
+                instance.contractor = self.instance.contractor if self.instance.pk else None
+                instance.notes = self.cleaned_data.get('notes', '')
+                instance.exclude_holidays = self.cleaned_data.get('exclude_holidays', False)
+                
+                # Create timezone-aware datetimes
+                instance.start_datetime = timezone.make_aware(datetime.combine(current_date, start_time))
+                end_datetime = datetime.combine(current_date, end_time)
+                if end_time <= start_time:
+                    end_datetime = datetime.combine(current_date + timedelta(days=1), end_time)
+                instance.end_datetime = timezone.make_aware(end_datetime)
+                
+                if commit:
+                    instance.save()
+                instances.append(instance)
+                current_date += timedelta(days=1)
+                
+        elif availability_type == 'recurring':
+            # Create recurring availability
+            recurring_weekdays = [int(day) for day in self.cleaned_data.get('recurring_weekdays')]
+            recurring_until = self.cleaned_data.get('recurring_until')
+            exclude_holidays = self.cleaned_data.get('exclude_holidays', False)
+            
+            # Get holiday dates if excluding holidays
+            holiday_dates = set()
+            if exclude_holidays:
+                from .models import Holiday
+                holidays = Holiday.objects.filter(
+                    date__gte=datetime.now().date(),
+                    date__lte=recurring_until
+                )
+                holiday_dates = set(holiday.date for holiday in holidays)
+            
+            # Start from next occurrence of selected weekdays
+            current_date = datetime.now().date()
+            while current_date <= recurring_until:
+                if current_date.weekday() in recurring_weekdays:
+                    # Skip if excluding holidays and this is a holiday
+                    if exclude_holidays and current_date in holiday_dates:
+                        current_date += timedelta(days=1)
+                        continue
+                        
+                    # Skip if in the past
+                    temp_start = timezone.make_aware(datetime.combine(current_date, start_time))
+                    if temp_start >= timezone.now():
+                        instance = ContractorAvailability()
+                        instance.contractor = self.instance.contractor if self.instance.pk else None
+                        instance.notes = self.cleaned_data.get('notes', '')
+                        instance.exclude_holidays = exclude_holidays
+                        
+                        # Create timezone-aware datetimes
+                        instance.start_datetime = temp_start
+                        end_datetime = datetime.combine(current_date, end_time)
+                        if end_time <= start_time:
+                            end_datetime = datetime.combine(current_date + timedelta(days=1), end_time)
+                        instance.end_datetime = timezone.make_aware(end_datetime)
+                        
+                        if commit:
+                            instance.save()
+                        instances.append(instance)
+                
+                current_date += timedelta(days=1)
+        
+        # Return the first instance for compatibility
+        return instances[0] if instances else super().save(commit=commit)
+
+
+class AvailabilityProgramForm(forms.ModelForm):
+    """Form for adding programs to availability slots."""
+    
+    class Meta:
+        model = AvailabilityProgram
+        fields = ['program_buildout', 'session_duration_hours', 'max_sessions']
+        widgets = {
+            'program_buildout': forms.Select(attrs={'class': 'form-control'}),
+            'session_duration_hours': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'step': '0.25',
+                    'min': '0.25',
+                    'max': '8.0'
+                }
+            ),
+            'max_sessions': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'min': '1',
+                    'max': '10'
+                }
+            ),
+        }
+    
+    def __init__(self, contractor=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Filter buildouts to only show those the contractor is assigned to
+        if contractor:
+            assigned_buildouts = ProgramBuildout.objects.filter(
+                role_lines__contractor=contractor
+            ).distinct()
+            self.fields['program_buildout'].queryset = assigned_buildouts
+        
+        self.fields['session_duration_hours'].label = "Session Duration (Hours)"
+        self.fields['max_sessions'].label = "Maximum Sessions"
+        
+        # Set help text
+        self.fields['session_duration_hours'].help_text = "Duration in hours (e.g., 1.5 for 90 minutes)"
+        self.fields['max_sessions'].help_text = "How many sessions of this program can fit in this time slot"
+
+
+class ContractorDayOffRequestForm(forms.ModelForm):
+    """Form for contractors to request days off."""
+    
+    class Meta:
+        model = ContractorDayOffRequest
+        fields = ['start_date', 'end_date', 'reason']
+        widgets = {
+            'start_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'min': datetime.now().date().isoformat()
+            }),
+            'end_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'min': datetime.now().date().isoformat()
+            }),
+            'reason': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Please explain the reason for your time off request...'
+            })
+        }
+    
+    def __init__(self, contractor=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.contractor = contractor
+        
+        # Set minimum date to tomorrow
+        tomorrow = (datetime.now() + timedelta(days=1)).date()
+        self.fields['start_date'].widget.attrs['min'] = tomorrow.isoformat()
+        self.fields['end_date'].widget.attrs['min'] = tomorrow.isoformat()
+        
+        self.fields['start_date'].help_text = "Select the start date for your time off"
+        self.fields['end_date'].help_text = "Select the end date for your time off"
+        self.fields['reason'].help_text = "Provide a brief explanation for your request"
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        
+        if start_date and end_date:
+            # Must be in the future
+            if start_date <= datetime.now().date():
+                raise forms.ValidationError("Day off requests must be for future dates.")
+            
+            # End date cannot be before start date
+            if end_date < start_date:
+                raise forms.ValidationError("End date cannot be before start date.")
+            
+            # Check if there's already a request that overlaps with this date range
+            if self.contractor:
+                existing = ContractorDayOffRequest.objects.filter(
+                    contractor=self.contractor,
+                    status__in=['pending', 'approved']
+                ).filter(
+                    # Check for overlap: existing request overlaps with new request
+                    models.Q(start_date__lte=end_date) & models.Q(end_date__gte=start_date)
+                ).exists()
+                
+                if existing:
+                    raise forms.ValidationError("You already have a day off request that overlaps with this date range.")
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.contractor:
+            instance.contractor = self.contractor
+        if commit:
+            instance.save()
+        return instance
+
+
+class SessionBookingForm(forms.ModelForm):
+    """Form for parents to book children into sessions."""
+    
+    class Meta:
+        model = SessionBooking
+        fields = ['parent_notes']
+        widgets = {
+            'parent_notes': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 3,
+                    'placeholder': 'Any special notes or requests for this session (optional)'
+                }
+            ),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['parent_notes'].required = False
+        self.fields['parent_notes'].label = "Special Notes"
+
+
+class ProgramSessionForm(forms.ModelForm):
+    """Form for creating/editing program sessions."""
+    
+    class Meta:
+        model = ProgramSession
+        fields = ['start_datetime', 'end_datetime', 'max_capacity']
+        widgets = {
+            'start_datetime': forms.DateTimeInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'datetime-local'
+                }
+            ),
+            'end_datetime': forms.DateTimeInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'datetime-local'
+                }
+            ),
+            'max_capacity': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'min': '1',
+                    'max': '50'
+                }
+            ),
+        }
+    
+    def __init__(self, availability_program=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.availability_program = availability_program
+        
+        if availability_program:
+            # Set max capacity from scheduling config if available
+            if hasattr(availability_program.program_buildout, 'scheduling_config'):
+                default_capacity = availability_program.program_buildout.scheduling_config.max_students_per_session
+                self.fields['max_capacity'].initial = default_capacity
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        start_datetime = cleaned_data.get('start_datetime')
+        end_datetime = cleaned_data.get('end_datetime')
+        
+        if start_datetime and end_datetime:
+            if start_datetime >= end_datetime:
+                raise forms.ValidationError("End time must be after start time.")
+            
+            # Validate against availability program constraints
+            if self.availability_program:
+                availability = self.availability_program.availability
+                
+                # Check if session fits within availability window
+                if start_datetime < availability.start_datetime or end_datetime > availability.end_datetime:
+                    raise forms.ValidationError(
+                        f"Session must be within availability window: "
+                        f"{availability.start_datetime} to {availability.end_datetime}"
+                    )
+                
+                # Check duration matches expected
+                from decimal import Decimal
+                duration = Decimal(str((end_datetime - start_datetime).total_seconds() / 3600))
+                expected_duration = self.availability_program.session_duration_hours
+                
+                if abs(duration - expected_duration) > Decimal('0.1'):  # Allow 6-minute tolerance
+                    raise forms.ValidationError(
+                        f"Session duration ({duration}h) should match expected duration ({expected_duration}h)"
+                    )
+        
+        return cleaned_data
+
+
+class ProgramBuildoutSchedulingForm(forms.ModelForm):
+    """Form for configuring scheduling settings for a program buildout."""
+    
+    class Meta:
+        model = ProgramBuildoutScheduling
+        fields = [
+            'default_session_duration', 'min_session_duration', 'max_session_duration',
+            'max_students_per_session', 'requires_advance_booking', 'advance_booking_hours'
+        ]
+        widgets = {
+            'default_session_duration': forms.NumberInput(
+                attrs={'class': 'form-control', 'step': '0.25', 'min': '0.25'}
+            ),
+            'min_session_duration': forms.NumberInput(
+                attrs={'class': 'form-control', 'step': '0.25', 'min': '0.25'}
+            ),
+            'max_session_duration': forms.NumberInput(
+                attrs={'class': 'form-control', 'step': '0.25', 'min': '0.25'}
+            ),
+            'max_students_per_session': forms.NumberInput(
+                attrs={'class': 'form-control', 'min': '1'}
+            ),
+            'requires_advance_booking': forms.CheckboxInput(
+                attrs={'class': 'form-check-input'}
+            ),
+            'advance_booking_hours': forms.NumberInput(
+                attrs={'class': 'form-control', 'min': '1'}
+            ),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Set labels and help text
+        self.fields['default_session_duration'].label = "Default Session Duration (Hours)"
+        self.fields['min_session_duration'].label = "Minimum Session Duration (Hours)"
+        self.fields['max_session_duration'].label = "Maximum Session Duration (Hours)"
+        self.fields['max_students_per_session'].label = "Maximum Students Per Session"
+        self.fields['requires_advance_booking'].label = "Requires Advance Booking"
+        self.fields['advance_booking_hours'].label = "Advance Booking Hours Required"
+        
+        self.fields['advance_booking_hours'].help_text = "Minimum hours in advance bookings must be made"
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        min_duration = cleaned_data.get('min_session_duration')
+        default_duration = cleaned_data.get('default_session_duration')
+        max_duration = cleaned_data.get('max_session_duration')
+        
+        if min_duration and default_duration and max_duration:
+            if not (min_duration <= default_duration <= max_duration):
+                raise forms.ValidationError(
+                    "Duration constraints must follow: minimum ≤ default ≤ maximum"
+                )
+        
+        return cleaned_data
+
+
+class ProgramRequestForm(forms.ModelForm):
+    """Form for parents and contractors to request programs."""
+    
+    class Meta:
+        model = ProgramRequest
+        fields = [
+            'request_type', 'contact_name', 'contact_email', 'contact_phone',
+            'preferred_location', 'preferred_dates', 'expected_participants',
+            'additional_notes', 'contractor_experience', 'proposed_location'
+        ]
+        widgets = {
+            'request_type': forms.Select(attrs={'class': 'form-control'}),
+            'contact_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Your full name'}),
+            'contact_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'your.email@example.com'}),
+            'contact_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '(555) 123-4567'}),
+            'preferred_location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Downtown Community Center'}),
+            'preferred_dates': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 3,
+                'placeholder': 'e.g., Weekday evenings in March, or specific dates'
+            }),
+            'expected_participants': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'placeholder': '10'}),
+            'additional_notes': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 4,
+                'placeholder': 'Any special requirements, accommodations, or additional information'
+            }),
+            'contractor_experience': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 4,
+                'placeholder': 'Describe your experience with this type of program (for contractor requests)'
+            }),
+            'proposed_location': forms.TextInput(attrs={
+                'class': 'form-control', 
+                'placeholder': 'Where you would like to run the program (for contractor requests)'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Make some fields conditional based on request type
+        self.fields['contact_phone'].required = False
+        self.fields['expected_participants'].required = False
+        self.fields['contractor_experience'].required = False
+        self.fields['proposed_location'].required = False
+        
+        # Set help text
+        self.fields['preferred_dates'].help_text = "When would you like this program to run?"
+        self.fields['expected_participants'].help_text = "Approximate number of children/participants"
+        self.fields['contractor_experience'].help_text = "Only required for contractor buildout requests"
+        self.fields['proposed_location'].help_text = "Only required for contractor buildout requests"
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        request_type = cleaned_data.get('request_type')
+        
+        # Validate contractor-specific fields
+        if request_type == 'contractor_buildout':
+            if not cleaned_data.get('contractor_experience'):
+                raise forms.ValidationError("Experience description is required for contractor buildout requests.")
+            
+            if not cleaned_data.get('proposed_location'):
+                raise forms.ValidationError("Proposed location is required for contractor buildout requests.")
+        
+        return cleaned_data
+
+
+# Formsets for managing multiple related objects
+AvailabilityProgramFormSet = forms.inlineformset_factory(
+    ContractorAvailability,
+    AvailabilityProgram,
+    form=AvailabilityProgramForm,
+    extra=1,
+    can_delete=True
+) 

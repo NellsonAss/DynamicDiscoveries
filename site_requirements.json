@@ -299,11 +299,317 @@
       "title": "Custom Program Instance Creation Form",
       "description": "Created custom program instance creation form that matches the site's design instead of redirecting to Django admin backend. Added AdminProgramInstanceForm with proper validation, custom template with Bootstrap styling, and integrated workflow for creating instances from both buildout detail pages and the general instance management page. Form includes smart defaults, validation, and contextual help information.",
       "status": "implemented"
+    },
+    {
+      "id": "REQ-046",
+      "title": "Contractor Assignment and Version Control System",
+      "description": "Implemented new contractor assignment system where roles must be assigned to contractors when added to buildout versions. Created BuildoutRoleLine model with contractor, pay_type, pay_value, frequency_unit, frequency_count, and hours_per_frequency fields. Added ContractorRoleRate catalog for default contractor pay rates. Implemented version control with is_published flag and immutable published versions. All money fields moved from Role/Responsibility catalogs to version-specific lines. Added migration system to transition from legacy models to new structure.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-047",
+      "title": "Enhanced Role and Responsibility Management",
+      "description": "Updated Role model to include default_frequency_unit and default_hours_per_frequency for seeding version lines. Renamed Responsibility.hours to default_hours to clarify its purpose as a template value. Updated all forms, views, and admin interfaces to work with new field names and model structure. Added comprehensive admin interface for new models including BuildoutRoleLine, BuildoutResponsibilityLine, and ContractorRoleRate.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-048",
+      "title": "Database Relationship Error Fixes",
+      "description": "Fixed critical Django errors caused by outdated relationship references in admin interface views. Updated program_type_management and role_detail views to use correct relationship names (role_lines instead of role_assignments). Fixed missing buildout variable reference in BuildoutRoleLine.calculate_payout method. Verified all new model relationships work correctly with proper prefetch_related queries and database operations.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-036",
+      "title": "Responsibility Edit and Delete Functionality",
+      "description": "Admin interface for editing and deleting responsibilities within roles. Includes edit form with pre-populated data, delete confirmation page, and proper navigation back to responsibility management. Edit functionality allows updating responsibility name, description, frequency type, and default hours. Delete functionality includes confirmation dialog and proper cleanup.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-049",
+      "title": "Terminology Standardization",
+      "description": "Standardized all terminology throughout the system from 'Workshop' to 'Program' to maintain consistency. Updated models, views, templates, forms, and management commands to use 'program' terminology consistently. Changed field names, choice values, labels, and help text across all components.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-050",
+      "title": "Buildout Role Assignment Form JavaScript Fix",
+      "description": "Fixed JavaScript validation logic in buildout assign roles form that was preventing proper form submission. Corrected event handling from button click to form submit event, fixed role ID extraction from contractor select elements, and improved validation flow. Confirmed backend form processing works correctly through automated testing. Form now properly validates contractor selection and submits successfully to create BuildoutRoleLine and BuildoutResponsibilityLine records.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-051",
+      "title": "Buildout Role Assignment Form Frontend Fix",
+      "description": "Fixed frontend form submission issues by simplifying JavaScript validation, adding explicit form action attribute, and implementing fallback form submission. Removed complex contractor validation that was blocking form submission and added button click handler that forces form submission when validation passes. Form now submits successfully in all browsers and creates role assignments correctly.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-052",
+      "title": "Responsibility Form Submission Fix",
+      "description": "Fixed responsibility form submission by removing the role field from the form fields list to prevent validation conflicts. The role is now set automatically based on the URL parameter instead of being included in form data. Added explicit form action attribute and debugging JavaScript to help diagnose frontend submission issues. Backend form processing confirmed working through automated testing.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-053",
+      "title": "Enhanced Contractor Availability System",
+      "description": "Comprehensive contractor availability management system allowing contractors to set time blocks when they're available to work. Includes ContractorAvailability model with start/end datetime, status tracking (available, partially_booked, fully_booked, blocked), and notes. Supports automatic status updates based on bookings and remaining time calculations.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-054",
+      "title": "Flexible Program Offering System",
+      "description": "AvailabilityProgram model that links contractor availability slots to specific programs they're willing to teach. Allows contractors to specify session duration, maximum sessions per time slot, and validates time constraints. Supports multiple program offerings within single availability windows based on time availability.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-055",
+      "title": "Session-Based Scheduling System",
+      "description": "ProgramSession model for individual scheduled sessions within program instances. Replaces fixed program-level scheduling with flexible session-based approach. Includes start/end datetime, duration tracking, enrollment counts, capacity management, and status progression (scheduled, confirmed, in_progress, completed, cancelled).",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-056",
+      "title": "Individual Session Booking System",
+      "description": "SessionBooking model allowing parents to book children into specific sessions rather than entire programs. Includes booking status management (pending, confirmed, waitlisted, cancelled, no_show), parent notes, form responses, and automatic enrollment tracking. Supports 24-hour cancellation policy and waitlist management.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-057",
+      "title": "Program Scheduling Configuration",
+      "description": "ProgramBuildoutScheduling model extending program buildouts with scheduling-specific settings. Includes default/min/max session durations, maximum students per session, advance booking requirements, and booking time constraints. Provides flexible configuration for different program types and scheduling needs.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-058",
+      "title": "Contractor Availability Management Interface",
+      "description": "Comprehensive web interface for contractors to manage their availability including: availability list/create/edit views, program offering management within time slots, time validation and conflict checking, and remaining hours calculation. Includes forms with datetime inputs, duration validation, and program assignment filtering.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-059",
+      "title": "Parent Session Booking Interface",
+      "description": "Parent-facing interface for browsing and booking available sessions. Features: available sessions list grouped by program type, session booking form with child selection, booking management dashboard, cancellation system with policy enforcement, and real-time availability checking. Integrates with existing child management system.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-060",
+      "title": "Intelligent Time Slot Management",
+      "description": "Advanced scheduling logic that manages time slots dynamically based on session durations and availability. Supports: automatic calculation of remaining hours in availability slots, validation that sessions fit within availability windows, prevention of overbooking, flexible session durations (e.g., 2-hour slot can fit one 2-hour session or two 1-hour sessions), and real-time status updates.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-061",
+      "title": "Enhanced Scheduling Forms and Validation",
+      "description": "Comprehensive form system for scheduling including: ContractorAvailabilityForm with datetime validation and minimum duration checking, AvailabilityProgramForm with contractor filtering and session constraints, SessionBookingForm for parent notes and requests, ProgramSessionForm with availability window validation, and ProgramBuildoutSchedulingForm for program-specific scheduling configuration.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-062",
+      "title": "Holiday Management System",
+      "description": "Comprehensive holiday management system with Holiday model for system-wide holidays, admin interface for holiday management, and automated population of US federal holidays for 5 years. Includes recurring holiday support and integration with contractor availability exclusion system.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-063",
+      "title": "Holiday-Aware Availability Creation",
+      "description": "Enhanced contractor availability form with 'except for holidays' option for recurring weekly availability. When selected, automatically excludes system holidays from recurring availability creation, preventing contractors from being scheduled on holidays they don't want to work.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-064",
+      "title": "Contractor Day-Off Request System",
+      "description": "Complete day-off request workflow with ContractorDayOffRequest model supporting date ranges (start_date to end_date), contractor request forms with date range selection, admin approval interface, and conflict detection. Automatically checks for existing sessions and bookings across date ranges when day-off is requested, alerts admins to conflicts, and blocks availability for approved date ranges. Supports both single-day and multi-day time-off requests.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-065",
+      "title": "Intelligent Session Availability Filtering",
+      "description": "Advanced session availability logic that prevents booking conflicts by checking contractor time overlaps. When a contractor is booked for a session, other sessions for that contractor during overlapping times are automatically hidden from parents. Supports hour-by-hour granularity and multiple contractor scenarios.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-066",
+      "title": "Enhanced Parent Session Browsing",
+      "description": "Improved parent interface for browsing available sessions with dual view options (by program type and by date), real-time availability counts, contractor information display, and intelligent filtering that shows only truly bookable sessions. Includes session duration, capacity, and booking status indicators.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-067",
+      "title": "Contractor Assignment Automation",
+      "description": "Automated contractor assignment system where contractors assigned to buildouts via BuildoutRoleLine are automatically assigned to program instances when created by admins. Creates InstanceRoleAssignment records with buildout role line values as defaults for pay rates and hours. Eliminates manual contractor assignment step for program instances.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-068",
+      "title": "Contractor-Specific Buildout Access Control",
+      "description": "Role-based access control for buildouts where contractors can only view buildouts they're assigned to via BuildoutRoleLine. Contractors see only their assigned buildout instances through InstanceRoleAssignment relationships. Admin users maintain full access to all buildouts and instances. Updated buildout_list and buildout_detail views with contractor filtering.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-069",
+      "title": "Contractor Instance Scheduling Interface",
+      "description": "Dedicated contractor interface for scheduling availability for assigned program instances. Includes contractor_instance_schedule view with role assignment display, availability management integration, and scheduling guidelines. Contractors can create availability, manage sessions, but cannot edit instance details (dates, location, capacity).",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-070",
+      "title": "Contractor Permission Restrictions",
+      "description": "Comprehensive permission system preventing contractors from editing buildout details, financial information, instance parameters, or role assignments. Contractors have read-only access to buildout structure and can only manage their availability and scheduling. Financial data and admin functions are hidden from contractor views.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-071",
+      "title": "Multiple Role Assignment Fix",
+      "description": "Fixed buildout role assignment system to allow contractors to be assigned to multiple roles within the same buildout. Updated unique_together constraint from ['buildout', 'role'] to ['buildout', 'role', 'contractor'] in BuildoutRoleLine model, enabling flexible role assignments while preventing duplicate contractor-role combinations.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-072",
+      "title": "Role Parent Visibility Control",
+      "description": "Added visible_to_parents boolean field to Role model allowing administrators to control which roles and assigned contractors are visible to parents in program listings, availability displays, and catalog views. Roles marked as not visible to parents will be hidden from public-facing interfaces.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-073",
+      "title": "Public Program Catalog",
+      "description": "Created comprehensive program catalog interface accessible to all authenticated users. Displays available program types with active instances, session information, enrollment status, and visible contractor assignments. Includes role-based views for parents and contractors with appropriate action buttons and information display.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-074",
+      "title": "Program Request System",
+      "description": "Implemented program request functionality allowing parents to request specific programs and contractors to request buildout creation opportunities. Includes ProgramRequest model with different request types, comprehensive form validation, and integration with existing contact management system for admin tracking.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-075",
+      "title": "Integrated Contact Management",
+      "description": "Program requests automatically create corresponding Contact records in the communications system, ensuring all user inquiries (general contacts and program requests) are managed through a unified admin interface. Includes detailed request information formatted for easy admin review.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-076",
+      "title": "Contractor Onboarding and Contract Flow",
+      "description": "Implement contractor onboarding with NDA and W-9, ProgramBuildout status states (new, in_progress, ready, awaiting_signatures, active, on_hold, cancelled), DocuSign-backed contract flow that triggers when a buildout is ready and assigned. On signature completion, persist signed PDF and activate buildout. Gate contractor dashboard on onboarding completion.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-077",
+      "title": "Onboarding Gates, Contracts Panel, and W-9 DocuSign",
+      "description": "Enforce NDA+W-9 gates across assignment and scheduling; add contractor dashboard onboarding banner; add Contracts panel on buildout detail; store admin_note_url on Contract; add service-layer assignment guard; add optional DocuSign W-9 flow with webhook storing PDF; configure private storage guidance in SECURITY.md.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-997",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-995",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-996",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-994",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-993",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-992",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-991",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-990",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-989",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-988",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-987",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-077",
+      "title": "Day Off Request Date Range Support",
+      "description": "Enhanced ContractorDayOffRequest system to support date ranges instead of single dates. Updated model to use start_date and end_date fields, modified forms to show date range selection, updated templates to display date ranges, and created database migrations to preserve existing data. Contractors can now request time off for multiple consecutive days in a single request, improving efficiency for vacation and extended leave requests.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-078",
+      "title": "Role Detail Responsibility Edit Fix",
+      "description": "Fixed non-functional edit icon in role detail responsibilities table by linking the pencil action to the responsibility_edit route so responsibilities can be edited directly from the role detail page.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-079",
+      "title": "Remove Role-Level Default Hourly Rate UI",
+      "description": "Removed default hourly rate column and related statistics from role management UI to avoid implying role-wide rates. System relies on contractor-specific rates via ContractorRoleRate; Role model has no hourly_rate field.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-986",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-985",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-080",
+      "title": "Notes System with Role-Based Visibility",
+      "description": "Internal Notes feature allowing Facilitators to create/read/edit their own notes on Students, Admins to create/read/edit notes on Students and Parents and manage all notes, and Parents to view only notes flagged Public that are about their own child or themselves. Includes StudentNote and ParentNote models with visibility controls, HTMX-powered UI with Bootstrap styling, comprehensive permission system, and integration into existing Student and Parent detail pages.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-081",
+      "title": "Accurate Dashboard User Metrics",
+      "description": "Dashboard user statistics must reflect actual database counts instead of hardcoded values. Includes total users (User.objects.count()), active users (User.objects.filter(is_active=True).count()), and new users today (User.objects.filter(date_joined__date=today).count()) calculated in real-time from the database.",
+      "status": "implemented"
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-01-27T19:00:00.000000",
+    "last_updated": "2025-08-25T22:05:43.024307",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

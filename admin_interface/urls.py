@@ -75,6 +75,10 @@ urlpatterns = [
     path('roles/<int:role_id>/manage-responsibilities/', views.role_manage_responsibilities, name='role_manage_responsibilities'),
     path('roles/<int:role_id>/add-responsibility/', views.role_add_responsibility, name='role_add_responsibility'),
     
+    # Responsibility Management
+    path('responsibilities/<int:responsibility_id>/edit/', views.responsibility_edit, name='responsibility_edit'),
+    path('responsibilities/<int:responsibility_id>/delete/', views.responsibility_delete, name='responsibility_delete'),
+    
     # Cost Management
     path('costs/', views.cost_management, name='cost_management'),
     path('costs/create/', views.cost_create, name='cost_create'),

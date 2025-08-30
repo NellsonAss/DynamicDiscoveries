@@ -15,11 +15,13 @@ def dashboard(request):
 @require_http_methods(['GET'])
 def dashboard_stats(request):
     """HTMX endpoint for dashboard statistics."""
-    # In a real app, you would fetch actual statistics here
+    # Get actual user statistics from database
+    today = timezone.now().date()
+    
     stats = {
-        'total_users': 100,
-        'active_users': 75,
-        'new_users_today': 5
+        'total_users': User.objects.count(),
+        'active_users': User.objects.filter(is_active=True).count(),
+        'new_users_today': User.objects.filter(date_joined__date=today).count()
     }
     return render(request, 'dashboard/partials/stats.html', {'stats': stats})
 
@@ -33,26 +35,26 @@ def dashboard_activity(request):
     
     # Get recent program registrations
     recent_registrations = Registration.objects.select_related(
-        'child', 'program_instance', 'program_instance__program_type'
+        'child', 'program_instance', 'program_instance__buildout__program_type'
     ).order_by('-registered_at')[:5]
     
     for registration in recent_registrations:
         activities.append({
             'type': 'registration',
-            'title': f'New registration for {registration.program_instance.name}',
+            'title': f'New registration for {registration.program_instance.title}',
             'description': f'{registration.child.first_name} {registration.child.last_name} registered',
             'time': registration.registered_at,
             'icon': 'bi-person-plus'
         })
     
     # Get recent program instances
-    recent_programs = ProgramInstance.objects.select_related('program_type').order_by('-created_at')[:3]
+    recent_programs = ProgramInstance.objects.select_related('buildout__program_type').order_by('-created_at')[:3]
     
     for program in recent_programs:
         activities.append({
             'type': 'program',
-            'title': f'New program: {program.name}',
-            'description': f'{program.program_type.name} program created',
+            'title': f'New program: {program.title}',
+            'description': f'{program.buildout.program_type.name} program created',
             'time': program.created_at,
             'icon': 'bi-calendar-event'
         })

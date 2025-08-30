@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Day Off Requests - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Day Off Requests</h1>
+                    {% if is_admin %}
+                        <p class="text-muted mb-0">Manage all contractor day-off requests</p>
+                    {% else %}
+                        <p class="text-muted mb-0">Your day-off requests</p>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if can_create %}
+                        <a href="{% url 'programs:contractor_day_off_request_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Request Day Off
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if day_off_requests %}
+                <div class="row">
+                    {% for request in day_off_requests %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title mb-0">
+                                            {% if is_admin %}
+                                                {{ request.contractor.get_full_name }}
+                                            {% else %}
+                                                Day Off Request
+                                            {% endif %}
+                                        </h6>
+                                        <span class="badge 
+                                            {% if request.status == 'pending' %}bg-warning
+                                            {% elif request.status == 'approved' %}bg-success
+                                            {% elif request.status == 'denied' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ request.get_status_display }}
+                                        </span>
+                                    </div>
+                                    
+                                    <p class="mb-2">
+                                        <i class="fas fa-calendar"></i>
+                                        <strong>
+                                            {% if request.start_date == request.end_date %}
+                                                {{ request.start_date|date:"l, F d, Y" }}
+                                            {% else %}
+                                                {{ request.start_date|date:"M d, Y" }} - {{ request.end_date|date:"M d, Y" }}
+                                            {% endif %}
+                                        </strong>
+                                    </p>
+                                    
+                                    <p class="mb-2">
+                                        <i class="fas fa-clock"></i>
+                                        Requested {{ request.created_at|timesince }} ago
+                                    </p>
+                                    
+                                    {% if request.affected_sessions_count > 0 or request.affected_bookings_count > 0 %}
+                                        <div class="alert alert-warning alert-sm mb-2">
+                                            <small>
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                {% if request.affected_sessions_count > 0 %}
+                                                    {{ request.affected_sessions_count }} session{{ request.affected_sessions_count|pluralize }} affected
+                                                {% endif %}
+                                                {% if request.affected_bookings_count > 0 %}
+                                                    {% if request.affected_sessions_count > 0 %}, {% endif %}
+                                                    {{ request.affected_bookings_count }} booking{{ request.affected_bookings_count|pluralize }} affected
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <p class="mb-3 text-muted">
+                                        {{ request.reason|truncatewords:15 }}
+                                    </p>
+                                    
+                                    <a href="{% url 'programs:contractor_day_off_request_detail' request.pk %}" 
+                                       class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="fas fa-eye"></i> View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                    <h3 class="text-muted">No Day Off Requests</h3>
+                    <p class="text-muted mb-4">
+                        {% if can_create %}
+                            You haven't made any day off requests yet.
+                        {% else %}
+                            No day off requests to review.
+                        {% endif %}
+                    </p>
+                    {% if can_create %}
+                        <a href="{% url 'programs:contractor_day_off_request_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Request Your First Day Off
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

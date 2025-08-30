@@ -32,10 +32,10 @@
                     <tr>
                         <th style="width: 25%;">Role/Responsibility</th>
                         <th style="width: 20%;">Description</th>
-                        <th class="text-center" style="width: 12%;">Hrs/New Workshop Concept</th>
+                        <th class="text-center" style="width: 12%;">Hrs/New Program Concept</th>
                         <th class="text-center" style="width: 12%;">Hrs/New Worker</th>
-                        <th class="text-center" style="width: 12%;">Hrs/Workshop</th>
-                        <th class="text-center" style="width: 12%;">Hrs/Workshop/Session</th>
+                        <th class="text-center" style="width: 12%;">Hrs/Program</th>
+                        <th class="text-center" style="width: 12%;">Hrs/Program/Session</th>
                         <th class="text-center" style="width: 7%;">Total Hrs/Year</th>
                     </tr>
                 </thead>
@@ -61,7 +61,7 @@
                                 <td class="ps-4">{{ responsibility.name }}</td>
                                 <td>{{ responsibility.description|truncatewords:8 }}</td>
                                 <td class="text-center">
-                                    {% if responsibility.frequency_type == 'PER_WORKSHOP_CONCEPT' %}
+                                    {% if responsibility.frequency_type == 'PER_PROGRAM_CONCEPT' %}
                                         <input type="number" 
                                                name="responsibility_{{ responsibility.id }}" 
                                                value="{{ responsibility.hours|floatformat:2 }}" 
@@ -87,7 +87,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
-                                    {% if responsibility.frequency_type == 'PER_WORKSHOP' %}
+                                    {% if responsibility.frequency_type == 'PER_PROGRAM' %}
                                         <input type="number" 
                                                name="responsibility_{{ responsibility.id }}" 
                                                value="{{ responsibility.hours|floatformat:2 }}" 
@@ -113,12 +113,12 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
-                                    {% if responsibility.frequency_type == 'PER_WORKSHOP_CONCEPT' %}
-                                        {{ responsibility.hours|multiply:buildout.new_workshop_concepts_per_year|floatformat:2 }}
+                                    {% if responsibility.frequency_type == 'PER_PROGRAM_CONCEPT' %}
+                                        {{ responsibility.hours|multiply:buildout.new_program_concepts_per_year|floatformat:2 }}
                                     {% elif responsibility.frequency_type == 'PER_NEW_FACILITATOR' %}
                                         {{ responsibility.hours|multiply:buildout.num_new_facilitators|floatformat:2 }}
-                                    {% elif responsibility.frequency_type == 'PER_WORKSHOP' %}
-                                        {{ responsibility.hours|multiply:buildout.num_workshops_per_year|floatformat:2 }}
+                                    {% elif responsibility.frequency_type == 'PER_PROGRAM' %}
+                                        {{ responsibility.hours|multiply:buildout.num_programs_per_year|floatformat:2 }}
                                     {% elif responsibility.frequency_type == 'PER_SESSION' %}
                                         {{ responsibility.hours|multiply:buildout.total_sessions_per_year|floatformat:2 }}
                                     {% endif %}
@@ -139,13 +139,13 @@
         <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Buildout Context</h5>
         <div class="row">
             <div class="col-md-3">
-                <strong>New Workshop Concepts per Year:</strong> {{ buildout.new_workshop_concepts_per_year }}
+                <strong>New Program Concepts per Year:</strong> {{ buildout.new_program_concepts_per_year }}
             </div>
             <div class="col-md-3">
                 <strong>New Workers:</strong> {{ buildout.num_new_facilitators }}
             </div>
             <div class="col-md-3">
-                <strong>Workshops per Year:</strong> {{ buildout.num_workshops_per_year }}
+                <strong>Programs per Year:</strong> {{ buildout.num_programs_per_year }}
             </div>
             <div class="col-md-3">
                 <strong>Total Sessions per Year:</strong> {{ buildout.total_sessions_per_year }}

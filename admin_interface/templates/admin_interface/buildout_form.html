@@ -58,19 +58,19 @@
                 
                 <div class="mb-3">
                     <div class="form-check">
-                        {{ form.is_new_workshop }}
-                        <label for="{{ form.is_new_workshop.id_for_label }}" class="form-check-label">New Workshop Concept</label>
-                        {% if form.is_new_workshop.errors %}
-                            <div class="text-danger small">{{ form.is_new_workshop.errors.0 }}</div>
+                        {{ form.is_new_program }}
+                        <label for="{{ form.is_new_program.id_for_label }}" class="form-check-label">New Program Concept</label>
+                        {% if form.is_new_program.errors %}
+                            <div class="text-danger small">{{ form.is_new_program.errors.0 }}</div>
                         {% endif %}
                     </div>
                 </div>
                 
                 <div class="mb-3">
-                    <label for="{{ form.new_workshop_concepts_per_year.id_for_label }}" class="form-label">New Workshop Concepts per Year</label>
-                    {{ form.new_workshop_concepts_per_year }}
-                    {% if form.new_workshop_concepts_per_year.errors %}
-                        <div class="text-danger small">{{ form.new_workshop_concepts_per_year.errors.0 }}</div>
+                    <label for="{{ form.new_program_concepts_per_year.id_for_label }}" class="form-label">New Program Concepts per Year</label>
+                    {{ form.new_program_concepts_per_year }}
+                    {% if form.new_program_concepts_per_year.errors %}
+                        <div class="text-danger small">{{ form.new_program_concepts_per_year.errors.0 }}</div>
                     {% endif %}
                 </div>
             </div>
@@ -110,18 +110,18 @@
                 </h5>
                 
                 <div class="mb-3">
-                    <label for="{{ form.students_per_workshop.id_for_label }}" class="form-label">Students per Workshop</label>
-                    {{ form.students_per_workshop }}
-                    {% if form.students_per_workshop.errors %}
-                        <div class="text-danger small">{{ form.students_per_workshop.errors.0 }}</div>
+                    <label for="{{ form.students_per_program.id_for_label }}" class="form-label">Students per Program</label>
+                    {{ form.students_per_program }}
+                    {% if form.students_per_program.errors %}
+                        <div class="text-danger small">{{ form.students_per_program.errors.0 }}</div>
                     {% endif %}
                 </div>
                 
                 <div class="mb-3">
-                    <label for="{{ form.sessions_per_workshop.id_for_label }}" class="form-label">Sessions per Workshop</label>
-                    {{ form.sessions_per_workshop }}
-                    {% if form.sessions_per_workshop.errors %}
-                        <div class="text-danger small">{{ form.sessions_per_workshop.errors.0 }}</div>
+                    <label for="{{ form.sessions_per_program.id_for_label }}" class="form-label">Sessions per Program</label>
+                    {{ form.sessions_per_program }}
+                    {% if form.sessions_per_program.errors %}
+                        <div class="text-danger small">{{ form.sessions_per_program.errors.0 }}</div>
                     {% endif %}
                 </div>
             </div>

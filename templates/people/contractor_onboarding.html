@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+  <h2>Contractor Onboarding</h2>
+
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">NDA</h5>
+          {% if contractor.nda_signed %}
+            <span class="badge bg-success">Completed</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">Pending</span>
+            <form method="post" action="{% url 'people:send_nda' %}">
+              {% csrf_token %}
+              <button class="btn btn-primary mt-2">Sign NDA</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">W-9</h5>
+          {% if contractor.w9_file %}
+            <span class="badge bg-success">Uploaded</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">Missing</span>
+          {% endif %}
+          <form method="post" action="{% url 'people:upload_w9' %}" enctype="multipart/form-data" class="mt-2">
+            {% csrf_token %}
+            <input type="file" name="w9_file" accept="application/pdf" class="form-control" required>
+            <button class="btn btn-secondary mt-2">Upload W-9 (PDF)</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if contractor.onboarding_complete %}
+    <div class="alert alert-success">Onboarding complete. <a href="{% url 'programs:contractor_dashboard' %}">Continue to your dashboard</a>.</div>
+  {% else %}
+    <div class="alert alert-info">Complete both steps to access your dashboard.</div>
+  {% endif %}
+</div>
+{% endblock %}
+
+
+

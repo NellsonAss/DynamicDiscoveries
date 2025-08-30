@@ -66,7 +66,7 @@ class AdminProgramInstanceForm(forms.ModelForm):
                 buildout = ProgramBuildout.objects.filter(id=initial_buildout).first()
                 if buildout:
                     self.fields['title'].initial = f"{buildout.title} - {timezone.now().strftime('%Y')}"
-                    self.fields['capacity'].initial = buildout.students_per_workshop
+                    self.fields['capacity'].initial = buildout.students_per_program
     
     def clean(self):
         """Validate form data."""

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}My Availability - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>My Availability</h1>
+                <a href="{% url 'programs:contractor_availability_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Set New Availability
+                </a>
+            </div>
+
+            {% if availability_slots %}
+                <div class="row">
+                    {% for slot in availability_slots %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">{{ slot.start_datetime|date:"M d, Y" }}</span>
+                                    <span class="badge 
+                                        {% if slot.status == 'available' %}bg-success
+                                        {% elif slot.status == 'partially_booked' %}bg-warning
+                                        {% elif slot.status == 'fully_booked' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ slot.get_status_display }}
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2">
+                                        <i class="fas fa-clock"></i>
+                                        {{ slot.start_datetime|time:"g:i A" }} - {{ slot.end_datetime|time:"g:i A" }}
+                                        <br>
+                                        <small class="text-muted">{{ slot.duration_hours }}h total</small>
+                                    </p>
+
+                                    {% if slot.program_offerings.all %}
+                                        <h6 class="fw-bold mb-2">Programs Offered:</h6>
+                                        <ul class="list-unstyled mb-2">
+                                            {% for offering in slot.program_offerings.all %}
+                                                <li class="mb-1">
+                                                    <small>
+                                                        <span class="badge bg-info">{{ offering.session_duration_hours }}h</span>
+                                                        {{ offering.program_buildout.title }}
+                                                        <br>
+                                                        <span class="text-muted">Max {{ offering.max_sessions }} session{{ offering.max_sessions|pluralize }}</span>
+                                                    </small>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p class="text-muted mb-2">
+                                            <small>No programs assigned yet</small>
+                                        </p>
+                                    {% endif %}
+
+                                    {% if slot.remaining_hours > 0 %}
+                                        <p class="mb-2">
+                                            <small class="text-success">
+                                                <i class="fas fa-check-circle"></i>
+                                                {{ slot.remaining_hours }}h remaining
+                                            </small>
+                                        </p>
+                                    {% endif %}
+
+                                    {% if slot.notes %}
+                                        <p class="mb-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-sticky-note"></i>
+                                                {{ slot.notes|truncatechars:50 }}
+                                            </small>
+                                        </p>
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer">
+                                    <a href="{% url 'programs:contractor_availability_detail' slot.pk %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        View Details
+                                    </a>
+                                    <a href="{% url 'programs:contractor_availability_edit' slot.pk %}" 
+                                       class="btn btn-sm btn-outline-secondary">
+                                        Edit
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                    <h3 class="text-muted">No Availability Set</h3>
+                    <p class="text-muted mb-4">
+                        Set your availability to start offering programs to parents.
+                    </p>
+                    <a href="{% url 'programs:contractor_availability_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Set Your First Availability
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

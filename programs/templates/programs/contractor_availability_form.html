@@ -1,0 +1,381 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">{{ title }}</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Availability Type Selection -->
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="bi bi-calendar-range me-1"></i>{{ form.availability_type.label }}
+                            </label>
+                            <div class="row">
+                                {% for choice in form.availability_type %}
+                                    <div class="col-md-4 mb-2">
+                                        <div class="form-check">
+                                            {{ choice.tag }}
+                                            <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                {{ choice.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.availability_type.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.availability_type.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Single Date Selection -->
+                        <div class="mb-3" id="single-date-fields" style="display: none;">
+                            <label for="{{ form.date.id_for_label }}" class="form-label">
+                                <i class="bi bi-calendar3 me-1"></i>{{ form.date.label }}
+                            </label>
+                            {{ form.date }}
+                            {% if form.date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.date.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Date Range Selection -->
+                        <div id="range-date-fields" style="display: none;">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.start_date.id_for_label }}" class="form-label">
+                                        <i class="bi bi-calendar3 me-1"></i>{{ form.start_date.label }}
+                                    </label>
+                                    {{ form.start_date }}
+                                    {% if form.start_date.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.start_date.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.end_date.id_for_label }}" class="form-label">
+                                        <i class="bi bi-calendar3 me-1"></i>{{ form.end_date.label }}
+                                    </label>
+                                    {{ form.end_date }}
+                                    {% if form.end_date.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.end_date.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Recurring Selection -->
+                        <div id="recurring-fields" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-arrow-repeat me-1"></i>{{ form.recurring_weekdays.label }}
+                                </label>
+                                <div class="row">
+                                    {% for choice in form.recurring_weekdays %}
+                                        <div class="col-md-3 col-6 mb-2">
+                                            <div class="form-check">
+                                                {{ choice.tag }}
+                                                <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                    {{ choice.choice_label }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                {% if form.recurring_weekdays.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.recurring_weekdays.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label for="{{ form.recurring_until.id_for_label }}" class="form-label">
+                                    <i class="bi bi-calendar-x me-1"></i>{{ form.recurring_until.label }}
+                                </label>
+                                {{ form.recurring_until }}
+                                <small class="form-text text-muted">{{ form.recurring_until.help_text }}</small>
+                                {% if form.recurring_until.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.recurring_until.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Holiday Exclusion Option -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    {{ form.exclude_holidays }}
+                                    <label class="form-check-label" for="{{ form.exclude_holidays.id_for_label }}">
+                                        <i class="bi bi-calendar-event me-1"></i>{{ form.exclude_holidays.label }}
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">{{ form.exclude_holidays.help_text }}</small>
+                                {% if form.exclude_holidays.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.exclude_holidays.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Time Preset Selection -->
+                        <div class="mb-3">
+                            <label for="{{ form.time_preset.id_for_label }}" class="form-label">
+                                <i class="bi bi-clock me-1"></i>{{ form.time_preset.label }}
+                            </label>
+                            {{ form.time_preset }}
+                            <small class="form-text text-muted">Choose a preset or select "Custom Times" to set specific hours</small>
+                            {% if form.time_preset.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.time_preset.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Time Selection -->
+                        <div class="row" id="time-fields">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.start_time.id_for_label }}" class="form-label">
+                                    <i class="bi bi-clock me-1"></i>{{ form.start_time.label }}
+                                </label>
+                                {{ form.start_time }}
+                                {% if form.start_time.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.start_time.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.end_time.id_for_label }}" class="form-label">
+                                    <i class="bi bi-clock me-1"></i>{{ form.end_time.label }}
+                                </label>
+                                {{ form.end_time }}
+                                {% if form.end_time.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.end_time.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                <i class="bi bi-sticky-note me-1"></i>{{ form.notes.label }}
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.notes.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'programs:contractor_availability_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Availability
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Tips for Setting Availability:</h6>
+                    <ul class="mb-0">
+                        <li>Set availability for times when you're genuinely available to teach</li>
+                        <li>Minimum availability duration is 30 minutes</li>
+                        <li><strong>Single Date:</strong> Set availability for one specific day</li>
+                        <li><strong>Date Range:</strong> Set the same availability for multiple consecutive days</li>
+                        <li><strong>Recurring:</strong> Set weekly recurring availability (e.g., every Monday and Wednesday)</li>
+                        <li>Use time presets for common schedules or select "Custom Times" for specific hours</li>
+                        <li>After creating availability, you can add specific programs you're willing to teach</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const presetSelect = document.getElementById('time-preset');
+    const startTimeInput = document.getElementById('id_start_time');
+    const endTimeInput = document.getElementById('id_end_time');
+    const timeFields = document.getElementById('time-fields');
+    
+    // Availability type handling
+    const availabilityTypeInputs = document.querySelectorAll('input[name="availability_type"]');
+    const singleDateFields = document.getElementById('single-date-fields');
+    const rangeDateFields = document.getElementById('range-date-fields');
+    const recurringFields = document.getElementById('recurring-fields');
+    
+    function updateAvailabilityFields() {
+        const selectedType = document.querySelector('input[name="availability_type"]:checked').value;
+        
+        // Hide all fields first
+        singleDateFields.style.display = 'none';
+        rangeDateFields.style.display = 'none';
+        recurringFields.style.display = 'none';
+        
+        // Show relevant fields
+        if (selectedType === 'single') {
+            singleDateFields.style.display = 'block';
+        } else if (selectedType === 'range') {
+            rangeDateFields.style.display = 'block';
+        } else if (selectedType === 'recurring') {
+            recurringFields.style.display = 'block';
+        }
+    }
+    
+    // Initialize availability fields
+    updateAvailabilityFields();
+    
+    // Update when availability type changes
+    availabilityTypeInputs.forEach(input => {
+        input.addEventListener('change', updateAvailabilityFields);
+    });
+    
+    // Time presets mapping
+    const presets = {
+        'morning': { start: '09:00', end: '12:00' },
+        'afternoon': { start: '13:00', end: '17:00' },
+        'evening': { start: '18:00', end: '21:00' },
+        'full_day': { start: '09:00', end: '17:00' }
+    };
+    
+    function updateTimeFields() {
+        const selectedPreset = presetSelect.value;
+        
+        if (selectedPreset && selectedPreset !== 'custom' && presets[selectedPreset]) {
+            // Set preset times
+            startTimeInput.value = presets[selectedPreset].start;
+            endTimeInput.value = presets[selectedPreset].end;
+            
+            // Show time fields but make them readonly for presets
+            timeFields.style.display = 'block';
+            startTimeInput.readOnly = true;
+            endTimeInput.readOnly = true;
+            
+            // Add visual indicator
+            startTimeInput.style.backgroundColor = '#e9ecef';
+            endTimeInput.style.backgroundColor = '#e9ecef';
+        } else if (selectedPreset === 'custom') {
+            // Enable custom time input
+            timeFields.style.display = 'block';
+            startTimeInput.readOnly = false;
+            endTimeInput.readOnly = false;
+            startTimeInput.style.backgroundColor = '';
+            endTimeInput.style.backgroundColor = '';
+        } else {
+            // No preset selected, show editable fields
+            timeFields.style.display = 'block';
+            startTimeInput.readOnly = false;
+            endTimeInput.readOnly = false;
+            startTimeInput.style.backgroundColor = '';
+            endTimeInput.style.backgroundColor = '';
+        }
+        
+        // Recalculate duration after preset change
+        calculateDuration();
+    }
+    
+    // Initialize on page load
+    updateTimeFields();
+    
+    // Update when preset changes
+    presetSelect.addEventListener('change', updateTimeFields);
+    
+    // Add duration calculation
+    function calculateDuration() {
+        const startTime = startTimeInput.value;
+        const endTime = endTimeInput.value;
+        
+        if (startTime && endTime) {
+            const start = new Date('2000-01-01 ' + startTime);
+            const end = new Date('2000-01-01 ' + endTime);
+            
+            // Handle overnight sessions
+            if (end <= start) {
+                end.setDate(end.getDate() + 1);
+            }
+            
+            const diffMs = end - start;
+            const diffHours = diffMs / (1000 * 60 * 60);
+            
+            // Show duration info
+            let durationInfo = document.getElementById('duration-info');
+            if (!durationInfo) {
+                durationInfo = document.createElement('small');
+                durationInfo.id = 'duration-info';
+                durationInfo.className = 'form-text text-muted';
+                endTimeInput.parentNode.appendChild(durationInfo);
+            }
+            
+            if (diffHours >= 0.5) {
+                durationInfo.textContent = `Duration: ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+                durationInfo.className = 'form-text text-success';
+            } else {
+                durationInfo.textContent = 'Duration must be at least 30 minutes';
+                durationInfo.className = 'form-text text-danger';
+            }
+            
+            // Add range calculation for date range
+            const selectedType = document.querySelector('input[name="availability_type"]:checked')?.value;
+            if (selectedType === 'range') {
+                const startDateInput = document.getElementById('id_start_date');
+                const endDateInput = document.getElementById('id_end_date');
+                
+                if (startDateInput.value && endDateInput.value) {
+                    const startDate = new Date(startDateInput.value);
+                    const endDate = new Date(endDateInput.value);
+                    const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    if (daysDiff > 0) {
+                        durationInfo.textContent += ` | ${daysDiff} day${daysDiff !== 1 ? 's' : ''} = ${(diffHours * daysDiff)} total hours`;
+                    }
+                }
+            }
+        }
+    }
+    
+    startTimeInput.addEventListener('change', calculateDuration);
+    endTimeInput.addEventListener('change', calculateDuration);
+    
+    // Add listeners for date range calculation
+    const startDateInput = document.getElementById('id_start_date');
+    const endDateInput = document.getElementById('id_end_date');
+    if (startDateInput) startDateInput.addEventListener('change', calculateDuration);
+    if (endDateInput) endDateInput.addEventListener('change', calculateDuration);
+    
+    // Initial calculation
+    calculateDuration();
+});
+</script>
+{% endblock %}

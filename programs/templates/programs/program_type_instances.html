@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ program_type.name }} Programs{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'programs:program_catalog' %}">Program Catalog</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ program_type.name }}</li>
+                </ol>
+            </nav>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="bi bi-calendar-event"></i> {{ program_type.name }} Programs</h1>
+                    <p class="text-muted mb-0">{{ program_type.description }}</p>
+                </div>
+                <div>
+                    {% if is_parent %}
+                        <span class="badge bg-success">Parent View</span>
+                    {% elif is_contractor %}
+                        <span class="badge bg-info">Contractor View</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Programs List -->
+            {% if instances %}
+                <div class="row">
+                    {% for instance in instances %}
+                        <div class="col-lg-6 col-xl-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <h5 class="mb-0">{{ instance.title }}</h5>
+                                        <div class="text-end">
+                                            {% if instance.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Program Details -->
+                                    <div class="mb-3">
+                                        <div class="row">
+                                            <div class="col-12 mb-2">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-calendar"></i> 
+                                                    {{ instance.start_date|date:"M d, Y" }} - {{ instance.end_date|date:"M d, Y" }}
+                                                </small>
+                                            </div>
+                                            <div class="col-12 mb-2">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-geo-alt"></i> {{ instance.location }}
+                                                </small>
+                                            </div>
+                                            <div class="col-12">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-clock"></i> 
+                                                    {{ instance.start_date|time:"g:i A" }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Enrollment Status -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="text-muted">Enrollment</small>
+                                            <small class="text-muted">{{ instance.current_enrollment }}/{{ instance.capacity }}</small>
+                                        </div>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar {% if instance.is_full %}bg-danger{% elif instance.available_spots <= 3 %}bg-warning{% else %}bg-success{% endif %}" 
+                                                 role="progressbar" 
+                                                 style="width: {% widthratio instance.current_enrollment instance.capacity 100 %}%">
+                                            </div>
+                                        </div>
+                                        {% if instance.is_full %}
+                                            <small class="text-danger">
+                                                <i class="bi bi-exclamation-triangle"></i> Full
+                                            </small>
+                                        {% elif instance.available_spots <= 3 %}
+                                            <small class="text-warning">
+                                                <i class="bi bi-hourglass-split"></i> {{ instance.available_spots }} spot{{ instance.available_spots|pluralize }} left
+                                            </small>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Staff Information -->
+                                    {% if instance.visible_contractors %}
+                                        <div class="mb-3">
+                                            <h6 class="text-primary mb-2">Staff:</h6>
+                                            {% for contractor_info in instance.visible_contractors %}
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <small class="text-muted">{{ contractor_info.role }}:</small>
+                                                    <small class="fw-bold">{{ contractor_info.contractor }}</small>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    <!-- Program Information -->
+                                    <div class="small text-muted">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>Buildout:</strong><br>
+                                                {{ instance.buildout.title }}
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Sessions:</strong><br>
+                                                {{ instance.buildout.sessions_per_program }} sessions
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        {% if is_parent %}
+                                            {% if instance.is_full %}
+                                                <span class="text-muted small">Program Full</span>
+                                            {% elif instance.start_date <= timezone.now %}
+                                                <span class="text-muted small">Registration Closed</span>
+                                            {% else %}
+                                                <a href="{% url 'programs:program_instance_detail' instance.pk %}" class="btn btn-primary btn-sm">
+                                                    <i class="bi bi-person-plus"></i> Register Child
+                                                </a>
+                                            {% endif %}
+                                        {% else %}
+                                            <a href="{% url 'programs:program_instance_detail' instance.pk %}" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-eye"></i> View Details
+                                            </a>
+                                        {% endif %}
+                                        
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar-plus"></i> 
+                                            Created {{ instance.created_at|date:"M d" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Summary -->
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="text-primary">About {{ program_type.name }}</h6>
+                                <p class="text-muted mb-0">{{ program_type.description }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h6>Program Statistics</h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="h4 text-primary">{{ instances.count }}</div>
+                                        <small class="text-muted">Available Programs</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="h4 text-success">{{ total_available_spots }}</div>
+                                        <small class="text-muted">Total Spots</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x display-1 text-muted mb-3"></i>
+                    <h4>No Active Programs</h4>
+                    <p class="text-muted">There are currently no active {{ program_type.name }} programs available.</p>
+                    <div class="mt-4">
+                        <a href="{% url 'programs:program_request_create' program_type.id %}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Request This Program
+                        </a>
+                        <a href="{% url 'programs:program_catalog' %}" class="btn btn-outline-secondary ms-2">
+                            <i class="bi bi-arrow-left"></i> Back to Catalog
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Request Program Section -->
+            {% if instances %}
+                <div class="text-center mt-4">
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-lightbulb"></i> Don't see what you're looking for?</h6>
+                        <p class="mb-2">We'd love to hear about your specific needs for {{ program_type.name }} programs.</p>
+                        <a href="{% url 'programs:program_request_create' program_type.id %}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> Request Custom Program
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

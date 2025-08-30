@@ -7,29 +7,58 @@
 <div class="container mt-4">
     <div class="row">
         <div class="col-12">
+            {% include "people/partials/contractor/_onboarding_banner.html" %}
             <h1 class="mb-4">Contractor Dashboard</h1>
             
             <!-- Quick Actions -->
             <div class="row mb-4">
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="card">
                         <div class="card-body text-center">
-                            <i class="bi bi-clipboard-list display-4 text-primary mb-3"></i>
-                            <h5>Manage Forms</h5>
-                            <p class="text-muted">Create and edit registration forms</p>
-                            <a href="{% url 'programs:form_builder' %}" class="btn btn-primary">
-                                Create New Form
+                            <i class="fas fa-calendar-alt display-4 text-primary mb-3"></i>
+                            <h6>My Availability</h6>
+                            <p class="text-muted small">Set when you're available to teach</p>
+                            {% if contractor and not contractor.needs_onboarding %}
+                                <a href="{% url 'programs:contractor_availability_list' %}" class="btn btn-primary btn-sm">
+                                    Manage Schedule
+                                </a>
+                            {% else %}
+                                <button class="btn btn-secondary btn-sm" disabled title="Complete onboarding to manage schedule">Manage Schedule</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chalkboard-teacher display-4 text-success mb-3"></i>
+                            <h6>My Sessions</h6>
+                            <p class="text-muted small">View upcoming teaching sessions</p>
+                            <a href="{% url 'programs:contractor_sessions_list' %}" class="btn btn-success btn-sm">
+                                View Sessions
                             </a>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="card">
                         <div class="card-body text-center">
-                            <i class="bi bi-people display-4 text-success mb-3"></i>
-                            <h5>View Registrations</h5>
-                            <p class="text-muted">Manage program registrations</p>
-                            <a href="#" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#viewRegistrationsModal">
+                            <i class="bi bi-clipboard-list display-4 text-info mb-3"></i>
+                            <h6>Manage Forms</h6>
+                            <p class="text-muted small">Create and edit registration forms</p>
+                            <a href="{% url 'programs:form_builder' %}" class="btn btn-info btn-sm">
+                                Create Form
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="bi bi-people display-4 text-warning mb-3"></i>
+                            <h6>Registrations</h6>
+                            <p class="text-muted small">Manage program registrations</p>
+                            <a href="#" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#viewRegistrationsModal">
                                 View All
                             </a>
                         </div>
@@ -61,9 +90,9 @@
                                     {% for program in program_instances %}
                                         <tr>
                                             <td>
-                                                <strong>{{ program.program_type.name }}</strong>
+                                                <strong>{{ program.buildout.program_type.name }}</strong>
                                                 <br>
-                                                <small class="text-muted">{{ program.program_type.description|truncatechars:100 }}</small>
+                                                <small class="text-muted">{{ program.buildout.program_type.description|truncatechars:100 }}</small>
                                             </td>
                                             <td>
                                                 {{ program.start_date|date:"M d" }} - {{ program.end_date|date:"M d, Y" }}
@@ -88,10 +117,13 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
-                                                    <a href="{% url 'programs:view_registrations' program.pk %}" class="btn btn-outline-primary">
+                                                    <a href="{% url 'programs:contractor_instance_schedule' program.pk %}" class="btn btn-outline-success" title="Schedule Availability">
+                                                        <i class="bi bi-calendar-week"></i>
+                                                    </a>
+                                                    <a href="{% url 'programs:view_registrations' program.pk %}" class="btn btn-outline-primary" title="View Registrations">
                                                         <i class="bi bi-people"></i>
                                                     </a>
-                                                    <a href="{% url 'programs:send_form_to_participants' program.pk %}" class="btn btn-outline-secondary">
+                                                    <a href="{% url 'programs:send_form_to_participants' program.pk %}" class="btn btn-outline-secondary" title="Send Communication">
                                                         <i class="bi bi-envelope"></i>
                                                     </a>
                                                 </div>
@@ -175,7 +207,7 @@
                             <div class="accordion-item">
                                 <h2 class="accordion-header">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ program.pk }}">
-                                        {{ program.program_type.name }} ({{ program.registrations.count }} registrations)
+                                        {{ program.buildout.program_type.name }} ({{ program.registrations.count }} registrations)
                                     </button>
                                 </h2>
                                 <div id="collapse{{ program.pk }}" class="accordion-collapse collapse" data-bs-parent="#programsAccordion">

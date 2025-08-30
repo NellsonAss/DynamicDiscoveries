@@ -1,0 +1,20 @@
+{% if request.user.is_authenticated and contractor and contractor.needs_onboarding %}
+<div class="alert alert-warning sticky-top onboarding-banner" role="alert">
+    <div class="d-flex align-items-center justify-content-between">
+        <div>
+            <strong>Complete your onboarding</strong> to access scheduling and assignments.
+            <div class="small text-muted">Steps: Sign NDA and provide W-9.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <form method="post" action="{% url 'people:send_nda' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-dark btn-sm">Send NDA</button>
+            </form>
+            <a href="{% url 'people:start_w9_docusign' %}" class="btn btn-primary btn-sm">Fill W-9 & Sign</a>
+            <a href="{% url 'people:contractor_onboarding' %}" class="btn btn-outline-secondary btn-sm">Upload W-9</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+

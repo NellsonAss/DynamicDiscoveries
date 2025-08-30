@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}Day Off Request Details - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Day Off Request Details</h1>
+                    <p class="text-muted mb-0">
+                        {{ day_off_request.contractor.get_full_name }} - {{ day_off_request.date|date:"l, F d, Y" }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'programs:contractor_day_off_requests' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- Request Details -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3 class="mb-0">Request Information</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-sm-3"><strong>Status:</strong></div>
+                                <div class="col-sm-9">
+                                    <span class="badge 
+                                        {% if day_off_request.status == 'pending' %}bg-warning
+                                        {% elif day_off_request.status == 'approved' %}bg-success
+                                        {% elif day_off_request.status == 'denied' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ day_off_request.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3"><strong>Date Range:</strong></div>
+                                <div class="col-sm-9">
+                                    {% if day_off_request.start_date == day_off_request.end_date %}
+                                        {{ day_off_request.start_date|date:"l, F d, Y" }}
+                                    {% else %}
+                                        {{ day_off_request.start_date|date:"l, F d, Y" }} to {{ day_off_request.end_date|date:"l, F d, Y" }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3"><strong>Submitted:</strong></div>
+                                <div class="col-sm-9">{{ day_off_request.created_at|date:"M d, Y g:i A" }}</div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-sm-3"><strong>Reason:</strong></div>
+                                <div class="col-sm-9">{{ day_off_request.reason|linebreaks }}</div>
+                            </div>
+                            
+                            {% if day_off_request.reviewed_by %}
+                                <hr>
+                                <div class="row">
+                                    <div class="col-sm-3"><strong>Reviewed By:</strong></div>
+                                    <div class="col-sm-9">{{ day_off_request.reviewed_by.get_full_name }}</div>
+                                </div>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-sm-3"><strong>Reviewed On:</strong></div>
+                                    <div class="col-sm-9">{{ day_off_request.reviewed_at|date:"M d, Y g:i A" }}</div>
+                                </div>
+                                {% if day_off_request.admin_notes %}
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-sm-3"><strong>Admin Notes:</strong></div>
+                                        <div class="col-sm-9">{{ day_off_request.admin_notes|linebreaks }}</div>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Conflict Information -->
+                    {% if conflicts.sessions or conflicts.bookings %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h3 class="mb-0">
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                    Scheduling Conflicts
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                {% if conflicts.sessions %}
+                                    <h5>Affected Sessions ({{ conflicts.sessions.count }})</h5>
+                                    <div class="table-responsive mb-3">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Program</th>
+                                                    <th>Time</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for session in conflicts.sessions %}
+                                                    <tr>
+                                                        <td>{{ session.program_instance.title }}</td>
+                                                        <td>{{ session.start_datetime|time:"g:i A" }} - {{ session.end_datetime|time:"g:i A" }}</td>
+                                                        <td>
+                                                            <span class="badge bg-info">{{ session.get_status_display }}</span>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% endif %}
+
+                                {% if conflicts.bookings %}
+                                    <h5>Student Bookings ({{ conflicts.bookings.count }})</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Student</th>
+                                                    <th>Parent</th>
+                                                    <th>Session</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for booking in conflicts.bookings %}
+                                                    <tr>
+                                                        <td>{{ booking.child.get_full_name }}</td>
+                                                        <td>{{ booking.child.parent.get_full_name }}</td>
+                                                        <td>{{ booking.session.program_instance.title }}</td>
+                                                        <td>
+                                                            <span class="badge bg-primary">{{ booking.get_status_display }}</span>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-4">
+                    <!-- Actions -->
+                    {% if can_approve %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4 class="mb-0">Admin Actions</h4>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" action="{% url 'programs:contractor_day_off_request_approve' day_off_request.pk %}" class="mb-2">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label for="admin_notes" class="form-label">Admin Notes (Optional)</label>
+                                        <textarea name="admin_notes" id="admin_notes" class="form-control" rows="3" placeholder="Add any notes about the approval..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-check"></i> Approve Request
+                                    </button>
+                                </form>
+                                
+                                <form method="post" action="{% url 'programs:contractor_day_off_request_deny' day_off_request.pk %}">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label for="admin_notes_deny" class="form-label">Reason for Denial</label>
+                                        <textarea name="admin_notes" id="admin_notes_deny" class="form-control" rows="3" placeholder="Explain why this request is being denied..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Are you sure you want to deny this request?')">
+                                        <i class="fas fa-times"></i> Deny Request
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Summary -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="mb-0">Summary</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Sessions Affected:</span>
+                                <span class="badge bg-secondary">{{ day_off_request.affected_sessions_count }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Bookings Affected:</span>
+                                <span class="badge bg-secondary">{{ day_off_request.affected_bookings_count }}</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <span><strong>Impact Level:</strong></span>
+                                <span>
+                                    {% if day_off_request.affected_sessions_count == 0 and day_off_request.affected_bookings_count == 0 %}
+                                        <span class="badge bg-success">No Impact</span>
+                                    {% elif day_off_request.affected_bookings_count == 0 %}
+                                        <span class="badge bg-warning">Low Impact</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">High Impact</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

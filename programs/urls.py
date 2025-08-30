@@ -33,7 +33,44 @@ urlpatterns = [
     path('roles/', views.role_list, name='role_list'),
     path('buildouts/', views.buildout_list, name='buildout_list'),
     path('buildouts/<int:buildout_pk>/', views.buildout_detail, name='buildout_detail'),
+    path('buildouts/<int:buildout_pk>/mark-ready/', views.buildout_mark_ready, name='buildout_mark_ready'),
+    path('buildouts/<int:buildout_pk>/present/', views.present_to_contractor, name='present_to_contractor'),
+    path('buildouts/<int:buildout_pk>/review/', views.buildout_review, name='buildout_review'),
+    path('buildouts/<int:buildout_pk>/agree-sign/', views.buildout_agree_and_sign, name='buildout_agree_and_sign'),
     path('buildouts/<int:buildout_pk>/manage-responsibilities/', views.buildout_manage_responsibilities, name='buildout_manage_responsibilities'),
     path('buildouts/<int:buildout_pk>/assign-roles/', views.buildout_assign_roles, name='buildout_assign_roles'),
     path('program-types/<int:program_type_pk>/buildouts/', views.program_type_buildouts, name='program_type_buildouts'),
+    
+    # Contractor instance scheduling
+    path('instances/<int:instance_pk>/schedule/', views.contractor_buildout_instance_schedule, name='contractor_instance_schedule'),
+    
+    # Program catalog and requests
+    path('catalog/', views.program_catalog, name='program_catalog'),
+    path('catalog/<int:program_type_id>/programs/', views.program_type_instances, name='program_type_instances'),
+    path('catalog/<int:program_type_id>/request/', views.program_request_create, name='program_request_create'),
+    
+    # Enhanced Scheduling URLs
+    # Contractor availability management
+    path('contractor/availability/', views.contractor_availability_list, name='contractor_availability_list'),
+    path('contractor/availability/new/', views.contractor_availability_create, name='contractor_availability_create'),
+    path('contractor/availability/<int:pk>/', views.contractor_availability_detail, name='contractor_availability_detail'),
+    path('contractor/availability/<int:pk>/edit/', views.contractor_availability_edit, name='contractor_availability_edit'),
+    path('contractor/availability/<int:availability_pk>/add-program/', views.add_program_to_availability, name='add_program_to_availability'),
+    
+    # Session management for contractors
+    path('contractor/sessions/', views.contractor_sessions_list, name='contractor_sessions_list'),
+    path('sessions/<int:session_pk>/', views.session_detail, name='session_detail'),
+    
+    # Parent booking system
+    path('parent/available-sessions/', views.available_sessions_list, name='available_sessions_list'),
+    path('parent/book-session/<int:session_pk>/', views.book_session, name='book_session'),
+    path('parent/bookings/', views.parent_bookings, name='parent_bookings'),
+    path('parent/bookings/<int:booking_pk>/cancel/', views.cancel_booking, name='cancel_booking'),
+    
+    # Contractor day-off requests
+    path('contractor/day-off-requests/', views.contractor_day_off_requests, name='contractor_day_off_requests'),
+    path('contractor/day-off-requests/new/', views.contractor_day_off_request_create, name='contractor_day_off_request_create'),
+    path('contractor/day-off-requests/<int:pk>/', views.contractor_day_off_request_detail, name='contractor_day_off_request_detail'),
+    path('contractor/day-off-requests/<int:pk>/approve/', views.contractor_day_off_request_approve, name='contractor_day_off_request_approve'),
+    path('contractor/day-off-requests/<int:pk>/deny/', views.contractor_day_off_request_deny, name='contractor_day_off_request_deny'),
 ] 

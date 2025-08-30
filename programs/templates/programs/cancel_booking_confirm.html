@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Cancel Booking - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Cancel Booking</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Confirm Cancellation</h5>
+                        <p class="mb-0">Are you sure you want to cancel this booking?</p>
+                    </div>
+
+                    <!-- Booking Details -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">Booking Details</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <strong>Child:</strong> {{ booking.child.full_name }}
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong>Program:</strong> {{ booking.session.program_instance.title }}
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong>Date:</strong> {{ booking.session.start_datetime|date:"l, F d, Y" }}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <strong>Time:</strong> {{ booking.session.start_datetime|time:"g:i A" }} - {{ booking.session.end_datetime|time:"g:i A" }}
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong>Duration:</strong> {{ booking.session.duration_hours }} hour{{ booking.session.duration_hours|floatformat:0|pluralize }}
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong>Location:</strong> {{ booking.session.program_instance.location }}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            {% if booking.parent_notes %}
+                                <div class="mt-3">
+                                    <strong>Your Notes:</strong>
+                                    <p class="text-muted">{{ booking.parent_notes }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'programs:parent_bookings' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Keep Booking
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-times"></i> Yes, Cancel Booking
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Cancellation Policy:</h6>
+                    <ul class="mb-0">
+                        <li>Bookings can be cancelled up to 24 hours before the session</li>
+                        <li>Cancelled bookings will free up the spot for other children</li>
+                        <li>You can always book again if spots become available</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

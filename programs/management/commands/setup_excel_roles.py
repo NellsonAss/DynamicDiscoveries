@@ -4,10 +4,10 @@ from decimal import Decimal
 
 
 class Command(BaseCommand):
-    help = 'Setup Excel-like role structure with responsibilities and hours from TT After School Workshops'
+    help = 'Setup Excel-like role structure with responsibilities and hours from TT After School Programs'
 
     def handle(self, *args, **options):
-        # Excel-like role structure based on the TT After School Workshops spreadsheet
+        # Excel-like role structure based on the TT After School Programs spreadsheet
         EXCEL_ROLES = [
             {
                 "title": "Facilitators",
@@ -421,24 +421,24 @@ class Command(BaseCommand):
                     defaults={
                         "description": resp_data["description"],
                         "frequency_type": resp_data["frequency"],
-                        "hours": resp_data["hours"]
+                        "default_hours": resp_data["hours"]
                     }
                 )
                 
                 if created:
                     responsibility_created_count += 1
                     self.stdout.write(
-                        self.style.SUCCESS(f'  Created responsibility: {responsibility.name} ({responsibility.hours}h/{responsibility.frequency_type})')
+                        self.style.SUCCESS(f'  Created responsibility: {responsibility.name} ({responsibility.default_hours}h/{responsibility.frequency_type})')
                     )
                 else:
                     # Update existing responsibility
                     responsibility.description = resp_data["description"]
                     responsibility.frequency_type = resp_data["frequency"]
-                    responsibility.hours = resp_data["hours"]
+                    responsibility.default_hours = resp_data["hours"]
                     responsibility.save()
                     responsibility_updated_count += 1
                     self.stdout.write(
-                        self.style.WARNING(f'  Updated responsibility: {responsibility.name} ({responsibility.hours}h/{responsibility.frequency_type})')
+                        self.style.WARNING(f'  Updated responsibility: {responsibility.name} ({responsibility.default_hours}h/{responsibility.frequency_type})')
                     )
 
         self.stdout.write(

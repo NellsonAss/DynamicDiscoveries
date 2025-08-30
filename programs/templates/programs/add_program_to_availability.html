@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">{{ title }}</h2>
+                    <p class="mb-0 text-muted">
+                        {{ availability.start_datetime|date:"l, F d, Y" }} from 
+                        {{ availability.start_datetime|time:"g:i A" }} to {{ availability.end_datetime|time:"g:i A" }}
+                        ({{ availability.remaining_hours }}h remaining)
+                    </p>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.program_buildout.id_for_label }}" class="form-label">
+                                <i class="fas fa-chalkboard-teacher me-1"></i>{{ form.program_buildout.label }}
+                            </label>
+                            {{ form.program_buildout }}
+                            {% if form.program_buildout.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.program_buildout.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.session_duration_hours.id_for_label }}" class="form-label">
+                                    <i class="fas fa-clock me-1"></i>{{ form.session_duration_hours.label }}
+                                </label>
+                                {{ form.session_duration_hours }}
+                                <small class="form-text text-muted">{{ form.session_duration_hours.help_text }}</small>
+                                {% if form.session_duration_hours.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.session_duration_hours.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.max_sessions.id_for_label }}" class="form-label">
+                                    <i class="fas fa-repeat me-1"></i>{{ form.max_sessions.label }}
+                                </label>
+                                {{ form.max_sessions }}
+                                <small class="form-text text-muted">{{ form.max_sessions.help_text }}</small>
+                                {% if form.max_sessions.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.max_sessions.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'programs:contractor_availability_detail' availability.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Availability
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Add Program
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Program Offering Tips:</h6>
+                    <ul class="mb-0">
+                        <li>Session duration determines how long each individual session will be</li>
+                        <li>Max sessions controls how many of this program can fit in your availability</li>
+                        <li>Total time needed = Session Duration × Max Sessions</li>
+                        <li>Make sure total time doesn't exceed your remaining availability</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const durationInput = document.getElementById('id_session_duration_hours');
+    const maxSessionsInput = document.getElementById('id_max_sessions');
+    const remainingHours = {{ availability.remaining_hours }};
+    
+    function calculateTotalTime() {
+        const duration = parseFloat(durationInput.value) || 0;
+        const maxSessions = parseInt(maxSessionsInput.value) || 0;
+        const totalTime = duration * maxSessions;
+        
+        // Show calculation info
+        let calcInfo = document.getElementById('calc-info');
+        if (!calcInfo) {
+            calcInfo = document.createElement('small');
+            calcInfo.id = 'calc-info';
+            calcInfo.className = 'form-text';
+            maxSessionsInput.parentNode.appendChild(calcInfo);
+        }
+        
+        if (totalTime > 0) {
+            if (totalTime <= remainingHours) {
+                calcInfo.textContent = `Total time needed: ${totalTime}h (${remainingHours - totalTime}h will remain)`;
+                calcInfo.className = 'form-text text-success';
+            } else {
+                calcInfo.textContent = `Total time needed: ${totalTime}h (exceeds ${remainingHours}h available!)`;
+                calcInfo.className = 'form-text text-danger';
+            }
+        } else {
+            calcInfo.textContent = '';
+        }
+    }
+    
+    durationInput.addEventListener('input', calculateTotalTime);
+    maxSessionsInput.addEventListener('input', calculateTotalTime);
+    
+    // Initial calculation
+    calculateTotalTime();
+});
+</script>
+{% endblock %}

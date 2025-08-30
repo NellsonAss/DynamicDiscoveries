@@ -1,0 +1,31 @@
+{% load math_filters %}
+<div class="container py-3">
+  <h3>Review Agreement for {{ buildout.title }}</h3>
+  <p>Program Type: {{ buildout.program_type.name }}</p>
+  <p>Sessions per Program: {{ buildout.sessions_per_program }}</p>
+  <p>Students per Program: {{ buildout.students_per_program }}</p>
+  <h5>Roles</h5>
+  <ul>
+    {% for rl in buildout.role_lines.all %}
+      <li>{{ rl.role.title }} — payout: ${{ rl.calculate_payout }}</li>
+    {% endfor %}
+  </ul>
+
+  <form method="post" action="{% url 'programs:buildout_agree_and_sign' buildout.pk %}">
+    {% csrf_token %}
+    {% if settings.USE_SIMPLE_ACK %}
+      <div class="mb-2">
+        <label class="form-label">Type your full name to agree</label>
+        <input type="text" name="typed_name" class="form-control" required />
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" name="agree" id="agreeCheck" required />
+        <label class="form-check-label" for="agreeCheck">I agree to the terms</label>
+      </div>
+    {% endif %}
+    <button class="btn btn-primary">Agree & Sign</button>
+  </form>
+</div>
+
+
+

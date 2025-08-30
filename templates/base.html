@@ -31,7 +31,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top" style="z-index: 1031;">
         <div class="container">
             <a class="navbar-brand fw-bold text-primary" href="{% url 'dashboard:dashboard' %}">
                 <i class="bi bi-stars me-2"></i>Dynamic Discoveries
@@ -46,6 +46,11 @@
                     </li>
                     
                     {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'programs:program_catalog' %}">
+                                <i class="bi bi-grid-3x3-gap me-1"></i>Program Catalog
+                            </a>
+                        </li>
                         <!-- Parent Navigation -->
                         {% if 'Parent' in user.get_role_names %}
                             <li class="nav-item dropdown">
@@ -58,6 +63,13 @@
                                     </a></li>
                                     <li><a class="dropdown-item" href="{% url 'programs:manage_children' %}">
                                         <i class="bi bi-person-plus me-2"></i>Manage Children
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:available_sessions_list' %}">
+                                        <i class="bi bi-calendar-plus me-2"></i>Browse Sessions
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:parent_bookings' %}">
+                                        <i class="bi bi-list-check me-2"></i>My Bookings
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="{% url 'programs:parent_dashboard' %}">
@@ -77,12 +89,22 @@
                                     <li><a class="dropdown-item" href="{% url 'programs:contractor_dashboard' %}">
                                         <i class="bi bi-speedometer2 me-2"></i>Dashboard
                                     </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:contractor_availability_list' %}">
+                                        <i class="bi bi-calendar-alt me-2"></i>My Availability
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:contractor_sessions_list' %}">
+                                        <i class="bi bi-chalkboard-teacher me-2"></i>My Sessions
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:contractor_day_off_requests' %}">
+                                        <i class="bi bi-calendar-x me-2"></i>Day Off Requests
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="{% url 'programs:form_builder' %}">
                                         <i class="bi bi-clipboard-plus me-2"></i>Create Forms
                                     </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="{% url 'programs:contractor_dashboard' %}">
-                                        <i class="bi bi-calendar-plus me-2"></i>Schedule Programs
+                                    <li><a class="dropdown-item" href="{% url 'people:contractor_onboarding' %}">
+                                        <i class="bi bi-file-earmark-text me-2"></i>Onboarding (NDA & W‑9)
                                     </a></li>
                                     <li><a class="dropdown-item" href="{% url 'programs:contractor_dashboard' %}">
                                         <i class="bi bi-people me-2"></i>View Registrations
@@ -173,11 +195,23 @@
                                     <li><a class="dropdown-item" href="{% url 'programs:parent_dashboard' %}">
                                         <i class="bi bi-house me-2"></i>Parent Dashboard
                                     </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:available_sessions_list' %}">
+                                        <i class="bi bi-calendar-plus me-2"></i>Browse Sessions
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:parent_bookings' %}">
+                                        <i class="bi bi-list-check me-2"></i>My Bookings
+                                    </a></li>
                                 {% endif %}
                                 
                                 {% if 'Contractor' in user.get_role_names %}
                                     <li><a class="dropdown-item" href="{% url 'programs:contractor_dashboard' %}">
                                         <i class="bi bi-speedometer2 me-2"></i>Contractor Dashboard
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:contractor_availability_list' %}">
+                                        <i class="bi bi-calendar-alt me-2"></i>My Availability
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'programs:contractor_sessions_list' %}">
+                                        <i class="bi bi-chalkboard-teacher me-2"></i>My Sessions
                                     </a></li>
                                 {% endif %}
                                 
@@ -216,6 +250,10 @@
     </nav>
 
     <main>
+        <style>
+            .onboarding-banner { z-index: 1030; position: sticky; top: 56px; }
+            @media (min-width: 992px) { .onboarding-banner { top: 64px; } }
+        </style>
         {% if messages %}
             <div class="container py-4">
                 {% for message in messages %}

@@ -112,7 +112,7 @@ ProgramInstance → RegistrationForm (assigned_form)
 ### Creating a Program Type
 ```python
 program_type = ProgramType.objects.create(
-    name="STEAM Workshop",
+    name="STEAM Program",
     description="Science, Technology, Engineering, Arts, and Math activities",
     target_grade_levels="3-5"
 )

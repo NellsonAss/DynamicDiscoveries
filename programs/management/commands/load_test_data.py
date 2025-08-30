@@ -54,7 +54,7 @@ class Command(BaseCommand):
                 'rate_per_student': 350.00
             },
             {
-                'name': 'Creative Writing Workshop',
+                'name': 'Creative Writing Program',
                 'description': 'Develop storytelling skills through creative writing exercises',
                 'target_grade_levels': '4-6',
                 'rate_per_student': 300.00

@@ -30,9 +30,14 @@
                                                     Age: {{ child.age }} | Grade: {{ child.grade_level|default:"Not specified" }}
                                                 </small>
                                             </p>
-                                            <a href="{% url 'programs:edit_child' child.pk %}" class="btn btn-outline-primary btn-sm">
-                                                Edit
-                                            </a>
+                                            <div class="d-flex gap-1">
+                                                <a href="{% url 'programs:edit_child' child.pk %}" class="btn btn-outline-primary btn-sm">
+                                                    Edit
+                                                </a>
+                                                <a href="{% url 'notes:student_notes_list' child.id %}" class="btn btn-outline-info btn-sm">
+                                                    Notes
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -44,44 +49,88 @@
                 </div>
             </div>
 
-            <!-- Active Programs Section -->
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-calendar-plus display-4 text-primary mb-3"></i>
+                            <h6>Book Sessions</h6>
+                            <p class="text-muted small">Find and book available program sessions</p>
+                            <a href="{% url 'programs:available_sessions_list' %}" class="btn btn-primary btn-sm">
+                                Browse Sessions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-list-alt display-4 text-success mb-3"></i>
+                            <h6>My Bookings</h6>
+                            <p class="text-muted small">View and manage current bookings</p>
+                            <a href="{% url 'programs:parent_bookings' %}" class="btn btn-success btn-sm">
+                                View Bookings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-user-plus display-4 text-info mb-3"></i>
+                            <h6>Manage Children</h6>
+                            <p class="text-muted small">Add or edit child information</p>
+                            <a href="{% url 'programs:manage_children' %}" class="btn btn-info btn-sm">
+                                Manage Children
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Sessions Section -->
             <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Available Programs</h5>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Upcoming Sessions</h5>
+                    <a href="{% url 'programs:available_sessions_list' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-search"></i> Browse All Sessions
+                    </a>
                 </div>
                 <div class="card-body">
-                    {% if active_programs %}
-                        <div class="row">
-                            {% for program in active_programs %}
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <div class="card h-100">
-                                        <div class="card-body">
-                                            <h6 class="card-title">{{ program.program_type.name }}</h6>
-                                            <p class="card-text">
-                                                <small class="text-muted">
-                                                    {{ program.start_date|date:"M d, Y" }} - {{ program.end_date|date:"M d, Y" }}<br>
-                                                    Location: {{ program.location }}<br>
-                                                    Spots: {{ program.available_spots }}/{{ program.capacity }}
-                                                </small>
-                                            </p>
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <a href="{% url 'programs:program_instance_detail' program.pk %}" class="btn btn-primary btn-sm">
-                                                    View Details
-                                                </a>
-                                                {% if program.is_full %}
-                                                    <span class="badge bg-danger">Full</span>
-                                                {% else %}
-                                                    <span class="badge bg-success">Available</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
+                    <p class="text-muted mb-3">
+                        Book individual sessions that fit your schedule. Each session is taught by qualified contractors and can be booked independently.
+                    </p>
+                    
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="bg-light p-3 rounded">
+                                <i class="fas fa-calendar-alt fa-2x text-primary mb-2"></i>
+                                <h6>Flexible Scheduling</h6>
+                                <small class="text-muted">Book sessions that work with your calendar</small>
+                            </div>
                         </div>
-                    {% else %}
-                        <p class="text-muted">No active programs available at the moment.</p>
-                    {% endif %}
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="bg-light p-3 rounded">
+                                <i class="fas fa-users fa-2x text-success mb-2"></i>
+                                <h6>Expert Contractors</h6>
+                                <small class="text-muted">Learn from qualified professionals</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="bg-light p-3 rounded">
+                                <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                                <h6>Various Durations</h6>
+                                <small class="text-muted">Sessions from 1 hour to full day programs</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="{% url 'programs:available_sessions_list' %}" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Find Available Sessions
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -107,7 +156,7 @@
                                     {% for registration in current_registrations %}
                                         <tr>
                                             <td>{{ registration.child.full_name }}</td>
-                                            <td>{{ registration.program_instance.program_type.name }}</td>
+                                            <td>{{ registration.program_instance.buildout.program_type.name }}</td>
                                             <td>
                                                 {{ registration.program_instance.start_date|date:"M d" }} - 
                                                 {{ registration.program_instance.end_date|date:"M d, Y" }}
@@ -154,7 +203,7 @@
                                     {% for registration in past_registrations %}
                                         <tr>
                                             <td>{{ registration.child.full_name }}</td>
-                                            <td>{{ registration.program_instance.program_type.name }}</td>
+                                            <td>{{ registration.program_instance.buildout.program_type.name }}</td>
                                             <td>
                                                 {{ registration.program_instance.start_date|date:"M d" }} - 
                                                 {{ registration.program_instance.end_date|date:"M d, Y" }}

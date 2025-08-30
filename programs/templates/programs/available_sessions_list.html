@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+{% load dict_filters %}
+
+{% block title %}Available Sessions - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Available Sessions</h1>
+                    <p class="text-muted mb-0">
+                        {{ total_sessions }} session{{ total_sessions|pluralize }} available for booking
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'programs:parent_bookings' %}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-list"></i> My Bookings
+                    </a>
+                </div>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="mb-4">
+                <div class="btn-group" role="group" aria-label="View options">
+                    <input type="radio" class="btn-check" name="viewOptions" id="byProgram" autocomplete="off" checked>
+                    <label class="btn btn-outline-secondary" for="byProgram">
+                        <i class="fas fa-layer-group me-1"></i>By Program
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="viewOptions" id="byDate" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="byDate">
+                        <i class="fas fa-calendar-alt me-1"></i>By Date
+                    </label>
+                </div>
+            </div>
+
+            {% if sessions_by_program %}
+                <!-- Program View -->
+                <div id="programView">
+                {% for program_name, sessions in sessions_by_program.items %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3 class="mb-0">{{ program_name }}</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for session in sessions %}
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="card h-100 border-start border-primary border-3">
+                                            <div class="card-body">
+                                                <h6 class="card-title">{{ session.program_instance.title }}</h6>
+                                                
+                                                <p class="mb-2">
+                                                    <i class="fas fa-calendar"></i>
+                                                    {{ session.start_datetime|date:"M d, Y" }}
+                                                    <br>
+                                                    <i class="fas fa-clock"></i>
+                                                    {{ session.start_datetime|time:"g:i A" }} - {{ session.end_datetime|time:"g:i A" }}
+                                                    <br>
+                                                    <small class="text-muted">{{ session.duration_hours }} hour{{ session.duration_hours|floatformat:0|pluralize }}</small>
+                                                </p>
+
+                                                <p class="mb-2">
+                                                    <i class="fas fa-map-marker-alt"></i>
+                                                    {{ session.program_instance.location }}
+                                                </p>
+
+                                                <p class="mb-2">
+                                                    <i class="fas fa-user-tie"></i>
+                                                    {{ session.contractor.get_full_name }}
+                                                </p>
+
+                                                <p class="mb-3">
+                                                    <span class="badge 
+                                                        {% if session.available_spots > 5 %}bg-success
+                                                        {% elif session.available_spots > 0 %}bg-warning
+                                                        {% else %}bg-danger{% endif %}">
+                                                        {{ session.available_spots }} spot{{ session.available_spots|pluralize }} available
+                                                    </span>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        {{ session.enrolled_count }}/{{ session.max_capacity }} enrolled
+                                                    </small>
+                                                </p>
+
+                                                {% if session.can_book %}
+                                                    <a href="{% url 'programs:book_session' session.pk %}" 
+                                                       class="btn btn-primary btn-sm w-100">
+                                                        <i class="fas fa-calendar-plus"></i> Book This Session
+                                                    </a>
+                                                {% else %}
+                                                    <button class="btn btn-secondary btn-sm w-100" disabled>
+                                                        {% if session.is_full %}
+                                                            <i class="fas fa-times-circle"></i> Session Full
+                                                        {% else %}
+                                                            <i class="fas fa-lock"></i> Booking Closed
+                                                        {% endif %}
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+                
+                <!-- Date View -->
+                <div id="dateView" style="display: none;">
+                {% for date in sorted_dates %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3 class="mb-0">
+                                <i class="fas fa-calendar-day me-2"></i>
+                                {{ date|date:"l, F d, Y" }}
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for session in sessions_by_date|lookup:date %}
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="card h-100 border-start border-info border-3">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <h6 class="card-title mb-0">{{ session.program_instance.title }}</h6>
+                                                    <span class="badge bg-secondary">{{ session.program_instance.buildout.program_type.name }}</span>
+                                                </div>
+                                                
+                                                <p class="mb-2">
+                                                    <i class="fas fa-clock"></i>
+                                                    {{ session.start_datetime|time:"g:i A" }} - {{ session.end_datetime|time:"g:i A" }}
+                                                    <br>
+                                                    <small class="text-muted">{{ session.duration_hours }} hour{{ session.duration_hours|floatformat:0|pluralize }}</small>
+                                                </p>
+
+                                                <p class="mb-2">
+                                                    <i class="fas fa-user-tie"></i>
+                                                    {{ session.contractor.get_full_name }}
+                                                </p>
+
+                                                <p class="mb-3">
+                                                    <span class="badge 
+                                                        {% if session.available_spots > 5 %}bg-success
+                                                        {% elif session.available_spots > 0 %}bg-warning
+                                                        {% else %}bg-danger{% endif %}">
+                                                        {{ session.available_spots }} spot{{ session.available_spots|pluralize }} available
+                                                    </span>
+                                                </p>
+
+                                                {% if session.can_book %}
+                                                    <a href="{% url 'programs:book_session' session.pk %}" 
+                                                       class="btn btn-primary btn-sm w-100">
+                                                        <i class="fas fa-calendar-plus"></i> Book This Session
+                                                    </a>
+                                                {% else %}
+                                                    <button class="btn btn-secondary btn-sm w-100" disabled>
+                                                        {% if session.is_full %}
+                                                            <i class="fas fa-times-circle"></i> Session Full
+                                                        {% else %}
+                                                            <i class="fas fa-lock"></i> Booking Closed
+                                                        {% endif %}
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+                
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                    <h3 class="text-muted">No Sessions Available</h3>
+                    <p class="text-muted mb-4">
+                        There are currently no available sessions to book. Check back later or contact us for more information.
+                    </p>
+                    <a href="{% url 'programs:parent_dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Back to Dashboard
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.border-start {
+    border-left-width: 4px !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const programView = document.getElementById('programView');
+    const dateView = document.getElementById('dateView');
+    const programBtn = document.getElementById('byProgram');
+    const dateBtn = document.getElementById('byDate');
+    
+    function toggleView() {
+        if (programBtn.checked) {
+            programView.style.display = 'block';
+            dateView.style.display = 'none';
+        } else {
+            programView.style.display = 'none';
+            dateView.style.display = 'block';
+        }
+    }
+    
+    programBtn.addEventListener('change', toggleView);
+    dateBtn.addEventListener('change', toggleView);
+    
+    // Initialize view
+    toggleView();
+});
+</script>
+{% endblock %}

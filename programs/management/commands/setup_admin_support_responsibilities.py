@@ -130,24 +130,24 @@ class Command(BaseCommand):
                 defaults={
                     "description": resp_data["description"],
                     "frequency_type": resp_data["frequency"],
-                    "hours": resp_data["hours"]
+                    "default_hours": resp_data["hours"]
                 }
             )
             
             if created:
                 responsibility_created_count += 1
                 self.stdout.write(
-                    self.style.SUCCESS(f'  Created responsibility: {responsibility.name} ({responsibility.hours}h/{responsibility.frequency_type})')
+                    self.style.SUCCESS(f'  Created responsibility: {responsibility.name} ({responsibility.default_hours}h/{responsibility.frequency_type})')
                 )
             else:
                 # Update existing responsibility
                 responsibility.description = resp_data["description"]
                 responsibility.frequency_type = resp_data["frequency"]
-                responsibility.hours = resp_data["hours"]
+                responsibility.default_hours = resp_data["hours"]
                 responsibility.save()
                 responsibility_updated_count += 1
                 self.stdout.write(
-                    self.style.WARNING(f'  Updated responsibility: {responsibility.name} ({responsibility.hours}h/{responsibility.frequency_type})')
+                    self.style.WARNING(f'  Updated responsibility: {responsibility.name} ({responsibility.default_hours}h/{responsibility.frequency_type})')
                 )
 
         self.stdout.write(

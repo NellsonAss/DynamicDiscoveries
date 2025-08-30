@@ -34,8 +34,8 @@ class Command(BaseCommand):
                 'parent_name': 'Emily Rodriguez',
                 'email': 'emily.rodriguez@email.com',
                 'phone': '(555) 456-7890',
-                'interest': 'workshops',
-                'message': 'I heard about your signature workshops from a friend. My twins are 6 and would love to participate in something creative and educational.',
+                'interest': 'programs',
+                'message': 'I heard about your signature programs from a friend. My twins are 6 and would love to participate in something creative and educational.',
                 'status': 'contacted',
                 'created_at': timezone.now() - timedelta(days=1)
             },

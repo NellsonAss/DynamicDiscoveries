@@ -46,9 +46,8 @@
                     <thead>
                         <tr>
                             <th>Role</th>
-                            <th>Hourly Rate</th>
-                            <th>Default Revenue %</th>
                             <th>Responsibilities</th>
+                            <th>Description</th>
                             <th>Program Types</th>
                             <th>Users</th>
                             <th>Actions</th>
@@ -61,12 +60,6 @@
                                 <div>
                                     <h6 class="mb-0">{{ role.title }}</h6>
                                     <small class="text-muted">ID: {{ role.id }}</small>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="text-center">
-                                    <h6 class="text-success mb-0">$50.00</h6>
-                                    <small class="text-muted">default rate</small>
                                 </div>
                             </td>
                             <td>
@@ -192,27 +185,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="admin-stats-card">
-            <div class="d-flex align-items-center">
-                <div class="me-3">
-                    <i class="bi bi-currency-dollar" style="font-size: 2rem;"></i>
-                </div>
-                <div>
-                    <h4 class="mb-0">
-                        {% with avg_rate=0 %}
-                            {% for role in page_obj %}
-                                {% if forloop.first %}
-                                    ${{ role.hourly_rate }}
-                                {% endif %}
-                            {% endfor %}
-                        {% endwith %}
-                    </h4>
-                    <small>Avg Hourly Rate</small>
-                </div>
-            </div>
-        </div>
-    </div>
+    
     <div class="col-md-3">
         <div class="admin-stats-card">
             <div class="d-flex align-items-center">

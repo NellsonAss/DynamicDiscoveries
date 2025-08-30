@@ -17,6 +17,8 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from accounts.views import debug_env
 from django.utils import timezone
@@ -32,9 +34,15 @@ urlpatterns = [
     path('auth/', include(('allauth.urls', 'allauth'), namespace='auth')),  # django-allauth URLs under /auth/
     path('accounts/', include('accounts.urls')),  # Our custom accounts URLs
     path('communications/', include('communications.urls')),
+    path('people/', include('people.urls')),
+    path('contracts/', include('contracts.urls')),
     path('programs/', include('programs.urls')),
-    path('', include('dashboard.urls')),
+    path('notes/', include('notes.urls')),
+    path('dashboard/', include('dashboard.urls')),
     path('admin-interface/', include('admin_interface.urls')),
     path('debug-env/', debug_env),
     path('captcha/', include('captcha.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

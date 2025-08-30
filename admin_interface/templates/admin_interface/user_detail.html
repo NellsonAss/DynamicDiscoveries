@@ -246,6 +246,24 @@
 </div>
 {% endif %}
 
+<!-- Parent Notes Section (if user is a parent) -->
+{% if 'Parent' in user_detail.get_role_names %}
+<div class="admin-card p-4 mb-4">
+    <h5 class="mb-3">
+        <i class="bi bi-sticky me-2"></i>Notes
+    </h5>
+    <div id="parent-notes" 
+         hx-get="{% url 'notes:parent_notes_list' user_detail.id %}" 
+         hx-trigger="load">
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading notes...</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Action Buttons -->
 <div class="admin-card p-4">
     <h5 class="mb-3">

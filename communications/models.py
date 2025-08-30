@@ -9,7 +9,7 @@ class Contact(models.Model):
         ('after_school', 'After-School Enrichment'),
         ('small_group', 'Small Group Tutoring'),
         ('assessments', 'Educational Assessments'),
-        ('workshops', 'Signature Workshops'),
+        ('programs', 'Signature Programs'),
         ('other', 'Other'),
     ]
     

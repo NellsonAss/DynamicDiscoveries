@@ -36,6 +36,20 @@
                                     </a>
                                 </div>
                             </div>
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:available_sessions_list' %}" class="btn btn-outline-info">
+                                        <i class="bi bi-calendar-plus me-2"></i>Browse Sessions
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:parent_bookings' %}" class="btn btn-outline-warning">
+                                        <i class="bi bi-list-check me-2"></i>My Bookings
+                                    </a>
+                                </div>
+                            </div>
                         {% endif %}
                         
                         {% if 'Contractor' in user.get_role_names %}
@@ -48,7 +62,28 @@
                             </div>
                             <div class="col-md-6 col-lg-3 mb-3">
                                 <div class="d-grid">
-                                    <a href="{% url 'programs:form_builder' %}" class="btn btn-outline-success">
+                                    <a href="{% url 'people:contractor_onboarding' %}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-file-earmark-text me-2"></i>Onboarding (NDA & W‑9)
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:contractor_availability_list' %}" class="btn btn-outline-success">
+                                        <i class="bi bi-calendar-alt me-2"></i>My Availability
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:contractor_sessions_list' %}" class="btn btn-outline-info">
+                                        <i class="bi bi-chalkboard-teacher me-2"></i>My Sessions
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3 mb-3">
+                                <div class="d-grid">
+                                    <a href="{% url 'programs:form_builder' %}" class="btn btn-outline-warning">
                                         <i class="bi bi-clipboard-plus me-2"></i>Create Forms
                                     </a>
                                 </div>
@@ -92,39 +127,20 @@
     </div>
 {% endif %}
 
-<div class="row">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Total Users</h5>
-                <p class="card-text display-4" id="total-users">
-                    {{ stats.total_users|default:"Loading..." }}
-                </p>
-            </div>
+<div id="stats-placeholder"
+     hx-get="{% url 'dashboard:stats' %}"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+    <div class="row">
+        <div class="col-12">
+            <div class="card"><div class="card-body">
+                <h5 class="card-title">Loading statistics…</h5>
+                <div class="text-muted">Please wait</div>
+            </div></div>
         </div>
     </div>
-    
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Active Users</h5>
-                <p class="card-text display-4" id="active-users">
-                    {{ stats.active_users|default:"Loading..." }}
-                </p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">New Users Today</h5>
-                <p class="card-text display-4" id="new-users">
-                    {{ stats.new_users_today|default:"Loading..." }}
-                </p>
-            </div>
-        </div>
-    </div>
+    <!-- Will be replaced by dashboard/partials/stats.html which includes #stats-container -->
+    <div id="stats-container" hidden></div>
 </div>
 
 {% if user.is_authenticated %}
@@ -142,9 +158,9 @@
                             </a>
                         </div>
                         <div id="contact-inquiries"
-                             hx-get="{% url 'communications:contact_list' %}"
+                             hx-get="{% url 'communications:contact_list_widget' %}"
                              hx-trigger="intersect once"
-                             hx-swap="afterend">
+                             hx-swap="outerHTML">
                             <div class="text-center py-3">
                                 <i class="bi bi-envelope display-4 text-muted"></i>
                                 <p class="mt-2 text-muted">Loading contact inquiries...</p>
@@ -165,7 +181,7 @@
                 <div id="activity-feed"
                      hx-get="{% url 'dashboard:activity' %}"
                      hx-trigger="intersect once"
-                     hx-swap="afterend">
+                     hx-swap="outerHTML">
                     Loading...
                 </div>
             </div>

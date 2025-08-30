@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block title %}Availability Details - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Availability Details</h1>
+                    <p class="text-muted mb-0">
+                        {{ availability.start_datetime|date:"l, F d, Y" }} from 
+                        {{ availability.start_datetime|time:"g:i A" }} to {{ availability.end_datetime|time:"g:i A" }}
+                    </p>
+                </div>
+                <div>
+                    {% if can_edit %}
+                        <a href="{% url 'programs:contractor_availability_edit' availability.pk %}" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'programs:contractor_availability_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            <!-- Availability Info Card -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>Availability Information
+                    </h5>
+                    <span class="badge 
+                        {% if availability.status == 'available' %}bg-success
+                        {% elif availability.status == 'partially_booked' %}bg-warning
+                        {% elif availability.status == 'fully_booked' %}bg-danger
+                        {% else %}bg-secondary{% endif %}">
+                        {{ availability.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Duration</h6>
+                            <p class="mb-3">{{ availability.duration_hours }} hours total</p>
+                            
+                            <h6>Remaining Time</h6>
+                            <p class="mb-3">
+                                <span class="{% if availability.remaining_hours > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ availability.remaining_hours }} hours remaining
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if availability.notes %}
+                                <h6>Notes</h6>
+                                <p class="mb-3">{{ availability.notes }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Program Offerings -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>Programs Offered
+                    </h5>
+                    {% if can_edit and availability.remaining_hours > 0 %}
+                        <a href="{% url 'programs:add_program_to_availability' availability.pk %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Add Program
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if program_offerings %}
+                        <div class="row">
+                            {% for offering in program_offerings %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100 border-start border-primary border-3">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ offering.program_buildout.title }}</h6>
+                                            <p class="mb-2">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>{{ offering.session_duration_hours }}h per session<br>
+                                                    <i class="fas fa-repeat me-1"></i>Max {{ offering.max_sessions }} session{{ offering.max_sessions|pluralize }}<br>
+                                                    <i class="fas fa-calculator me-1"></i>{{ offering.total_possible_hours }}h total if fully booked
+                                                </small>
+                                            </p>
+                                            
+                                            <!-- Sessions for this offering -->
+                                            {% if offering.sessions.all %}
+                                                <h6 class="mt-3">Scheduled Sessions:</h6>
+                                                {% for session in offering.sessions.all %}
+                                                    <div class="mb-2">
+                                                        <small class="badge bg-info">
+                                                            {{ session.start_datetime|time:"g:i A" }} - {{ session.end_datetime|time:"g:i A" }}
+                                                        </small>
+                                                        <small class="text-muted d-block">
+                                                            {{ session.enrolled_count }}/{{ session.max_capacity }} enrolled
+                                                        </small>
+                                                    </div>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chalkboard-teacher fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Programs Added Yet</h5>
+                            <p class="text-muted mb-3">
+                                Add programs you're willing to teach during this availability period.
+                            </p>
+                            {% if can_edit %}
+                                <a href="{% url 'programs:add_program_to_availability' availability.pk %}" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Add Your First Program
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Scheduled Sessions -->
+            {% if sessions %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calendar-check me-2"></i>Scheduled Sessions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Program</th>
+                                        <th>Time</th>
+                                        <th>Duration</th>
+                                        <th>Enrollment</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for session in sessions %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ session.program_instance.title }}</strong>
+                                            </td>
+                                            <td>
+                                                {{ session.start_datetime|time:"g:i A" }} - {{ session.end_datetime|time:"g:i A" }}
+                                            </td>
+                                            <td>{{ session.duration_hours }}h</td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         style="width: {% widthratio session.enrolled_count session.max_capacity 100 %}%">
+                                                        {{ session.enrolled_count }}/{{ session.max_capacity }}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if session.status == 'confirmed' %}bg-success
+                                                    {% elif session.status == 'scheduled' %}bg-info
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ session.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'programs:session_detail' session.pk %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

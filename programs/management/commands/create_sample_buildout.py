@@ -88,8 +88,8 @@ class Command(BaseCommand):
             },
             {
                 "role": curriculum_designer,
-                "name": "Workshop Concept Development",
-                "frequency": "PER_WORKSHOP_CONCEPT",
+                "name": "Program Concept Development",
+                "frequency": "PER_PROGRAM_CONCEPT",
                 "base_hours": Decimal('10.0'),
                 "description": "Develop new workshop concepts"
             },
