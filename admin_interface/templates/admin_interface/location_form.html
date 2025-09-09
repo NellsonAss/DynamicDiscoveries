@@ -1,0 +1,249 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-geo-alt me-2"></i>{{ action }} Location
+    </h2>
+    <a href="{% url 'admin_interface:location_management' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Locations
+    </a>
+</div>
+
+<div class="admin-card">
+    <div class="card-header">
+        <h5 class="mb-0">Location Information</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h6 class="text-muted border-bottom pb-2 mb-3">Basic Information</h6>
+                </div>
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">
+                            Location Name <span class="text-danger">*</span>
+                        </label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.name.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Enter a descriptive name for this location</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.is_active }}
+                            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                Active Location
+                            </label>
+                        </div>
+                        <div class="form-text">Whether this location is available for booking</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address and Description -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.address.id_for_label }}" class="form-label">Address</label>
+                        {{ form.address }}
+                        {% if form.address.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.address.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Full address of the location</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Additional details about the location</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost Information -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h6 class="text-muted border-bottom pb-2 mb-3">Default Cost Information</h6>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.default_rate.id_for_label }}" class="form-label">
+                            Default Rate <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            {{ form.default_rate }}
+                        </div>
+                        {% if form.default_rate.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.default_rate.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Default cost amount per frequency unit</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.default_frequency.id_for_label }}" class="form-label">
+                            Default Frequency <span class="text-danger">*</span>
+                        </label>
+                        {{ form.default_frequency }}
+                        {% if form.default_frequency.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.default_frequency.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">How often this cost occurs by default</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Capacity and Features -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h6 class="text-muted border-bottom pb-2 mb-3">Capacity & Features</h6>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.max_capacity.id_for_label }}" class="form-label">Maximum Capacity</label>
+                        {{ form.max_capacity }}
+                        {% if form.max_capacity.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.max_capacity.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Maximum number of participants (leave blank for no limit)</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.features.id_for_label }}" class="form-label">Features & Amenities</label>
+                        {{ form.features }}
+                        {% if form.features.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.features.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Special features or amenities available</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h6 class="text-muted border-bottom pb-2 mb-3">Contact Information</h6>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="{{ form.contact_name.id_for_label }}" class="form-label">Contact Name</label>
+                        {{ form.contact_name }}
+                        {% if form.contact_name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.contact_name.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Primary contact person</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="{{ form.contact_phone.id_for_label }}" class="form-label">Contact Phone</label>
+                        {{ form.contact_phone }}
+                        {% if form.contact_phone.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.contact_phone.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Contact phone number</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="{{ form.contact_email.id_for_label }}" class="form-label">Contact Email</label>
+                        {{ form.contact_email }}
+                        {% if form.contact_email.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.contact_email.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Contact email address</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'admin_interface:location_management' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-1"></i>{{ action }} Location
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if location %}
+<!-- Location Preview Card -->
+<div class="admin-card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">Location Preview</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-muted">Current Settings</h6>
+                <p><strong>Name:</strong> {{ location.name }}</p>
+                <p><strong>Default Rate:</strong> ${{ location.default_rate }} {{ location.get_default_frequency_display }}</p>
+                {% if location.max_capacity %}
+                    <p><strong>Capacity:</strong> {{ location.max_capacity }} participants</p>
+                {% endif %}
+                <p><strong>Status:</strong> 
+                    {% if location.is_active %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted">Buildout Assignments</h6>
+                {% if location.buildoutlocationassignment_set.all %}
+                    <ul class="list-unstyled">
+                    {% for assignment in location.buildoutlocationassignment_set.all %}
+                        <li class="mb-1">
+                            <span class="badge bg-primary me-2">{{ assignment.buildout.program_type.name }}</span>
+                            <small>{{ assignment.buildout.title }}</small>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">No buildout assignments yet</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

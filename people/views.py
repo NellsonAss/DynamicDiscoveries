@@ -3,8 +3,13 @@ from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.core.files.uploadedfile import UploadedFile
 from django.urls import reverse
+from django.utils import timezone
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
 
-from .models import Contractor
+from .models import Contractor, NDASignature
 from contracts.models import Contract, LegalDocumentTemplate
 from contracts.services.docusign import DocuSignService
 
@@ -112,6 +117,85 @@ def start_w9_docusign(request):
     except Exception as e:
         messages.error(request, f"Failed to send W-9: {e}")
     return redirect(reverse("people:contractor_onboarding"))
+
+
+@login_required
+def nda_sign(request):
+    """Display the NDA signing page"""
+    contractor = _get_or_create_contractor(request.user)
+    
+    # Check if NDA is already signed
+    if contractor.nda_signed:
+        messages.info(request, "You have already signed the NDA.")
+        return redirect(reverse("people:contractor_onboarding"))
+    
+    context = {
+        "contractor": contractor,
+        "today": timezone.now().date(),
+    }
+    return render(request, "people/nda_sign.html", context)
+
+
+@login_required
+def sign_nda(request):
+    """Process NDA signature submission"""
+    if request.method != "POST":
+        return redirect(reverse("people:nda_sign"))
+    
+    contractor = _get_or_create_contractor(request.user)
+    
+    # Check if NDA is already signed
+    if contractor.nda_signed:
+        messages.info(request, "You have already signed the NDA.")
+        return redirect(reverse("people:contractor_onboarding"))
+    
+    # Get form data
+    signed_name = request.POST.get('signed_name', '').strip()
+    signature_data = request.POST.get('signature_data', '')
+    agree_terms = request.POST.get('agree_terms')
+    
+    # Validate form data
+    if not signed_name:
+        messages.error(request, "Please enter your full name.")
+        return redirect(reverse("people:nda_sign"))
+    
+    if not signature_data:
+        messages.error(request, "Please provide your signature.")
+        return redirect(reverse("people:nda_sign"))
+    
+    if not agree_terms:
+        messages.error(request, "You must agree to the terms and conditions.")
+        return redirect(reverse("people:nda_sign"))
+    
+    try:
+        # Create NDA signature record
+        nda_signature = NDASignature.objects.create(
+            contractor=contractor,
+            signature_data=signature_data,
+            signed_name=signed_name,
+            signed_at=timezone.now(),
+            ip_address=request.META.get('REMOTE_ADDR', ''),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        )
+        
+        # Mark contractor as having signed NDA
+        contractor.nda_signed = True
+        contractor.save()
+        
+        # Log the signature for audit purposes
+        print(f"NDA SIGNED - User: {request.user.email}, Name: {signed_name}, IP: {request.META.get('REMOTE_ADDR', '')}, Time: {timezone.now()}")
+        
+        messages.success(request, "NDA signed successfully! You can now access your contractor dashboard.")
+        
+        # Redirect to contractor dashboard if onboarding is complete
+        if contractor.onboarding_complete:
+            return redirect("programs:contractor_dashboard")
+        else:
+            return redirect(reverse("people:contractor_onboarding"))
+            
+    except Exception as e:
+        messages.error(request, f"Failed to process NDA signature: {str(e)}")
+        return redirect(reverse("people:nda_sign"))
 
 
 

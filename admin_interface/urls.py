@@ -36,6 +36,10 @@ urlpatterns = [
     path('buildouts/<int:buildout_id>/delete/', views.buildout_delete, name='buildout_delete'),
     path('buildouts/<int:buildout_id>/manage-responsibilities/', views.buildout_manage_responsibilities, name='buildout_manage_responsibilities'),
     path('buildouts/<int:buildout_id>/assign-roles/', views.buildout_assign_roles, name='buildout_assign_roles'),
+    path('buildouts/<int:buildout_id>/manage-roles/', views.buildout_manage_roles, name='buildout_manage_roles'),
+    path('buildouts/<int:buildout_id>/assign-costs/', views.buildout_assign_costs, name='buildout_assign_costs'),
+    path('buildouts/<int:buildout_id>/assign-locations/', views.buildout_assign_locations, name='buildout_assign_locations'),
+    path('buildouts/<int:buildout_id>/manage-locations/', views.buildout_manage_locations, name='buildout_manage_locations'),
     
     # Buildout Instance Creation
     path('buildouts/<int:buildout_id>/create-instance/', views.program_instance_create_from_buildout, name='buildout_create_instance'),
@@ -85,4 +89,21 @@ urlpatterns = [
     path('costs/<int:cost_id>/', views.cost_detail, name='cost_detail'),
     path('costs/<int:cost_id>/edit/', views.cost_edit, name='cost_edit'),
     path('costs/<int:cost_id>/delete/', views.cost_delete, name='cost_delete'),
+    
+    # Location Management
+    path('locations/', views.location_management, name='location_management'),
+    path('locations/create/', views.location_create, name='location_create'),
+    path('locations/<int:location_id>/', views.location_detail, name='location_detail'),
+    path('locations/<int:location_id>/edit/', views.location_edit, name='location_edit'),
+    path('locations/<int:location_id>/delete/', views.location_delete, name='location_delete'),
+    
+    # Contractor Document Management (NDA & W-9)
+    path('contractor-documents/', views.contractor_document_management, name='contractor_document_management'),
+    path('contractor-documents/<int:contractor_id>/', views.contractor_document_detail, name='contractor_document_detail'),
+    path('contractor-documents/<int:contractor_id>/approve-nda/', views.approve_nda, name='approve_nda'),
+    path('contractor-documents/<int:contractor_id>/approve-w9/', views.approve_w9, name='approve_w9'),
+    path('contractor-documents/<int:contractor_id>/reset-nda/', views.reset_nda, name='reset_nda'),
+    path('contractor-documents/<int:contractor_id>/reset-w9/', views.reset_w9, name='reset_w9'),
+    path('contractor-documents/<int:contractor_id>/view-nda/', views.view_nda_signature, name='view_nda_signature'),
+    path('contractor-documents/<int:contractor_id>/download-w9/', views.download_w9, name='download_w9'),
 ] 

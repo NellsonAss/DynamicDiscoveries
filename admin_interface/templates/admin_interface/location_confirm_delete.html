@@ -1,0 +1,127 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete Location
+    </h2>
+    <a href="{% url 'admin_interface:location_management' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Locations
+    </a>
+</div>
+
+<div class="admin-card">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">Confirm Deletion</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-danger d-flex align-items-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <div>
+                <strong>Warning!</strong> This action cannot be undone. Deleting this location will permanently remove it from the system.
+            </div>
+        </div>
+
+        <h6 class="mb-3">You are about to delete the following location:</h6>
+        
+        <div class="border rounded p-3 mb-4 bg-light">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{ location.name }}</p>
+                    {% if location.address %}
+                        <p><strong>Address:</strong> {{ location.address }}</p>
+                    {% endif %}
+                    <p><strong>Default Rate:</strong> ${{ location.default_rate }} {{ location.get_default_frequency_display }}</p>
+                </div>
+                <div class="col-md-6">
+                    {% if location.max_capacity %}
+                        <p><strong>Max Capacity:</strong> {{ location.max_capacity }} participants</p>
+                    {% endif %}
+                    {% if location.contact_name %}
+                        <p><strong>Contact:</strong> {{ location.contact_name }}</p>
+                    {% endif %}
+                    <p><strong>Status:</strong> 
+                        {% if location.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Check for dependencies -->
+        {% if location.buildoutlocationassignment_set.all %}
+        <div class="alert alert-warning" role="alert">
+            <h6 class="alert-heading">Dependencies Found</h6>
+            <p>This location is currently assigned to the following buildouts:</p>
+            <ul class="mb-0">
+                {% for assignment in location.buildoutlocationassignment_set.all %}
+                <li>
+                    <strong>{{ assignment.buildout.program_type.name }}:</strong> 
+                    {{ assignment.buildout.title }}
+                    <small class="text-muted">(Yearly cost: ${{ assignment.calculate_yearly_cost|floatformat:2 }})</small>
+                </li>
+                {% endfor %}
+            </ul>
+            <hr>
+            <p class="mb-0">Deleting this location will also remove these assignments from the buildouts, which may affect their cost calculations.</p>
+        </div>
+        {% endif %}
+
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'admin_interface:location_detail' location.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </a>
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i>Yes, Delete Location
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if location.buildoutlocationassignment_set.all %}
+<!-- Impact Summary -->
+<div class="admin-card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">Deletion Impact Summary</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="admin-stats-card text-center">
+                    <i class="bi bi-diagram-3 mb-2 text-warning"></i>
+                    <h6>Affected Buildouts</h6>
+                    <h4>{{ location.buildoutlocationassignment_set.all|length }}</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="admin-stats-card text-center">
+                    <i class="bi bi-currency-dollar mb-2 text-warning"></i>
+                    <h6>Total Yearly Impact</h6>
+                    <h4>
+                        ${% for assignment in location.buildoutlocationassignment_set.all %}{{ assignment.calculate_yearly_cost|add:0 }}{% if not forloop.last %}+{% endif %}{% endfor %}
+                    </h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="admin-stats-card text-center">
+                    <i class="bi bi-exclamation-triangle mb-2 text-danger"></i>
+                    <h6>Action Required</h6>
+                    <h4>Review</h4>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info mt-3" role="alert">
+            <strong>Recommendation:</strong> Consider reassigning buildouts to other locations before deleting, or ensure the affected buildouts have alternative location arrangements.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

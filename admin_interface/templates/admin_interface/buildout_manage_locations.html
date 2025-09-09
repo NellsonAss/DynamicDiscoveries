@@ -1,0 +1,171 @@
+{% extends "admin_interface/base_admin.html" %}
+
+{% block title %}Manage Locations - {{ buildout.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Manage Locations for {{ buildout.title }}</h1>
+                <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Buildout
+                </a>
+            </div>
+            
+            <!-- Currently Assigned Locations -->
+            {% if assigned_location_assignments %}
+            <div class="admin-card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-geo-alt-fill me-2"></i>Currently Assigned Locations
+                        <span class="badge bg-light text-success ms-2">{{ assigned_location_assignments.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Location</th>
+                                    <th>Address</th>
+                                    <th>Rate</th>
+                                    <th>Frequency</th>
+                                    <th>Multiplier</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in assigned_location_assignments %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ assignment.location.name }}</strong>
+                                    </td>
+                                    <td>{{ assignment.location.address|truncatechars:50 }}</td>
+                                    <td>${{ assignment.rate|floatformat:2 }}</td>
+                                    <td>{{ assignment.get_frequency_display }}</td>
+                                    <td>{{ assignment.multiplier|floatformat:2 }}x</td>
+                                    <td>
+                                        <form method="post" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="remove">
+                                            <input type="hidden" name="location_id" value="{{ assignment.location.id }}">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                    onclick="return confirm('Remove {{ assignment.location.name }} from this buildout?')">
+                                                <i class="bi bi-dash-circle me-1"></i>Remove
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Available Locations to Add -->
+            <div class="admin-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>Available Locations to Add
+                        <span class="badge bg-light text-primary ms-2">{{ unassigned_locations.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if unassigned_locations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Location</th>
+                                        <th>Address</th>
+                                        <th>Default Rate</th>
+                                        <th>Default Frequency</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for location in unassigned_locations %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ location.name }}</strong>
+                                        </td>
+                                        <td>{{ location.address|truncatechars:50 }}</td>
+                                        <td>${{ location.default_rate|floatformat:2 }}</td>
+                                        <td>{{ location.get_default_frequency_display }}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-outline-success btn-sm" 
+                                                    data-bs-toggle="modal" data-bs-target="#addLocationModal{{ location.id }}">
+                                                <i class="bi bi-plus-circle me-1"></i>Add to Buildout
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                            <h6 class="text-muted mt-3">All locations are already assigned to this buildout</h6>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals for adding locations -->
+{% for location in unassigned_locations %}
+<div class="modal fade" id="addLocationModal{{ location.id }}" tabindex="-1" aria-labelledby="addLocationModalLabel{{ location.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addLocationModalLabel{{ location.id }}">Add {{ location.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add">
+                <input type="hidden" name="location_id" value="{{ location.id }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Rate:</label>
+                        <input type="number" name="rate" class="form-control" 
+                               step="0.01" min="0" value="{{ location.default_rate }}" required>
+                        <div class="form-text">Default rate: ${{ location.default_rate|floatformat:2 }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Frequency:</label>
+                        <select name="frequency" class="form-select" required>
+                            {% for value, label in location._meta.get_field('default_frequency').choices %}
+                                <option value="{{ value }}" {% if value == location.default_frequency %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Default frequency: {{ location.get_default_frequency_display }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Multiplier:</label>
+                        <input type="number" name="multiplier" class="form-control" 
+                               step="0.01" min="0" value="1.00" required>
+                        <div class="form-text">Multiplier for final cost calculation</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-plus-circle me-1"></i>Add Location
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+

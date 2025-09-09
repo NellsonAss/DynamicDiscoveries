@@ -190,68 +190,28 @@
         </div>
         {% endif %}
         
-        {% if cost_formset %}
+        {% if buildout %}
         <div class="row mt-4">
             <div class="col-12">
-                <h5 class="mb-3">
-                    <i class="bi bi-currency-dollar me-2"></i>Cost Management
-                </h5>
-                
-                {{ cost_formset.management_form }}
-                
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Base Cost</th>
-                                <th>Multiplier</th>
-                                <th>Yearly Cost</th>
-                                <th>Delete</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for cost_form in cost_formset %}
-                                <tr>
-                                    <td>
-                                        {{ cost_form.base_cost }}
-                                        {% if cost_form.base_cost.errors %}
-                                            <div class="text-danger small">{{ cost_form.base_cost.errors.0 }}</div>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {{ cost_form.multiplier }}
-                                        {% if cost_form.multiplier.errors %}
-                                            <div class="text-danger small">{{ cost_form.multiplier.errors.0 }}</div>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if cost_form.instance.pk and cost_form.instance.base_cost %}
-                                            <span class="text-success">${{ cost_form.instance.calculate_yearly_cost|floatformat:2 }}</span>
-                                        {% else %}
-                                            <span class="text-muted">Save to calculate</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if cost_form.instance.pk %}
-                                            <div class="form-check">
-                                                {{ cost_form.DELETE }}
-                                                <label class="form-check-label" for="{{ cost_form.DELETE.id_for_label }}">
-                                                    Delete
-                                                </label>
-                                            </div>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Cost Management:</strong> Use the 
+                    <a href="{% url 'admin_interface:buildout_assign_costs' buildout.id %}" class="alert-link">Assign Costs</a> 
+                    button from the buildout detail page to manage costs for this buildout.
                 </div>
-                
-                {% if cost_formset.non_form_errors %}
-                    <div class="alert alert-danger">
-                        {{ cost_formset.non_form_errors }}
-                    </div>
-                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if buildout %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Location Management:</strong> Use the 
+                    <a href="{% url 'admin_interface:buildout_assign_locations' buildout.id %}" class="alert-link">Assign Locations</a> 
+                    button from the buildout detail page to manage locations for this buildout.
+                </div>
             </div>
         </div>
         {% endif %}
@@ -268,4 +228,5 @@
         </div>
     </form>
 </div>
+
 {% endblock %} 

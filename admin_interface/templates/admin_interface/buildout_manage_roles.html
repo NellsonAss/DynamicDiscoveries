@@ -1,0 +1,214 @@
+{% extends "admin_interface/base_admin.html" %}
+{% load admin_filters %}
+
+{% block title %}Manage Roles - {{ buildout.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Manage Roles for {{ buildout.title }}</h1>
+                <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Buildout
+                </a>
+            </div>
+            
+            <!-- Currently Assigned Roles -->
+            {% if assigned_role_lines %}
+            <div class="admin-card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people-fill me-2"></i>Currently Assigned Roles
+                        <span class="badge bg-light text-success ms-2">{{ assigned_role_lines.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Role</th>
+                                    <th>Contractor</th>
+                                    <th>Email</th>
+                                    <th>Pay Type</th>
+                                    <th>Pay Value</th>
+                                    <th>Hours/Freq</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for role_line in assigned_role_lines %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ role_line.role.title }}</strong>
+                                    </td>
+                                    <td>{{ role_line.contractor.get_full_name|default:role_line.contractor.username }}</td>
+                                    <td>{{ role_line.contractor.email }}</td>
+                                    <td>{{ role_line.get_pay_type_display }}</td>
+                                    <td>${{ role_line.pay_value|floatformat:2 }}</td>
+                                    <td>{{ role_line.hours_per_frequency|floatformat:2 }}h/{{ role_line.get_frequency_unit_display }}</td>
+                                    <td>
+                                        <form method="post" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="remove">
+                                            <input type="hidden" name="role_id" value="{{ role_line.role.id }}">
+                                            <input type="hidden" name="contractor_id" value="{{ role_line.contractor.id }}">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                    onclick="return confirm('Remove {{ role_line.contractor.get_full_name|default:role_line.contractor.username }} from {{ role_line.role.title }}?')">
+                                                <i class="bi bi-person-dash me-1"></i>Remove
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Available Roles to Add -->
+            <div class="admin-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-plus me-2"></i>Available Roles to Add
+                        <span class="badge bg-light text-primary ms-2">{{ all_roles.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if all_roles %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Role</th>
+                                        <th>Description</th>
+                                        <th>Contractor</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for role in all_roles %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ role.title }}</strong>
+                                        </td>
+                                        <td>{{ role.description|truncatechars:100 }}</td>
+                                        <td>
+                                            {% if contractors_by_role|get_item:role.id %}
+                                                <form method="post" style="display: inline;">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="add">
+                                                    <input type="hidden" name="role_id" value="{{ role.id }}">
+                                                    <select name="contractor_id" class="form-select form-select-sm" required>
+                                                        <option value="">Select contractor...</option>
+                                                        {% for contractor in contractors_by_role|get_item:role.id %}
+                                                            <option value="{{ contractor.id }}">
+                                                                {{ contractor.get_full_name|default:contractor.username }} ({{ contractor.email }})
+                                                            </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <div class="mt-2">
+                                                        <label class="form-label small">Pay Type:</label>
+                                                        <select name="pay_type" class="form-select form-select-sm">
+                                                            <option value="HOURLY">Hourly</option>
+                                                            <option value="PER_PROGRAM">Per Program</option>
+                                                            <option value="PER_SESSION">Per Session</option>
+                                                            <option value="FLAT_RATE">Flat Rate</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mt-1">
+                                                        <label class="form-label small">Pay Value:</label>
+                                                        <input type="number" name="pay_value" class="form-control form-control-sm" 
+                                                               step="0.01" min="0" placeholder="0.00">
+                                                    </div>
+                                                    <div class="mt-1">
+                                                        <label class="form-label small">Hours:</label>
+                                                        <input type="number" name="hours" class="form-control form-control-sm" 
+                                                               step="0.01" min="0" value="{{ role.default_hours_per_frequency }}">
+                                                    </div>
+                                                </form>
+                                            {% else %}
+                                                <span class="text-muted">No qualified contractors available</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if contractors_by_role|get_item:role.id %}
+                                                <button type="submit" form="add-role-{{ role.id }}" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-person-plus me-1"></i>Add to Buildout
+                                                </button>
+                                            {% else %}
+                                                <span class="text-muted">No contractors available</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                            <h6 class="text-muted mt-3">All roles are already assigned to this buildout</h6>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add forms for each role -->
+{% for role in all_roles %}
+    {% if contractors_by_role|get_item:role.id %}
+    <form id="add-role-{{ role.id }}" method="post" style="display: none;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <input type="hidden" name="role_id" value="{{ role.id }}">
+        <input type="hidden" name="contractor_id" value="">
+        <input type="hidden" name="pay_type" value="HOURLY">
+        <input type="hidden" name="pay_value" value="0.00">
+        <input type="hidden" name="hours" value="{{ role.default_hours_per_frequency }}">
+    </form>
+    {% endif %}
+{% endfor %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle form submission for each role
+    {% for role in all_roles %}
+        {% if contractors_by_role|get_item:role.id %}
+        const form{{ role.id }} = document.querySelector('form[action="add"][name="role_id"][value="{{ role.id }}"]');
+        const select{{ role.id }} = form{{ role.id }}.querySelector('select[name="contractor_id"]');
+        const payType{{ role.id }} = form{{ role.id }}.querySelector('select[name="pay_type"]');
+        const payValue{{ role.id }} = form{{ role.id }}.querySelector('input[name="pay_value"]');
+        const hours{{ role.id }} = form{{ role.id }}.querySelector('input[name="hours"]');
+        const button{{ role.id }} = document.querySelector('button[form="add-role-{{ role.id }}"]');
+        
+        if (button{{ role.id }}) {
+            button{{ role.id }}.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                if (!select{{ role.id }}.value) {
+                    alert('Please select a contractor for {{ role.title }}');
+                    return;
+                }
+                
+                // Update the hidden form with selected values
+                const hiddenForm = document.getElementById('add-role-{{ role.id }}');
+                hiddenForm.querySelector('input[name="contractor_id"]').value = select{{ role.id }}.value;
+                hiddenForm.querySelector('input[name="pay_type"]').value = payType{{ role.id }}.value;
+                hiddenForm.querySelector('input[name="pay_value"]').value = payValue{{ role.id }}.value;
+                hiddenForm.querySelector('input[name="hours"]').value = hours{{ role.id }}.value;
+                
+                // Submit the form
+                hiddenForm.submit();
+            });
+        }
+        {% endif %}
+    {% endfor %}
+});
+</script>
+{% endblock %}

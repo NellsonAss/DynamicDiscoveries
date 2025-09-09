@@ -605,11 +605,83 @@
       "title": "Accurate Dashboard User Metrics",
       "description": "Dashboard user statistics must reflect actual database counts instead of hardcoded values. Includes total users (User.objects.count()), active users (User.objects.filter(is_active=True).count()), and new users today (User.objects.filter(date_joined__date=today).count()) calculated in real-time from the database.",
       "status": "implemented"
+    },
+    {
+      "id": "REQ-082",
+      "title": "Role-Based User Assignment System",
+      "description": "System to properly assign users to roles through a dedicated RoleAssignment model. Administrators can assign/unassign users to specific roles through the role management interface. This replaces the previous incomplete system and enables proper tracking of which users are qualified for specific roles.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-083",
+      "title": "Contractor Filtering by Role Assignment and Onboarding",
+      "description": "Buildout contractor selection must only show contractors who are both assigned to the specific role AND have completed their onboarding (NDA signed and W-9 uploaded). This ensures only qualified and properly onboarded contractors appear in buildout role assignment dropdowns, improving compliance and reducing administrative errors.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-084",
+      "title": "Role Management User Count Display",
+      "description": "Role Management table Users column displays the actual number of assigned users instead of 'via groups' placeholder. Shows real-time count of users assigned to each role through the RoleAssignment model, providing administrators with accurate user assignment visibility.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-085",
+      "title": "Enhanced Cost and Location Management System",
+      "description": "Comprehensive cost and location management system with per-child frequency option, buildout-specific overrides, and historical data integrity. Includes PER_CHILD frequency option for all cost calculations, Location model with default rates and buildout integration, override capabilities allowing custom rates and frequencies per buildout, and captured final values in buildout data ensuring historical accuracy when defaults change. Features immediate calculated value display, improved UX for cost assignment, and complete location management interface with capacity, features, and contact information tracking.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-086",
+      "title": "Enhanced Buildout Editor with Dynamic Cost and Location Management",
+      "description": "Improved buildout editor interface featuring dynamic cost and location assignment with user-friendly controls. Includes inline formsets for cost and location management with override capabilities, dynamic add/remove functionality using JavaScript templates, real-time display of default rates and frequencies, improved UI with better organization and visual hierarchy, and comprehensive validation for all form fields. Features Bootstrap-styled tables with proper responsive design and intuitive user experience for managing complex buildout configurations.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-087",
+      "title": "Separate Cost and Location Management Workflow",
+      "description": "Enhanced buildout workflow with separate cost and location management screens similar to role assignment. Replaced inline formsets with dedicated assignment pages that load default values from cost/location catalogs and allow customization per buildout. Updated models to use actual rate/frequency fields instead of override fields, providing clearer user experience where defaults are loaded and can be adjusted. Removed yearly cost columns from management tables to focus on rate and frequency configuration. Features intuitive checkbox-based selection with expandable configuration sections.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-088",
+      "title": "Excel-Like Financial Analysis Dashboard",
+      "description": "Comprehensive buildout financial analysis interface that mirrors Excel functionality with detailed parameter display, revenue calculations, staff cost breakdown with hours and percentage analysis, overhead cost aggregation including base costs and location costs, and profit margin calculations. Features buildout parameter cards showing facilitators, programs per year, students per program, sessions per program, and fee structure. Includes detailed staff cost table with cost per hour, cost per program, yearly costs, total hours, revenue percentage, and hours percentage. Overhead section combines base costs and location costs with rate, frequency, and percentage breakdowns. Final profit summary shows total revenue, costs, profit, and margin with color-coded indicators.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-089",
+      "title": "Individual Assignment Management System",
+      "description": "Enhanced buildout assignment management system that prevents data loss by using individual add/remove actions instead of clearing all assignments. Features separate 'Currently Assigned' and 'Available to Add' sections similar to user role management interface, individual role-contractor assignment with pay configuration, individual location assignment with rate and frequency settings, and preservation of existing assignments when adding new ones. Includes dedicated management views for roles and locations with proper form validation and user feedback.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-090",
+      "title": "In-App NDA Signing System",
+      "description": "Comprehensive in-app NDA signing system replacing DocuSign integration with digital signature capture, terms and conditions display, and comprehensive audit logging. Features include: full NDA text display with scrollable content, digital signature pad with mouse/touch support using SignaturePad.js, signature validation and form submission, checkbox agreement requirement, comprehensive logging of signature data, user information, IP address, timestamp, and user agent, NDASignature model for storing signature data and audit information, and integration with contractor onboarding flow.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-091",
+      "title": "Admin Document Approval System",
+      "description": "Comprehensive admin approval system for contractor NDA and W-9 documents with full management interface. Features include: admin approval fields for NDA and W-9 with approval tracking (who approved, when approved), contractor document management interface with search and filtering capabilities, individual document detail views with signature display and file download, admin approval/reset functionality with confirmation dialogs, updated onboarding logic requiring both document completion AND admin approval, enhanced user management interface showing NDA/W-9 status, and complete audit trail for all admin actions.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-984",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-983",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-08-25T22:05:43.024307",
+    "last_updated": "2025-01-27T12:30:00.000000",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

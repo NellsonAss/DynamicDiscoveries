@@ -769,13 +769,29 @@ def buildout_detail(request, buildout_pk):
         
         base_costs_data.append({
             'base_cost': base_cost_assignment.base_cost,
+            'assignment': base_cost_assignment,
             'multiplier': base_cost_assignment.multiplier,
             'yearly_cost': yearly_cost,
             'percentage': (yearly_cost / total_revenue * 100) if total_revenue > 0 else 0
         })
     
-    # Calculate total costs including base costs
-    total_all_costs = total_payouts + total_base_costs
+    # Calculate location costs
+    location_costs_data = []
+    total_location_costs = 0
+    for location_assignment in buildout.location_assignments.all():
+        yearly_cost = location_assignment.calculate_yearly_cost()
+        total_location_costs += yearly_cost
+        
+        location_costs_data.append({
+            'location': location_assignment.location,
+            'assignment': location_assignment,
+            'multiplier': location_assignment.multiplier,
+            'yearly_cost': yearly_cost,
+            'percentage': (yearly_cost / total_revenue * 100) if total_revenue > 0 else 0
+        })
+    
+    # Calculate total costs including base costs and location costs
+    total_all_costs = total_payouts + total_base_costs + total_location_costs
     total_profit = total_revenue - total_all_costs
     total_profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
     
@@ -795,6 +811,7 @@ def buildout_detail(request, buildout_pk):
         'total_revenue': total_revenue,
         'total_payouts': total_payouts,
         'total_base_costs': total_base_costs,
+        'total_location_costs': total_location_costs,
         'total_all_costs': total_all_costs,
         'profit': profit,
         'total_profit': total_profit,
@@ -802,6 +819,7 @@ def buildout_detail(request, buildout_pk):
         'total_profit_margin': total_profit_margin,
         'roles_data': roles_data,
         'base_costs_data': base_costs_data,
+        'location_costs_data': location_costs_data,
         'instances': instances,
         'is_contractor_view': user_is_contractor(request.user) and not user_is_admin(request.user),
         'contractor_roles': buildout.role_lines.filter(contractor=request.user) if user_is_contractor(request.user) else None,

@@ -1,0 +1,195 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-geo-alt me-2"></i>Assign Locations to Buildout
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Buildout
+        </a>
+    </div>
+</div>
+
+<!-- Instructions -->
+<div class="admin-card p-4 mb-4">
+    <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Instructions:</strong> Select locations and configure their rates and frequencies for this buildout. 
+        Default values are loaded from the location catalog, but you can adjust them as needed for this specific buildout.
+    </div>
+</div>
+
+<!-- Location Assignment Form -->
+<form method="post" action="{% url 'admin_interface:buildout_assign_locations' buildout.id %}">
+    {% csrf_token %}
+    <div class="admin-card p-4">
+        <h5 class="mb-3"><i class="bi bi-check-square me-2"></i>Select Locations and Configure Rates</h5>
+        
+        <!-- Current Location Assignments -->
+        {% if assigned_locations %}
+        <div class="mb-4">
+            <h6 class="text-muted mb-3">Currently Assigned Locations:</h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th>Rate</th>
+                            <th>Frequency</th>
+                            <th>Multiplier</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignment in buildout.location_assignments.all %}
+                        <tr>
+                            <td>{{ assignment.location.name }}</td>
+                            <td>${{ assignment.rate|floatformat:2 }}</td>
+                            <td>{{ assignment.get_frequency_display }}</td>
+                            <td>{{ assignment.multiplier|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Location Selection with Rate/Frequency Configuration -->
+        <div class="row">
+            {% for location in all_locations %}
+                <div class="col-12 mb-4">
+                    <div class="card h-100 {% if location in assigned_locations %}border-success{% endif %}">
+                        <div class="card-header">
+                            <div class="form-check">
+                                <input class="form-check-input location-checkbox" 
+                                       type="checkbox" 
+                                       name="locations" 
+                                       value="{{ location.id }}" 
+                                       id="location_{{ location.id }}"
+                                       {% if location in assigned_locations %}checked{% endif %}>
+                                <label class="form-check-label" for="location_{{ location.id }}">
+                                    <h6 class="card-title mb-0">{{ location.name }}</h6>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text text-muted mb-3">{{ location.description }}</p>
+                            
+                            <!-- Location Details -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <strong>Default Rate:</strong> ${{ location.default_rate|floatformat:2 }}
+                                    </small>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <strong>Default Frequency:</strong> {{ location.get_default_frequency_display }}
+                                    </small>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <strong>Capacity:</strong> {{ location.max_capacity|default:"Not specified" }}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            {% if location.address %}
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-geo-alt me-1"></i>{{ location.address }}
+                                </small>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Rate and Frequency Configuration (initially hidden) -->
+                            <div class="location-configuration" id="config_{{ location.id }}" style="display: none;">
+                                <hr>
+                                <h6 class="mb-2">Configure Location</h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="rate_{{ location.id }}" class="form-label">Rate ($):</label>
+                                        <input type="number" class="form-control" name="rate_{{ location.id }}" 
+                                               id="rate_{{ location.id }}" step="0.01" min="0" 
+                                               value="{{ location.default_rate|floatformat:2 }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="frequency_{{ location.id }}" class="form-label">Frequency:</label>
+                                        <select class="form-select" name="frequency_{{ location.id }}" id="frequency_{{ location.id }}">
+                                            <option value="PER_PROGRAM_CONCEPT" {% if location.default_frequency == 'PER_PROGRAM_CONCEPT' %}selected{% endif %}>Per Program Concept</option>
+                                            <option value="PER_NEW_FACILITATOR" {% if location.default_frequency == 'PER_NEW_FACILITATOR' %}selected{% endif %}>Per New Facilitator</option>
+                                            <option value="PER_PROGRAM" {% if location.default_frequency == 'PER_PROGRAM' %}selected{% endif %}>Per Program</option>
+                                            <option value="PER_SESSION" {% if location.default_frequency == 'PER_SESSION' %}selected{% endif %}>Per Session</option>
+                                            <option value="PER_CHILD" {% if location.default_frequency == 'PER_CHILD' %}selected{% endif %}>Per Child</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="multiplier_{{ location.id }}" class="form-label">Multiplier:</label>
+                                        <input type="number" class="form-control" name="multiplier_{{ location.id }}" 
+                                               id="multiplier_{{ location.id }}" step="0.01" min="0" value="1.00">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="text-center mt-4">
+        <button type="submit" class="btn btn-success btn-lg" id="submit-btn">
+            <i class="bi bi-check-circle me-2"></i>Save Location Assignments
+        </button>
+        <a href="{% url 'admin_interface:buildout_detail' buildout.id %}" class="btn btn-outline-secondary btn-lg ms-2">
+            <i class="bi bi-x-circle me-2"></i>Cancel
+        </a>
+    </div>
+</form>
+
+<!-- JavaScript for dynamic location selection -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle location checkbox changes
+    const locationCheckboxes = document.querySelectorAll('.location-checkbox');
+    locationCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const locationId = this.value;
+            const locationConfiguration = document.getElementById(`config_${locationId}`);
+            
+            if (this.checked) {
+                locationConfiguration.style.display = 'block';
+            } else {
+                locationConfiguration.style.display = 'none';
+            }
+        });
+    });
+    
+    // Show configuration for already checked locations
+    locationCheckboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            const locationId = checkbox.value;
+            const locationConfiguration = document.getElementById(`config_${locationId}`);
+            locationConfiguration.style.display = 'block';
+        }
+    });
+    
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const checkedLocations = document.querySelectorAll('.location-checkbox:checked');
+        
+        if (checkedLocations.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one location to assign.');
+            return false;
+        }
+        
+        return true;
+    });
+});
+</script>
+{% endblock %}

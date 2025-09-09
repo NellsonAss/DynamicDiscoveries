@@ -102,13 +102,16 @@
                                         <label for="contractor_{{ role.id }}_select" class="form-label">Contractor:</label>
                                         <select class="form-select" name="contractors_{{ role.id }}" id="contractor_{{ role.id }}_select" required>
                                             <option value="">Select a contractor...</option>
-                                            {% for contractor in contractors %}
+                                            {% for contractor in role.get_assigned_contractors %}
                                                 <option value="{{ contractor.id }}" 
                                                         data-role="{{ role.id }}"
                                                         data-pay-type=""
                                                         data-pay-value="0.00">
                                                     {{ contractor.get_full_name|default:contractor.email }}
+                                                    <small class="text-success">(Qualified & Onboarded)</small>
                                                 </option>
+                                            {% empty %}
+                                                <option disabled>No qualified contractors available for this role</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -140,7 +143,7 @@
                                         <label class="form-label">Hours/Frequency:</label>
                                         <input type="number" class="form-control" name="hours_{{ role.id }}" 
                                                id="hours_{{ role.id }}" step="0.01" min="0" 
-                                               value="{{ role.default_hours_per_frequency|floatformat:2 }}">
+                                               value="{{ role.default_hours_per_frequency }}">
                                     </div>
                                 </div>
                             </div>

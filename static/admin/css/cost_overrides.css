@@ -1,0 +1,131 @@
+/* Visual indicators for cost and location overrides */
+
+.override-field {
+    position: relative;
+}
+
+.override-field.modified {
+    border-color: #ffc107 !important;
+    background-color: #fff9e6 !important;
+}
+
+.override-field.modified::after {
+    content: "✓";
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ffc107;
+    font-weight: bold;
+    pointer-events: none;
+}
+
+.field-wrapper {
+    position: relative;
+}
+
+.default-indicator {
+    position: absolute;
+    top: -18px;
+    right: 0;
+    font-size: 10px;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 2px;
+    border: 1px solid #dee2e6;
+    display: none;
+}
+
+.field-wrapper:hover .default-indicator {
+    display: block;
+}
+
+.override-field.modified + .default-indicator {
+    color: #856404;
+    background: #fff3cd;
+    border-color: #ffeaa7;
+}
+
+.override-field.modified + .default-indicator::before {
+    content: "Modified from: ";
+}
+
+/* Style for cost/location selectors */
+.cost-selector, .location-selector {
+    font-weight: 500;
+}
+
+/* Tabular inline styling improvements */
+.inline-group .tabular tr.has-original td {
+    padding: 8px;
+}
+
+.inline-group .tabular .override-field {
+    min-width: 100px;
+}
+
+/* Visual feedback for calculated fields */
+.calculated-field {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    color: #495057;
+    font-weight: 500;
+}
+
+.calculated-field.positive {
+    color: #198754;
+}
+
+.calculated-field.zero {
+    color: #6c757d;
+}
+
+/* Highlight modified rows */
+.inline-group .tabular tr.modified {
+    background-color: #fff9e6;
+}
+
+.inline-group .tabular tr.modified td {
+    border-color: #ffeaa7;
+}
+
+/* Tooltip styling for default values */
+.field-tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.field-tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.field-tooltip .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+.field-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}

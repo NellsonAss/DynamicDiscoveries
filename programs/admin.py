@@ -8,7 +8,8 @@ from .models import (
     ProgramType, ProgramInstance, RegistrationForm, FormQuestion,
     Child, Registration, Role, ProgramBuildout, Responsibility, 
     BuildoutRoleLine, BuildoutResponsibilityLine, BaseCost, 
-    BuildoutBaseCostAssignment, InstanceRoleAssignment, ContractorRoleRate,
+    BuildoutBaseCostAssignment, Location, BuildoutLocationAssignment,
+    InstanceRoleAssignment, ContractorRoleRate,
     ContractorAvailability, AvailabilityProgram, ProgramSession, SessionBooking,
     ProgramBuildoutScheduling, Holiday, ContractorDayOffRequest, ProgramRequest
 )
@@ -56,8 +57,31 @@ class BuildoutRoleLineInline(admin.TabularInline):
 class BuildoutBaseCostAssignmentInline(admin.TabularInline):
     model = BuildoutBaseCostAssignment
     extra = 1
-    fields = ['base_cost', 'multiplier', 'calculated_yearly_cost']
+    fields = ['base_cost', 'override_rate', 'override_frequency', 'multiplier', 'calculated_yearly_cost']
     readonly_fields = ['calculated_yearly_cost']
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        from .forms import BuildoutBaseCostAssignmentForm
+        kwargs['form'] = BuildoutBaseCostAssignmentForm
+        return super().get_formset(request, obj, **kwargs)
+
+    def calculated_yearly_cost(self, obj):
+        if obj.pk:
+            return f"${obj.calculate_yearly_cost():.2f}"
+        return "Save to calculate"
+    calculated_yearly_cost.short_description = 'Yearly Cost'
+
+
+class BuildoutLocationAssignmentInline(admin.TabularInline):
+    model = BuildoutLocationAssignment
+    extra = 1
+    fields = ['location', 'override_rate', 'override_frequency', 'multiplier', 'calculated_yearly_cost']
+    readonly_fields = ['calculated_yearly_cost']
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        from .forms import BuildoutLocationAssignmentForm
+        kwargs['form'] = BuildoutLocationAssignmentForm
+        return super().get_formset(request, obj, **kwargs)
 
     def calculated_yearly_cost(self, obj):
         if obj.pk:
@@ -109,6 +133,35 @@ class BaseCostAdmin(admin.ModelAdmin):
     description_short.short_description = 'Description'
 
 
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    list_display = ['name', 'default_frequency', 'default_rate', 'max_capacity', 'contact_name', 'is_active']
+    list_filter = ['default_frequency', 'is_active', 'max_capacity', 'created_at']
+    search_fields = ['name', 'address', 'contact_name', 'contact_email', 'features']
+    ordering = ['name']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'address', 'description', 'is_active')
+        }),
+        ('Default Cost Information', {
+            'fields': ('default_rate', 'default_frequency')
+        }),
+        ('Capacity & Features', {
+            'fields': ('max_capacity', 'features')
+        }),
+        ('Contact Information', {
+            'fields': ('contact_name', 'contact_phone', 'contact_email'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+
+
 @admin.register(ProgramBuildout)
 class ProgramBuildoutAdmin(admin.ModelAdmin):
     list_display = [
@@ -122,7 +175,7 @@ class ProgramBuildoutAdmin(admin.ModelAdmin):
         'total_revenue_per_year', 'total_yearly_costs',
         'created_at', 'updated_at'
     ]
-    inlines = [BuildoutResponsibilityLineInline, BuildoutRoleLineInline, BuildoutBaseCostAssignmentInline]
+    inlines = [BuildoutResponsibilityLineInline, BuildoutRoleLineInline, BuildoutBaseCostAssignmentInline, BuildoutLocationAssignmentInline]
     actions = ['clone_buildout']
 
     def total_revenue_per_year(self, obj):
@@ -306,14 +359,54 @@ class ContractorRoleRateAdmin(admin.ModelAdmin):
 
 @admin.register(BuildoutBaseCostAssignment)
 class BuildoutBaseCostAssignmentAdmin(admin.ModelAdmin):
-    list_display = ['buildout', 'base_cost', 'frequency', 'multiplier', 'calculated_yearly_cost']
-    list_filter = ['base_cost__frequency', 'buildout__program_type']
+    list_display = ['buildout', 'base_cost', 'effective_rate', 'effective_frequency', 'multiplier', 'calculated_yearly_cost']
+    list_filter = ['base_cost__frequency', 'override_frequency', 'buildout__program_type']
     search_fields = ['base_cost__name', 'buildout__title']
     readonly_fields = ['calculated_yearly_cost', 'created_at']
 
-    def frequency(self, obj):
-        return obj.base_cost.frequency
-    frequency.short_description = 'Frequency'
+    def effective_rate(self, obj):
+        if obj.override_rate is not None:
+            return format_html('<span style="color: #856404; font-weight: bold;">${:.2f}</span>', obj.override_rate)
+        else:
+            return format_html('<span style="color: #6c757d;">${:.2f}</span>', obj.base_cost.rate)
+    effective_rate.short_description = 'Rate'
+
+    def effective_frequency(self, obj):
+        if obj.override_frequency:
+            display_value = dict(obj._meta.get_field('override_frequency').choices)[obj.override_frequency]
+            return format_html('<span style="color: #856404; font-weight: bold;">{}</span>', display_value)
+        else:
+            return format_html('<span style="color: #6c757d;">{}</span>', obj.base_cost.get_frequency_display())
+    effective_frequency.short_description = 'Frequency'
+
+    def calculated_yearly_cost(self, obj):
+        if obj.pk:
+            return f"${obj.calculate_yearly_cost():.2f}"
+        return "Save to calculate"
+    calculated_yearly_cost.short_description = 'Yearly Cost'
+
+
+@admin.register(BuildoutLocationAssignment)
+class BuildoutLocationAssignmentAdmin(admin.ModelAdmin):
+    list_display = ['buildout', 'location', 'effective_rate', 'effective_frequency', 'multiplier', 'calculated_yearly_cost']
+    list_filter = ['location__default_frequency', 'override_frequency', 'buildout__program_type']
+    search_fields = ['location__name', 'buildout__title']
+    readonly_fields = ['calculated_yearly_cost', 'created_at']
+
+    def effective_rate(self, obj):
+        if obj.override_rate is not None:
+            return format_html('<span style="color: #856404; font-weight: bold;">${:.2f}</span>', obj.override_rate)
+        else:
+            return format_html('<span style="color: #6c757d;">${:.2f}</span>', obj.location.default_rate)
+    effective_rate.short_description = 'Rate'
+
+    def effective_frequency(self, obj):
+        if obj.override_frequency:
+            display_value = dict(obj._meta.get_field('override_frequency').choices)[obj.override_frequency]
+            return format_html('<span style="color: #856404; font-weight: bold;">{}</span>', display_value)
+        else:
+            return format_html('<span style="color: #6c757d;">{}</span>', obj.location.get_default_frequency_display())
+    effective_frequency.short_description = 'Frequency'
 
     def calculated_yearly_cost(self, obj):
         if obj.pk:

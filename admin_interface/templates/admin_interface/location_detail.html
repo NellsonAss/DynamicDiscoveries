@@ -1,0 +1,221 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-geo-alt me-2"></i>{{ location.name }}
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:location_management' %}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left me-1"></i>Back to Locations
+        </a>
+        <a href="{% url 'admin_interface:location_edit' location.id %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i>Edit Location
+        </a>
+    </div>
+</div>
+
+<!-- Location Information -->
+<div class="row">
+    <div class="col-md-8">
+        <!-- Basic Details -->
+        <div class="admin-card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Location Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Basic Information</h6>
+                        <p><strong>Name:</strong> {{ location.name }}</p>
+                        {% if location.address %}
+                            <p><strong>Address:</strong><br>{{ location.address }}</p>
+                        {% endif %}
+                        {% if location.description %}
+                            <p><strong>Description:</strong><br>{{ location.description }}</p>
+                        {% endif %}
+                        <p><strong>Status:</strong> 
+                            {% if location.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Cost Information</h6>
+                        <p><strong>Default Rate:</strong> ${{ location.default_rate }}</p>
+                        <p><strong>Default Frequency:</strong> {{ location.get_default_frequency_display }}</p>
+                        
+                        <h6 class="text-muted mt-3">Capacity</h6>
+                        {% if location.max_capacity %}
+                            <p><strong>Maximum Capacity:</strong> {{ location.max_capacity }} participants</p>
+                        {% else %}
+                            <p><strong>Maximum Capacity:</strong> <span class="text-muted">No limit set</span></p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features and Amenities -->
+        {% if location.features %}
+        <div class="admin-card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Features & Amenities</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ location.features }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Contact Information -->
+        {% if location.contact_name or location.contact_phone or location.contact_email %}
+        <div class="admin-card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Contact Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if location.contact_name %}
+                    <div class="col-md-4">
+                        <p><strong>Contact Person:</strong><br>{{ location.contact_name }}</p>
+                    </div>
+                    {% endif %}
+                    {% if location.contact_phone %}
+                    <div class="col-md-4">
+                        <p><strong>Phone:</strong><br>{{ location.contact_phone }}</p>
+                    </div>
+                    {% endif %}
+                    {% if location.contact_email %}
+                    <div class="col-md-4">
+                        <p><strong>Email:</strong><br>{{ location.contact_email }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Buildout Assignments -->
+        <div class="admin-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Buildout Assignments</h5>
+                <span class="badge bg-primary">{{ buildout_assignments|length }} assignments</span>
+            </div>
+            <div class="card-body">
+                {% if buildout_assignments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Program Type</th>
+                                    <th>Buildout</th>
+                                    <th>Override Rate</th>
+                                    <th>Override Frequency</th>
+                                    <th>Multiplier</th>
+                                    <th>Yearly Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in buildout_assignments %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ assignment.buildout.program_type.name }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'admin_interface:buildout_detail' assignment.buildout.id %}" class="text-decoration-none">
+                                            {{ assignment.buildout.title }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if assignment.override_rate %}
+                                            <span class="text-warning">${{ assignment.override_rate }}</span>
+                                        {% else %}
+                                            <span class="text-muted">${{ location.default_rate }} (default)</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if assignment.override_frequency %}
+                                            <span class="text-warning">{{ assignment.get_override_frequency_display }}</span>
+                                        {% else %}
+                                            <span class="text-muted">{{ location.get_default_frequency_display }} (default)</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ assignment.multiplier }}x</td>
+                                    <td class="fw-bold text-success">${{ assignment.calculate_yearly_cost|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-diagram-3 text-muted" style="font-size: 3rem;"></i>
+                        <h6 class="text-muted mt-3">No Buildout Assignments</h6>
+                        <p class="text-muted">This location hasn't been assigned to any buildouts yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Quick Actions -->
+        <div class="admin-card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'admin_interface:location_edit' location.id %}" class="btn btn-primary">
+                        <i class="bi bi-pencil me-1"></i>Edit Location
+                    </a>
+                    <a href="{% url 'admin_interface:location_delete' location.id %}" class="btn btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>Delete Location
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="admin-card">
+            <div class="card-header">
+                <h6 class="mb-0">Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-12 mb-3">
+                        <div class="admin-stats-card">
+                            <i class="bi bi-diagram-3 mb-2"></i>
+                            <h6>Buildout Assignments</h6>
+                            <h4>{{ buildout_assignments|length }}</h4>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if buildout_assignments %}
+                <hr>
+                <h6 class="text-muted mb-2">Total Yearly Costs</h6>
+                {% for assignment in buildout_assignments %}
+                <div class="d-flex justify-content-between mb-1">
+                    <small>{{ assignment.buildout.title|truncatechars:20 }}</small>
+                    <small class="fw-bold">${{ assignment.calculate_yearly_cost|floatformat:2 }}</small>
+                </div>
+                {% endfor %}
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <strong>Total:</strong>
+                    <strong class="text-success">
+                        ${% for assignment in buildout_assignments %}{{ assignment.calculate_yearly_cost|add:0 }}{% if not forloop.last %}+{% endif %}{% endfor %}
+                    </strong>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.utils import timezone
 from datetime import date, timedelta
-from programs.models import Child, ProgramType, ProgramInstance, RegistrationForm, FormQuestion, Registration
+from programs.models import Child, ProgramType, ProgramInstance, RegistrationForm, FormQuestion, Registration, ProgramBuildout
 from communications.models import Contact
 
 User = get_user_model()
@@ -24,9 +24,9 @@ class Command(BaseCommand):
         self.stdout.write('\n2️⃣ Creating sample program buildout...')
         call_command('create_sample_buildout')
         
-        # Step 3: Setup test accounts
-        self.stdout.write('\n3️⃣ Setting up test accounts...')
-        call_command('setup_test_accounts')
+        # Step 3: Setup comprehensive test data
+        self.stdout.write('\n3️⃣ Setting up comprehensive test data...')
+        call_command('setup_comprehensive_test_data')
         
         # Step 4: Seed contact submissions
         self.stdout.write('\n4️⃣ Seeding contact form submissions...')
@@ -49,24 +49,18 @@ class Command(BaseCommand):
         additional_programs = [
             {
                 'name': 'Math Explorers',
-                'description': 'Fun math activities that build number sense and problem-solving skills',
-                'target_grade_levels': '2-4',
-                'rate_per_student': 350.00
+                'description': 'Fun math activities that build number sense and problem-solving skills. Perfect for grades 2-4.'
             },
             {
                 'name': 'Creative Writing Program',
-                'description': 'Develop storytelling skills through creative writing exercises',
-                'target_grade_levels': '4-6',
-                'rate_per_student': 300.00
+                'description': 'Develop storytelling skills through creative writing exercises. Ideal for grades 4-6.'
             },
             {
                 'name': 'Science Lab',
-                'description': 'Hands-on science experiments and discovery activities',
-                'target_grade_levels': '3-5',
-                'rate_per_student': 400.00
+                'description': 'Hands-on science experiments and discovery activities. Great for grades 3-5.'
             }
         ]
-        
+
         for prog_data in additional_programs:
             program, created = ProgramType.objects.get_or_create(
                 name=prog_data['name'],
@@ -82,24 +76,25 @@ class Command(BaseCommand):
             timezone.now() + timedelta(days=28)
         ]
         
-        program_types = ProgramType.objects.all()[:3]  # Get first 3 program types
+        # Get some buildouts to create instances from
+        buildouts = ProgramBuildout.objects.all()[:3]  # Get first 3 buildouts
         
-        for i, (program_type, start_date) in enumerate(zip(program_types, start_dates)):
+        for i, (buildout, start_date) in enumerate(zip(buildouts, start_dates)):
             end_date = start_date + timedelta(days=3)
             
             instance, created = ProgramInstance.objects.get_or_create(
-                program_type=program_type,
+                buildout=buildout,
+                title=f'{buildout.program_type.name} - Additional Session',
                 start_date=start_date,
                 defaults={
                     'end_date': end_date,
                     'location': f'Community Center - Room {101 + i}',
-                    'instructor': User.objects.filter(groups__name='Contractor').first(),
                     'capacity': 10 + (i * 2),
                     'is_active': True
                 }
             )
             if created:
-                self.stdout.write(f'✓ Created program instance: {instance.program_type.name}')
+                self.stdout.write(f'✓ Created program instance: {instance.title}')
         
         # Create some sample registrations
         parent_user = User.objects.filter(groups__name='Parent').first()

@@ -66,6 +66,54 @@ class Role(models.Model):
     def __str__(self):
         return self.title
 
+    def get_assigned_contractors(self):
+        """Get all contractors assigned to this role with completed onboarding."""
+        from people.models import Contractor
+        return User.objects.filter(
+            general_role_assignments__role=self,
+            groups__name='Contractor'
+        ).select_related('profile').prefetch_related(
+            models.Prefetch(
+                'contractor',
+                queryset=Contractor.objects.filter(onboarding_complete=True)
+            )
+        )
+
+    def get_assigned_users(self):
+        """Get all users assigned to this role."""
+        return User.objects.filter(general_role_assignments__role=self)
+
+
+class RoleAssignment(models.Model):
+    """Assignment of a user to a role."""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='general_role_assignments'
+    )
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.CASCADE,
+        related_name='user_assignments'
+    )
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='role_assignments_made',
+        help_text="Admin user who made this assignment"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'role']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.email} - {self.role.title}"
+
 
 class ResponsibilityFrequency(models.TextChoices):
     """Frequency options for responsibilities."""
@@ -73,6 +121,7 @@ class ResponsibilityFrequency(models.TextChoices):
     PER_NEW_FACILITATOR = 'PER_NEW_FACILITATOR', 'Per New Facilitator'
     PER_PROGRAM = 'PER_PROGRAM', 'Per Program'
     PER_SESSION = 'PER_SESSION', 'Per Session'
+    PER_CHILD = 'PER_CHILD', 'Per Child'
 
 
 class Responsibility(models.Model):
@@ -171,6 +220,7 @@ class ProgramBuildout(models.Model):
     roles = models.ManyToManyField(Role, through='BuildoutRoleLine', related_name='buildouts')
     responsibilities = models.ManyToManyField(Responsibility, through='BuildoutResponsibilityLine', related_name='buildouts')
     base_costs = models.ManyToManyField('BaseCost', through='BuildoutBaseCostAssignment', related_name='buildouts')
+    locations = models.ManyToManyField('Location', through='BuildoutLocationAssignment', related_name='buildouts')
     default_forms = models.ManyToManyField('RegistrationForm', blank=True, related_name='default_buildouts')
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -261,10 +311,17 @@ class ProgramBuildout(models.Model):
         return Decimal('0.00')
 
     def calculate_base_costs_and_overhead(self):
-        """Calculate base costs + total overhead."""
+        """Calculate base costs + location costs + total overhead."""
         total = Decimal('0.00')
+        
+        # Add base costs
         for assignment in self.base_cost_assignments.all():
             total += assignment.calculate_yearly_cost()
+        
+        # Add location costs
+        for assignment in self.location_assignments.all():
+            total += assignment.calculate_yearly_cost()
+            
         return total
 
     @property
@@ -344,8 +401,27 @@ class ProgramBuildout(models.Model):
                 hours=resp_line.hours
             )
         
+        # Copy base cost assignments with overrides
+        for base_cost_assignment in self.base_cost_assignments.all():
+            BuildoutBaseCostAssignment.objects.create(
+                buildout=new_buildout,
+                base_cost=base_cost_assignment.base_cost,
+                override_rate=base_cost_assignment.override_rate,
+                override_frequency=base_cost_assignment.override_frequency,
+                multiplier=base_cost_assignment.multiplier
+            )
+        
+        # Copy location assignments with overrides
+        for location_assignment in self.location_assignments.all():
+            BuildoutLocationAssignment.objects.create(
+                buildout=new_buildout,
+                location=location_assignment.location,
+                override_rate=location_assignment.override_rate,
+                override_frequency=location_assignment.override_frequency,
+                multiplier=location_assignment.multiplier
+            )
+        
         # Copy other related data
-        new_buildout.base_costs.set(self.base_costs.all())
         new_buildout.default_forms.set(self.default_forms.all())
         
         return new_buildout
@@ -389,6 +465,7 @@ class BuildoutRoleLine(models.Model):
             ('PER_NEW_FACILITATOR', 'Per New Facilitator'),
             ('PER_PROGRAM', 'Per Program'),
             ('PER_SESSION', 'Per Session'),
+            ('PER_CHILD', 'Per Child'),
         ],
         help_text="Frequency unit for this role in this version"
     )
@@ -411,6 +488,18 @@ class BuildoutRoleLine(models.Model):
 
     def __str__(self):
         return f"{self.role.title} - {self.contractor.get_full_name()} - {self.buildout.title}"
+    
+    @classmethod
+    def get_available_contractors_for_role(cls, role):
+        """Get contractors available for assignment to this role (assigned to role with completed onboarding)."""
+        from people.models import Contractor
+        
+        # Get users assigned to the role who are contractors with completed onboarding
+        return User.objects.filter(
+            general_role_assignments__role=role,
+            groups__name='Contractor',
+            contractor__onboarding_complete=True
+        ).select_related('profile', 'contractor').distinct()
 
     def calculate_yearly_hours(self):
         """Calculate total yearly hours for this role line."""
@@ -424,6 +513,8 @@ class BuildoutRoleLine(models.Model):
             return self.hours_per_frequency * self.frequency_count * buildout.num_programs_per_year
         elif self.frequency_unit == 'PER_SESSION':
             return self.hours_per_frequency * self.frequency_count * buildout.total_sessions_per_year
+        elif self.frequency_unit == 'PER_CHILD':
+            return self.hours_per_frequency * self.frequency_count * buildout.total_students_per_year
         else:
             return Decimal('0.00')
 
@@ -475,6 +566,8 @@ class BuildoutResponsibilityLine(models.Model):
             return self.hours * buildout.num_programs_per_year
         elif self.responsibility.frequency_type == ResponsibilityFrequency.PER_SESSION:
             return self.hours * buildout.total_sessions_per_year
+        elif self.responsibility.frequency_type == ResponsibilityFrequency.PER_CHILD:
+            return self.hours * buildout.total_students_per_year
         else:
             return Decimal('0.00')
 
@@ -517,6 +610,8 @@ class BuildoutResponsibilityAssignment(models.Model):
             return self.responsibility.default_hours * buildout.num_programs_per_year
         elif self.responsibility.frequency_type == ResponsibilityFrequency.PER_SESSION:
             return self.responsibility.default_hours * buildout.total_sessions_per_year
+        elif self.responsibility.frequency_type == ResponsibilityFrequency.PER_CHILD:
+            return self.responsibility.default_hours * buildout.total_students_per_year
         else:
             return Decimal('0.00')
 
@@ -545,17 +640,184 @@ class BaseCost(models.Model):
         return self.name
 
 
-class BuildoutBaseCostAssignment(models.Model):
-    """Assignment of base costs to buildouts."""
-    buildout = models.ForeignKey(ProgramBuildout, on_delete=models.CASCADE, related_name='base_cost_assignments')
-    base_cost = models.ForeignKey(BaseCost, on_delete=models.CASCADE)
+class Location(models.Model):
+    """Physical locations where programs can be held."""
+    name = models.CharField(max_length=100, help_text="Location name (e.g., Downtown Community Center)")
+    address = models.TextField(blank=True, help_text="Full address of the location")
+    description = models.TextField(blank=True, help_text="Additional details about the location")
+    
+    # Default cost information
+    default_rate = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        help_text="Default cost amount per frequency unit for this location"
+    )
+    default_frequency = models.CharField(
+        max_length=32,
+        choices=ResponsibilityFrequency.choices,
+        default=ResponsibilityFrequency.PER_PROGRAM,
+        help_text="Default frequency for location costs"
+    )
+    
+    # Capacity and features
+    max_capacity = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum number of participants this location can accommodate"
+    )
+    features = models.TextField(
+        blank=True,
+        help_text="Special features or amenities (e.g., projector, whiteboard, parking)"
+    )
+    
+    # Contact information
+    contact_name = models.CharField(max_length=100, blank=True, help_text="Primary contact person")
+    contact_phone = models.CharField(max_length=20, blank=True, help_text="Contact phone number")
+    contact_email = models.EmailField(blank=True, help_text="Contact email address")
+    
+    # Availability
+    is_active = models.BooleanField(default=True, help_text="Whether this location is available for booking")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class BuildoutLocationAssignment(models.Model):
+    """Assignment of locations to buildouts with specific rate and frequency."""
+    buildout = models.ForeignKey(ProgramBuildout, on_delete=models.CASCADE, related_name='location_assignments')
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+    
+    # Actual rate and frequency for this buildout (defaults loaded from location)
+    rate = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Rate",
+        help_text="Location rate for this buildout"
+    )
+    frequency = models.CharField(
+        max_length=32,
+        choices=ResponsibilityFrequency.choices,
+        null=True,
+        blank=True,
+        verbose_name="Frequency",
+        help_text="Location frequency for this buildout"
+    )
+    
     multiplier = models.DecimalField(
         max_digits=6,
         decimal_places=2,
         default=1.00,
-        help_text="Multiplier for the base cost"
+        help_text="Multiplier for the final cost calculation"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Keep override fields for backward compatibility during migration
+    override_rate = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="DEPRECATED: Use rate field instead"
+    )
+    override_frequency = models.CharField(
+        max_length=32,
+        choices=ResponsibilityFrequency.choices,
+        null=True,
+        blank=True,
+        help_text="DEPRECATED: Use frequency field instead"
+    )
+
+    class Meta:
+        unique_together = ['buildout', 'location']
+
+    def __str__(self):
+        return f"{self.location.name} - {self.buildout.title}"
+
+    def calculate_yearly_cost(self):
+        """Calculate yearly cost for this location assignment."""
+        buildout = self.buildout
+        
+        # Use the actual rate and frequency fields (with backward compatibility)
+        if hasattr(self, 'rate') and self.rate is not None:
+            rate = self.rate
+        else:
+            rate = self.override_rate if self.override_rate is not None else self.location.default_rate
+            
+        if hasattr(self, 'frequency') and self.frequency:
+            frequency = self.frequency
+        else:
+            frequency = self.override_frequency if self.override_frequency else self.location.default_frequency
+            
+        base_amount = rate * self.multiplier
+
+        if frequency == ResponsibilityFrequency.PER_PROGRAM_CONCEPT:
+            return base_amount * (1 if buildout.is_new_program else 0)
+        elif frequency == ResponsibilityFrequency.PER_NEW_FACILITATOR:
+            return base_amount * buildout.num_new_facilitators
+        elif frequency == ResponsibilityFrequency.PER_PROGRAM:
+            return base_amount * buildout.num_programs_per_year
+        elif frequency == ResponsibilityFrequency.PER_SESSION:
+            return base_amount * buildout.total_sessions_per_year
+        elif frequency == ResponsibilityFrequency.PER_CHILD:
+            return base_amount * buildout.total_students_per_year
+        else:
+            return Decimal('0.00')
+
+
+class BuildoutBaseCostAssignment(models.Model):
+    """Assignment of base costs to buildouts with specific rate and frequency."""
+    buildout = models.ForeignKey(ProgramBuildout, on_delete=models.CASCADE, related_name='base_cost_assignments')
+    base_cost = models.ForeignKey(BaseCost, on_delete=models.CASCADE)
+    
+    # Actual rate and frequency for this buildout (defaults loaded from base cost)
+    rate = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Rate",
+        help_text="Cost rate for this buildout"
+    )
+    frequency = models.CharField(
+        max_length=32,
+        choices=ResponsibilityFrequency.choices,
+        null=True,
+        blank=True,
+        verbose_name="Frequency",
+        help_text="Cost frequency for this buildout"
+    )
+    
+    multiplier = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=1.00,
+        help_text="Multiplier for the final cost calculation"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Keep override fields for backward compatibility during migration
+    override_rate = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="DEPRECATED: Use rate field instead"
+    )
+    override_frequency = models.CharField(
+        max_length=32,
+        choices=ResponsibilityFrequency.choices,
+        null=True,
+        blank=True,
+        help_text="DEPRECATED: Use frequency field instead"
+    )
 
     class Meta:
         unique_together = ['buildout', 'base_cost']
@@ -564,18 +826,32 @@ class BuildoutBaseCostAssignment(models.Model):
         return f"{self.base_cost.name} - {self.buildout.title}"
 
     def calculate_yearly_cost(self):
-        """Calculate yearly cost for this base cost."""
+        """Calculate yearly cost for this base cost assignment."""
         buildout = self.buildout
-        base_amount = self.base_cost.rate * self.multiplier
+        
+        # Use the actual rate and frequency fields (with backward compatibility)
+        if hasattr(self, 'rate') and self.rate is not None:
+            rate = self.rate
+        else:
+            rate = self.override_rate if self.override_rate is not None else self.base_cost.rate
+            
+        if hasattr(self, 'frequency') and self.frequency:
+            frequency = self.frequency
+        else:
+            frequency = self.override_frequency if self.override_frequency else self.base_cost.frequency
+            
+        base_amount = rate * self.multiplier
 
-        if self.base_cost.frequency == ResponsibilityFrequency.PER_PROGRAM_CONCEPT:
+        if frequency == ResponsibilityFrequency.PER_PROGRAM_CONCEPT:
             return base_amount * (1 if buildout.is_new_program else 0)
-        elif self.base_cost.frequency == ResponsibilityFrequency.PER_NEW_FACILITATOR:
+        elif frequency == ResponsibilityFrequency.PER_NEW_FACILITATOR:
             return base_amount * buildout.num_new_facilitators
-        elif self.base_cost.frequency == ResponsibilityFrequency.PER_PROGRAM:
+        elif frequency == ResponsibilityFrequency.PER_PROGRAM:
             return base_amount * buildout.num_programs_per_year
-        elif self.base_cost.frequency == ResponsibilityFrequency.PER_SESSION:
+        elif frequency == ResponsibilityFrequency.PER_SESSION:
             return base_amount * buildout.total_sessions_per_year
+        elif frequency == ResponsibilityFrequency.PER_CHILD:
+            return base_amount * buildout.total_students_per_year
         else:
             return Decimal('0.00')
 

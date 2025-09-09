@@ -238,6 +238,10 @@
                        href="{% url 'admin_interface:cost_management' %}">
                         <i class="bi bi-currency-dollar"></i>Costs
                     </a>
+                    <a class="nav-link {% if 'location' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:location_management' %}">
+                        <i class="bi bi-geo-alt"></i>Locations
+                    </a>
                 </nav>
             </div>
         </div>

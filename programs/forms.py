@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from .models import (
     Child, RegistrationForm, FormQuestion, ProgramInstance,
     ProgramType, Role, Responsibility, ProgramBuildout, BuildoutResponsibilityAssignment, 
-    BuildoutRoleAssignment, BaseCost, BuildoutBaseCostAssignment,
+    BuildoutRoleAssignment, BaseCost, BuildoutBaseCostAssignment, Location, BuildoutLocationAssignment,
     ContractorAvailability, AvailabilityProgram, ProgramSession, SessionBooking,
     ProgramBuildoutScheduling, ContractorDayOffRequest, ProgramRequest
 )
@@ -47,6 +47,28 @@ class ResponsibilityForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
+    
+    def clean(self):
+        """Custom validation to handle unique_together constraint gracefully."""
+        cleaned_data = super().clean()
+        role = cleaned_data.get('role')
+        name = cleaned_data.get('name')
+        
+        if role and name:
+            # Check if another responsibility with this role/name combination exists
+            existing_responsibility = Responsibility.objects.filter(role=role, name=name)
+            
+            # If this is an edit (self.instance exists and has a pk), exclude the current instance
+            if self.instance and self.instance.pk:
+                existing_responsibility = existing_responsibility.exclude(pk=self.instance.pk)
+            
+            if existing_responsibility.exists():
+                raise forms.ValidationError(
+                    f"A responsibility named '{name}' already exists for the role '{role.title}'. "
+                    "Please choose a different name."
+                )
+        
+        return cleaned_data
 
 
 class ChildForm(forms.ModelForm):
@@ -246,6 +268,137 @@ class BaseCostForm(forms.ModelForm):
             field.widget.attrs.update({'class': 'form-control'})
 
 
+class LocationForm(forms.ModelForm):
+    """Form for creating and editing locations."""
+    
+    class Meta:
+        model = Location
+        fields = [
+            'name', 'address', 'description', 'default_rate', 'default_frequency',
+            'max_capacity', 'features', 'contact_name', 'contact_phone', 
+            'contact_email', 'is_active'
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={'placeholder': 'Enter location name...'}),
+            'address': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Enter full address...'}),
+            'description': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Additional details...'}),
+            'default_rate': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'max_capacity': forms.NumberInput(attrs={'min': '1'}),
+            'features': forms.Textarea(attrs={'rows': 2, 'placeholder': 'e.g., projector, whiteboard, parking...'}),
+            'contact_name': forms.TextInput(attrs={'placeholder': 'Primary contact person...'}),
+            'contact_phone': forms.TextInput(attrs={'placeholder': 'Phone number...'}),
+            'contact_email': forms.EmailInput(attrs={'placeholder': 'Email address...'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.update({'class': 'form-control'})
+        
+        # Special handling for select fields
+        self.fields['default_frequency'].widget.attrs.update({'class': 'form-select'})
+
+
+class BuildoutBaseCostAssignmentForm(forms.ModelForm):
+    """Form for assigning base costs to buildouts with default value preloading."""
+    
+    class Meta:
+        model = BuildoutBaseCostAssignment
+        fields = ['base_cost', 'override_rate', 'override_frequency', 'multiplier']
+        widgets = {
+            'base_cost': forms.Select(attrs={'class': 'form-select cost-selector'}),
+            'override_rate': forms.NumberInput(attrs={
+                'class': 'form-control override-field', 
+                'step': '0.01',
+                'data-field-type': 'rate'
+            }),
+            'override_frequency': forms.Select(attrs={
+                'class': 'form-select override-field',
+                'data-field-type': 'frequency'
+            }),
+            'multiplier': forms.NumberInput(attrs={
+                'class': 'form-control', 
+                'step': '0.01'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # If we have an instance and a base_cost, preload defaults
+        if self.instance and self.instance.base_cost_id:
+            base_cost = self.instance.base_cost
+            
+            # Always set data attributes for JavaScript
+            self.fields['override_rate'].widget.attrs['data-default-value'] = str(base_cost.rate)
+            self.fields['override_frequency'].widget.attrs['data-default-value'] = base_cost.frequency
+            
+            # Set initial values - use override if exists, otherwise use default
+            if self.instance.override_rate is not None:
+                self.fields['override_rate'].initial = self.instance.override_rate
+            else:
+                self.fields['override_rate'].initial = base_cost.rate
+            
+            if self.instance.override_frequency:
+                self.fields['override_frequency'].initial = self.instance.override_frequency
+            else:
+                self.fields['override_frequency'].initial = base_cost.frequency
+        
+        # Add help text to show current behavior
+        self.fields['override_rate'].help_text = "Leave blank to use the base cost default rate"
+        self.fields['override_frequency'].help_text = "Leave blank to use the base cost default frequency"
+
+
+class BuildoutLocationAssignmentForm(forms.ModelForm):
+    """Form for assigning locations to buildouts with default value preloading."""
+    
+    class Meta:
+        model = BuildoutLocationAssignment
+        fields = ['location', 'override_rate', 'override_frequency', 'multiplier']
+        widgets = {
+            'location': forms.Select(attrs={'class': 'form-select location-selector'}),
+            'override_rate': forms.NumberInput(attrs={
+                'class': 'form-control override-field', 
+                'step': '0.01',
+                'data-field-type': 'rate'
+            }),
+            'override_frequency': forms.Select(attrs={
+                'class': 'form-select override-field',
+                'data-field-type': 'frequency'
+            }),
+            'multiplier': forms.NumberInput(attrs={
+                'class': 'form-control', 
+                'step': '0.01'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # If we have an instance and a location, preload defaults
+        if self.instance and self.instance.location_id:
+            location = self.instance.location
+            
+            # Always set data attributes for JavaScript
+            self.fields['override_rate'].widget.attrs['data-default-value'] = str(location.default_rate)
+            self.fields['override_frequency'].widget.attrs['data-default-value'] = location.default_frequency
+            
+            # Set initial values - use override if exists, otherwise use default
+            if self.instance.override_rate is not None:
+                self.fields['override_rate'].initial = self.instance.override_rate
+            else:
+                self.fields['override_rate'].initial = location.default_rate
+            
+            if self.instance.override_frequency:
+                self.fields['override_frequency'].initial = self.instance.override_frequency
+            else:
+                self.fields['override_frequency'].initial = location.default_frequency
+        
+        # Add help text to show current behavior
+        self.fields['override_rate'].help_text = "Leave blank to use the location default rate"
+        self.fields['override_frequency'].help_text = "Leave blank to use the location default frequency"
+
+
 class BuildoutResponsibilityAssignmentForm(forms.ModelForm):
     """Form for assigning responsibilities to buildouts."""
     
@@ -283,9 +436,11 @@ class BuildoutBaseCostAssignmentForm(forms.ModelForm):
     
     class Meta:
         model = BuildoutBaseCostAssignment
-        fields = ['base_cost', 'multiplier']
+        fields = ['base_cost', 'rate', 'frequency', 'multiplier']
         widgets = {
             'base_cost': forms.Select(attrs={'class': 'form-select'}),
+            'rate': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'frequency': forms.Select(attrs={'class': 'form-select'}),
             'multiplier': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'value': '1.00'}),
         }
     
@@ -293,6 +448,21 @@ class BuildoutBaseCostAssignmentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
+        # Keep the select widgets with form-select class
+        self.fields['base_cost'].widget.attrs.update({'class': 'form-select'})
+        self.fields['frequency'].widget.attrs.update({'class': 'form-select'})
+        
+        # Load defaults from base cost when creating new assignment
+        if not self.instance.pk and 'base_cost' in self.data:
+            try:
+                from programs.models import BaseCost
+                base_cost = BaseCost.objects.get(pk=self.data['base_cost'])
+                if not self.instance.rate:
+                    self.initial['rate'] = base_cost.rate
+                if not self.instance.frequency:
+                    self.initial['frequency'] = base_cost.frequency
+            except (BaseCost.DoesNotExist, ValueError):
+                pass
 
 # Create inline formset for base cost assignments
 BuildoutBaseCostAssignmentFormSet = inlineformset_factory(
@@ -301,7 +471,51 @@ BuildoutBaseCostAssignmentFormSet = inlineformset_factory(
     form=BuildoutBaseCostAssignmentForm,
     extra=1,
     can_delete=True,
-    fields=['base_cost', 'multiplier']
+    fields=['base_cost', 'rate', 'frequency', 'multiplier']
+)
+
+
+class BuildoutLocationAssignmentForm(forms.ModelForm):
+    """Form for assigning locations to buildouts."""
+    
+    class Meta:
+        model = BuildoutLocationAssignment
+        fields = ['location', 'rate', 'frequency', 'multiplier']
+        widgets = {
+            'location': forms.Select(attrs={'class': 'form-select'}),
+            'rate': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'frequency': forms.Select(attrs={'class': 'form-select'}),
+            'multiplier': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'value': '1.00'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.update({'class': 'form-control'})
+        # Keep the select widgets with form-select class
+        self.fields['location'].widget.attrs.update({'class': 'form-select'})
+        self.fields['frequency'].widget.attrs.update({'class': 'form-select'})
+        
+        # Load defaults from location when creating new assignment
+        if not self.instance.pk and 'location' in self.data:
+            try:
+                from programs.models import Location
+                location = Location.objects.get(pk=self.data['location'])
+                if not self.instance.rate:
+                    self.initial['rate'] = location.default_rate
+                if not self.instance.frequency:
+                    self.initial['frequency'] = location.default_frequency
+            except (Location.DoesNotExist, ValueError):
+                pass
+
+# Create inline formset for location assignments
+BuildoutLocationAssignmentFormSet = inlineformset_factory(
+    ProgramBuildout,
+    BuildoutLocationAssignment,
+    form=BuildoutLocationAssignmentForm,
+    extra=1,
+    can_delete=True,
+    fields=['location', 'rate', 'frequency', 'multiplier']
 )
 
 

@@ -307,16 +307,36 @@
                                                 {% for cost_data in base_costs_data %}
                                                     <tr>
                                                         <td>{{ cost_data.base_cost.name }}</td>
-                                                        <td>${{ cost_data.base_cost.rate|floatformat:2 }}</td>
+                                                        <td>
+                                                            {% if cost_data.assignment.override_rate %}
+                                                                <span class="text-warning" title="Override rate">${{ cost_data.assignment.override_rate|floatformat:2 }}</span>
+                                                            {% else %}
+                                                                ${{ cost_data.base_cost.rate|floatformat:2 }}
+                                                            {% endif %}
+                                                        </td>
                                                         <td>${{ cost_data.yearly_cost|floatformat:2 }}</td>
                                                         <td>{{ cost_data.percentage|floatformat:1 }}%</td>
+                                                    </tr>
+                                                {% endfor %}
+                                                {% for location_data in location_costs_data %}
+                                                    <tr>
+                                                        <td>{{ location_data.location.name }} (Location)</td>
+                                                        <td>
+                                                            {% if location_data.assignment.override_rate %}
+                                                                <span class="text-warning" title="Override rate">${{ location_data.assignment.override_rate|floatformat:2 }}</span>
+                                                            {% else %}
+                                                                ${{ location_data.location.default_rate|floatformat:2 }}
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>${{ location_data.yearly_cost|floatformat:2 }}</td>
+                                                        <td>{{ location_data.percentage|floatformat:1 }}%</td>
                                                     </tr>
                                                 {% endfor %}
                                                 <tr class="table-active">
                                                     <td><strong>Total Overhead</strong></td>
                                                     <td></td>
-                                                    <td><strong>${{ total_base_costs|floatformat:2 }}</strong></td>
-                                                    <td><strong>{{ total_base_costs|divide:total_revenue|multiply:100|floatformat:1 }}%</strong></td>
+                                                    <td><strong>${{ total_base_costs|add:total_location_costs|floatformat:2 }}</strong></td>
+                                                    <td><strong>{{ total_base_costs|add:total_location_costs|divide:total_revenue|multiply:100|floatformat:1 }}%</strong></td>
                                                 </tr>
                                             </tbody>
                                         </table>

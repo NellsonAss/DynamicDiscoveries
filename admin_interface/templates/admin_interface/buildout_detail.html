@@ -64,11 +64,17 @@
                 <a href="{% url 'admin_interface:buildout_create_instance' buildout.id %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle me-1"></i>Create Instance
                 </a>
-                <a href="{% url 'admin_interface:buildout_assign_roles' buildout.id %}" class="btn btn-outline-primary">
-                    <i class="bi bi-people me-1"></i>Assign Roles
+                <a href="{% url 'admin_interface:buildout_manage_roles' buildout.id %}" class="btn btn-outline-primary">
+                    <i class="bi bi-people me-1"></i>Manage Roles
                 </a>
                 <a href="{% url 'admin_interface:buildout_manage_responsibilities' buildout.id %}" class="btn btn-outline-success">
                     <i class="bi bi-table me-1"></i>Manage Responsibilities
+                </a>
+                <a href="{% url 'admin_interface:buildout_assign_costs' buildout.id %}" class="btn btn-outline-info">
+                    <i class="bi bi-currency-dollar me-1"></i>Assign Costs
+                </a>
+                <a href="{% url 'admin_interface:buildout_manage_locations' buildout.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-geo-alt me-1"></i>Manage Locations
                 </a>
                 <a href="{% url 'admin_interface:buildout_edit' buildout.id %}" class="btn btn-outline-warning">
                     <i class="bi bi-pencil me-1"></i>Edit Buildout
@@ -252,80 +258,113 @@
 </div>
 {% endif %}
 
-<!-- Cost Analysis -->
+<!-- Excel-Like Financial Analysis -->
 <div class="admin-card p-4">
-    <h5 class="mb-3"><i class="bi bi-calculator me-2"></i>Cost Analysis</h5>
-    <div class="row">
-        <div class="col-md-6">
-            <h6>Staff Costs:</h6>
+    <h5 class="mb-3"><i class="bi bi-calculator me-2"></i>Financial Analysis</h5>
+    
+    <!-- Buildout Parameters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h6 class="text-muted mb-3">Buildout Parameters:</h6>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="text-center border rounded p-2">
+                        <div class="h4 text-primary mb-0">{{ buildout.num_facilitators }}</div>
+                        <small class="text-muted"># Qualified Facilitators Working</small>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="text-center border rounded p-2">
+                        <div class="h4 text-primary mb-0">{{ buildout.num_new_facilitators }}</div>
+                        <small class="text-muted"># New Workers (Incl. Turnover)</small>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="text-center border rounded p-2">
+                        <div class="h4 text-primary mb-0">{{ buildout.num_programs_per_year }}</div>
+                        <small class="text-muted"># Programs per Year</small>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="text-center border rounded p-2">
+                        <div class="h4 text-primary mb-0">{{ buildout.students_per_program }}</div>
+                        <small class="text-muted"># Students/Program</small>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="text-center border rounded p-2">
+                        <div class="h4 text-primary mb-0">{{ buildout.sessions_per_program }}</div>
+                        <small class="text-muted"># Sessions/Program</small>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="text-center border rounded p-2">
+                        <div class="h4 text-success mb-0">${{ buildout.rate_per_student|floatformat:0 }}</div>
+                        <small class="text-muted">$ Fees/Student/Program</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Revenue Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h6 class="text-muted mb-3">Revenue:</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="text-center border rounded p-3">
+                        <div class="h3 text-success mb-0">${{ total_revenue|floatformat:0 }}</div>
+                        <small class="text-muted">Revenue/Program: ${{ buildout.rate_per_student|multiply:buildout.students_per_program|floatformat:0 }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Staff Costs Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h6 class="text-muted mb-3">Staff Costs:</h6>
             <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
                         <tr>
                             <th>Role</th>
                             <th>Cost/Hr</th>
-                            <th>Hours/Year</th>
+                            <th>Cost/Program</th>
                             <th>Cost/Year</th>
+                            <th># of Hours</th>
                             <th>% Rev</th>
+                            <th>% Hours</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for role_data in roles_data %}
-                            <tr>
-                                <td>{{ role_data.role.title }}</td>
-                                <td>
-                                    {% if role_data.role_line.pay_type == 'HOURLY' %}
-                                        ${{ role_data.role_line.pay_value|floatformat:2 }}/hr
-                                    {% elif role_data.role_line.pay_type == 'PER_PROGRAM' %}
-                                        ${{ role_data.role_line.pay_value|floatformat:2 }}/program
-                                    {% elif role_data.role_line.pay_type == 'PER_SESSION' %}
-                                        ${{ role_data.role_line.pay_value|floatformat:2 }}/session
-                                    {% else %}
-                                        ${{ role_data.role_line.pay_value|floatformat:2 }}
-                                    {% endif %}
-                                </td>
-                                <td>{{ role_data.yearly_hours|floatformat:1 }}</td>
-                                <td>${{ role_data.payout|floatformat:2 }}</td>
-                                <td>{{ role_data.percentage|floatformat:1 }}%</td>
-                            </tr>
+                        <tr>
+                            <td><strong>{{ role_data.role.title }}</strong></td>
+                            <td>
+                                {% if role_data.role_line.pay_type == 'HOURLY' %}
+                                    ${{ role_data.role_line.pay_value|floatformat:0 }}
+                                {% else %}
+                                    ${{ role_data.payout|divide:role_data.yearly_hours|floatformat:0 }}
+                                {% endif %}
+                            </td>
+                            <td>${{ role_data.payout|divide:buildout.num_programs_per_year|floatformat:0 }}</td>
+                            <td>${{ role_data.payout|floatformat:0 }}</td>
+                            <td>{{ role_data.yearly_hours|floatformat:0 }}</td>
+                            <td>{{ role_data.percentage|floatformat:0 }}%</td>
+                            <td>{{ role_data.yearly_hours|divide:total_hours|multiply:100|floatformat:0 }}%</td>
+                        </tr>
                         {% endfor %}
                         <tr class="table-active">
                             <td><strong>Total Staff</strong></td>
                             <td></td>
-                            <td><strong>{{ total_hours|floatformat:1 }}</strong></td>
-                            <td><strong>${{ total_payouts|floatformat:2 }}</strong></td>
-                            <td><strong>{{ total_payouts|divide:total_revenue|multiply:100|floatformat:1 }}%</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <h6>Overhead Costs:</h6>
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Cost Item</th>
-                            <th>Cost/Program</th>
-                            <th>Cost/Year</th>
-                            <th>% Rev</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for cost_data in base_costs_data %}
-                            <tr>
-                                <td>{{ cost_data.base_cost.name }}</td>
-                                <td>${{ cost_data.base_cost.rate|floatformat:2 }}</td>
-                                <td>${{ cost_data.yearly_cost|floatformat:2 }}</td>
-                                <td>{{ cost_data.percentage|floatformat:1 }}%</td>
-                            </tr>
-                        {% endfor %}
-                        <tr class="table-active">
-                            <td><strong>Total Overhead</strong></td>
-                            <td></td>
-                            <td><strong>${{ total_base_costs|floatformat:2 }}</strong></td>
-                            <td><strong>{{ total_base_costs|divide:total_revenue|multiply:100|floatformat:1 }}%</strong></td>
+                            <td><strong>${{ total_payouts|divide:buildout.num_programs_per_year|floatformat:0 }}</strong></td>
+                            <td><strong>${{ total_payouts|floatformat:0 }}</strong></td>
+                            <td><strong>{{ total_hours|floatformat:0 }}</strong></td>
+                            <td><strong>{{ total_payouts|divide:total_revenue|multiply:100|floatformat:0 }}%</strong></td>
+                            <td><strong>100%</strong></td>
                         </tr>
                     </tbody>
                 </table>
@@ -333,26 +372,93 @@
         </div>
     </div>
     
-    <!-- Final Summary -->
-    <div class="row mt-4">
+    <!-- Overhead Costs Section -->
+    <div class="row mb-4">
         <div class="col-12">
-            <div class="alert alert-info">
-                <div class="row">
+            <h6 class="text-muted mb-3">Overhead:</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Cost Item</th>
+                            <th>Rate</th>
+                            <th>Frequency</th>
+                            <th>Cost/Year</th>
+                            <th>% Rev</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Base Costs -->
+                        {% for cost_data in base_costs_data %}
+                        <tr>
+                            <td>{{ cost_data.base_cost.name }}</td>
+                            <td>${{ cost_data.rate|floatformat:0 }}</td>
+                            <td>
+                                {% if cost_data.assignment.frequency %}
+                                    {{ cost_data.assignment.get_frequency_display }}
+                                {% else %}
+                                    {{ cost_data.base_cost.get_frequency_display }}
+                                {% endif %}
+                            </td>
+                            <td>${{ cost_data.yearly_cost|floatformat:0 }}</td>
+                            <td>{{ cost_data.percentage|floatformat:0 }}%</td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <!-- Location Costs -->
+                        {% for location_data in location_costs_data %}
+                        <tr>
+                            <td>{{ location_data.location.name }}</td>
+                            <td>${{ location_data.rate|floatformat:0 }}</td>
+                            <td>
+                                {% if location_data.assignment.frequency %}
+                                    {{ location_data.assignment.get_frequency_display }}
+                                {% else %}
+                                    {{ location_data.location.get_default_frequency_display }}
+                                {% endif %}
+                            </td>
+                            <td>${{ location_data.yearly_cost|floatformat:0 }}</td>
+                            <td>{{ location_data.percentage|floatformat:0 }}%</td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <tr class="table-active">
+                            <td><strong>Total Overhead</strong></td>
+                            <td></td>
+                            <td></td>
+                            <td><strong>${{ total_overhead_costs|floatformat:0 }}</strong></td>
+                            <td><strong>{{ total_overhead_costs|divide:total_revenue|multiply:100|floatformat:0 }}%</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profit Summary -->
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-success">
+                <div class="row text-center">
                     <div class="col-md-3">
-                        <strong>Total Revenue:</strong><br>
-                        <span class="h5 text-success">${{ total_revenue|floatformat:2 }}</span>
+                        <div class="h4 text-success mb-1">${{ total_revenue|floatformat:0 }}</div>
+                        <div class="text-muted">Total Revenue</div>
                     </div>
                     <div class="col-md-3">
-                        <strong>Total Costs:</strong><br>
-                        <span class="h5 text-danger">${{ total_all_costs|floatformat:2 }}</span>
+                        <div class="h4 text-warning mb-1">${{ total_all_costs|floatformat:0 }}</div>
+                        <div class="text-muted">Total Costs</div>
                     </div>
                     <div class="col-md-3">
-                        <strong>Profit:</strong><br>
-                        <span class="h5 text-warning">${{ total_profit|floatformat:2 }}</span>
+                        <div class="h4 {% if total_profit >= 0 %}text-success{% else %}text-danger{% endif %} mb-1">
+                            ${{ total_profit|floatformat:0 }}
+                        </div>
+                        <div class="text-muted">Expected Profit</div>
                     </div>
                     <div class="col-md-3">
-                        <strong>Profit Margin:</strong><br>
-                        <span class="h5 text-info">{{ total_profit_margin|floatformat:1 }}%</span>
+                        <div class="h4 {% if total_profit_margin >= 0 %}text-success{% else %}text-danger{% endif %} mb-1">
+                            {{ total_profit_margin|floatformat:0 }}%
+                        </div>
+                        <div class="text-muted">Profit Margin</div>
                     </div>
                 </div>
             </div>

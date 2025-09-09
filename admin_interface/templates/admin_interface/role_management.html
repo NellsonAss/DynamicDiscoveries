@@ -85,8 +85,8 @@
                             </td>
                             <td>
                                 <div class="text-center">
-                                    <h6 class="mb-0">-</h6>
-                                    <small class="text-muted">via groups</small>
+                                    <h6 class="mb-0">{{ role.user_assignments.count }}</h6>
+                                    <small class="text-muted">assigned</small>
                                 </div>
                             </td>
                             <td>
@@ -221,7 +221,7 @@
                     <h4 class="mb-0">
                         {% with total_users=0 %}
                             {% for role in page_obj %}
-                                {% with users_count=role.users.count %}
+                                {% with users_count=role.user_assignments.count %}
                                     {% if forloop.first %}
                                         {{ users_count }}
                                     {% else %}

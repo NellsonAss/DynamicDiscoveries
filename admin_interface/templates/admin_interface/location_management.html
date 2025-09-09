@@ -1,0 +1,234 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-geo-alt me-2"></i>Location Management
+    </h2>
+    <div class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>{{ total_locations }} total locations
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="admin-card p-4 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-8">
+            <label for="search" class="form-label">Search Locations</label>
+            <input type="text" class="form-control search-box" id="search" name="search" 
+                   value="{{ search }}" placeholder="Search by name, address, or description...">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">&nbsp;</label>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Locations Table -->
+<div class="admin-card">
+    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-table me-2"></i>Locations
+        </h6>
+        <a href="{% url 'admin_interface:location_create' %}" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Add Location
+        </a>
+    </div>
+    <div class="card-body p-0">
+        {% if locations %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Location Name</th>
+                            <th>Default Rate & Frequency</th>
+                            <th>Capacity</th>
+                            <th>Contact</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for location in locations %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <h6 class="mb-0">{{ location.name }}</h6>
+                                    {% if location.address %}
+                                        <small class="text-muted">{{ location.address|truncatechars:50 }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <h6 class="text-success mb-0">${{ location.default_rate }}</h6>
+                                    <small class="text-muted">{{ location.get_default_frequency_display }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    {% if location.max_capacity %}
+                                        <span class="badge bg-info">{{ location.max_capacity }} max</span>
+                                    {% else %}
+                                        <span class="text-muted">No limit</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if location.contact_name %}
+                                    <div>
+                                        <small class="fw-bold">{{ location.contact_name }}</small>
+                                        {% if location.contact_phone %}
+                                            <br><small class="text-muted">{{ location.contact_phone }}</small>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">No contact</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if location.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" data-bs-target="#locationDetailModal{{ location.id }}">
+                                        <i class="bi bi-eye me-1"></i>View
+                                    </button>
+                                    <a href="{% url 'admin_interface:location_edit' location.id %}" 
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil me-1"></i>Edit
+                                    </a>
+                                    <a href="{% url 'admin_interface:location_delete' location.id %}" 
+                                       class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-geo-alt text-muted" style="font-size: 3rem;"></i>
+                <h5 class="text-muted mt-3">No locations found</h5>
+                <p class="text-muted">Start by adding your first location.</p>
+                <a href="{% url 'admin_interface:location_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-1"></i>Add First Location
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Location Detail Modals -->
+{% for location in locations %}
+<div class="modal fade" id="locationDetailModal{{ location.id }}" tabindex="-1" aria-labelledby="locationDetailModalLabel{{ location.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="locationDetailModalLabel{{ location.id }}">
+                    <i class="bi bi-geo-alt me-2"></i>{{ location.name }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Location Details</h6>
+                        <p><strong>Default Rate:</strong> ${{ location.default_rate }}</p>
+                        <p><strong>Default Frequency:</strong> {{ location.get_default_frequency_display }}</p>
+                        {% if location.max_capacity %}
+                            <p><strong>Max Capacity:</strong> {{ location.max_capacity }} participants</p>
+                        {% endif %}
+                        {% if location.address %}
+                            <p><strong>Address:</strong></p>
+                            <p class="text-muted">{{ location.address }}</p>
+                        {% endif %}
+                        {% if location.description %}
+                            <p><strong>Description:</strong></p>
+                            <p class="text-muted">{{ location.description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Contact & Features</h6>
+                        {% if location.contact_name %}
+                            <p><strong>Contact:</strong> {{ location.contact_name }}</p>
+                        {% endif %}
+                        {% if location.contact_phone %}
+                            <p><strong>Phone:</strong> {{ location.contact_phone }}</p>
+                        {% endif %}
+                        {% if location.contact_email %}
+                            <p><strong>Email:</strong> {{ location.contact_email }}</p>
+                        {% endif %}
+                        {% if location.features %}
+                            <p><strong>Features:</strong></p>
+                            <p class="text-muted">{{ location.features }}</p>
+                        {% endif %}
+                        
+                        <h6 class="text-muted mb-2 mt-3">Buildout Assignments</h6>
+                        {% if location.buildoutlocationassignment_set.all %}
+                            <ul class="list-unstyled">
+                            {% for assignment in location.buildoutlocationassignment_set.all %}
+                                <li class="mb-2">
+                                    <span class="badge bg-primary me-2">{{ assignment.buildout.program_type.name }}</span>
+                                    <small class="text-muted">{{ assignment.buildout.title }} ({{ assignment.multiplier }}x)</small>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">No buildout assignments</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{% url 'admin_interface:location_edit' location.id %}" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i>Edit Location
+                </a>
+                <a href="{% url 'admin_interface:location_delete' location.id %}" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i>Delete Location
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Summary Statistics -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="admin-stats-card text-center">
+            <i class="bi bi-geo-alt mb-3"></i>
+            <h6>Total Locations</h6>
+            <h3>{{ total_locations }}</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="admin-stats-card text-center">
+            <i class="bi bi-check-circle mb-3"></i>
+            <h6>Active Locations</h6>
+            <h3>{{ active_locations }}</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="admin-stats-card text-center">
+            <i class="bi bi-calculator mb-3"></i>
+            <h6>Average Rate</h6>
+            <h3>${{ average_rate|floatformat:2 }}</h3>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,58 +3,88 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.utils import timezone
 from datetime import date, timedelta
-from programs.models import Child, ProgramType, ProgramInstance, RegistrationForm, FormQuestion
+from decimal import Decimal
+from programs.models import (
+    Child, ProgramType, ProgramInstance, RegistrationForm, FormQuestion,
+    ProgramBuildout, Role, BaseCost, Location, BuildoutRoleLine,
+    BuildoutBaseCostAssignment, BuildoutLocationAssignment, Registration
+)
 
 User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Set up test accounts for the programs app'
+    help = 'Set up comprehensive test accounts and data for the programs app'
 
     def handle(self, *args, **options):
-        self.stdout.write('Setting up test accounts...')
+        self.stdout.write('🚀 Setting up comprehensive test data...')
 
         # Get or create groups
         parent_group, _ = Group.objects.get_or_create(name='Parent')
         contractor_group, _ = Group.objects.get_or_create(name='Contractor')
         admin_group, _ = Group.objects.get_or_create(name='Admin')
 
-        # Set up jon@nellson.net as contractor
-        try:
-            jon_user = User.objects.get(email='jon@nellson.net')
-            jon_user.groups.add(contractor_group)
-            self.stdout.write(
-                self.style.SUCCESS(f'✓ Set jon@nellson.net as Contractor')
-            )
-        except User.DoesNotExist:
-            self.stdout.write(
-                self.style.ERROR('❌ jon@nellson.net not found - please create this user first')
-            )
-            return
-
-        # Create test parent account
-        parent_email = 'DynamicDiscoveries@nellson.net'
-        parent_user, created = User.objects.get_or_create(
-            email=parent_email,
+        # Create admin user (jon@nellson.net)
+        admin_user, created = User.objects.get_or_create(
+            email='jon@nellson.net',
             defaults={
-                'first_name': 'Test',
-                'last_name': 'Parent',
+                'first_name': 'Jon',
+                'last_name': 'Nellson',
                 'is_active': True,
             }
         )
-        
         if created:
-            parent_user.set_password('testpass123')
-            parent_user.save()
+            admin_user.set_password('adminpass123')
+            admin_user.save()
             self.stdout.write(
-                self.style.SUCCESS(f'✓ Created parent account: {parent_email}')
+                self.style.SUCCESS(f'✓ Created admin account: jon@nellson.net')
             )
         else:
             self.stdout.write(
-                self.style.SUCCESS(f'✓ Parent account already exists: {parent_email}')
+                self.style.SUCCESS(f'✓ Admin account already exists: jon@nellson.net')
             )
+        admin_user.groups.add(admin_group)
 
-        # Add parent role
+        # Create main contractor (tailoredtales@nellson.net)
+        contractor_user, created = User.objects.get_or_create(
+            email='tailoredtales@nellson.net',
+            defaults={
+                'first_name': 'Sarah',
+                'last_name': 'Johnson',
+                'is_active': True,
+            }
+        )
+        if created:
+            contractor_user.set_password('contractorpass123')
+            contractor_user.save()
+            self.stdout.write(
+                self.style.SUCCESS(f'✓ Created main contractor: tailoredtales@nellson.net')
+            )
+        else:
+            self.stdout.write(
+                self.style.SUCCESS(f'✓ Main contractor already exists: tailoredtales@nellson.net')
+            )
+        contractor_user.groups.add(contractor_group)
+
+        # Create main parent test account (jon.nellson@gmail.com)
+        parent_user, created = User.objects.get_or_create(
+            email='jon.nellson@gmail.com',
+            defaults={
+                'first_name': 'Jon',
+                'last_name': 'Nellson',
+                'is_active': True,
+            }
+        )
+        if created:
+            parent_user.set_password('parentpass123')
+            parent_user.save()
+            self.stdout.write(
+                self.style.SUCCESS(f'✓ Created main parent account: jon.nellson@gmail.com')
+            )
+        else:
+            self.stdout.write(
+                self.style.SUCCESS(f'✓ Main parent account already exists: jon.nellson@gmail.com')
+            )
         parent_user.groups.add(parent_group)
 
         # Create test children for the parent

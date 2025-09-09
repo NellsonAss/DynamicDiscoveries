@@ -15,18 +15,22 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.forms import ValidationError as FormValidationError
 from decimal import Decimal
+import decimal
 
 from programs.models import (
     ProgramType, ProgramBuildout, ProgramInstance, Role, Responsibility,
     BuildoutRoleLine, BuildoutResponsibilityLine, BaseCost,
-    BuildoutBaseCostAssignment, RegistrationForm, FormQuestion, Child,
+    BuildoutBaseCostAssignment, BuildoutLocationAssignment, Location, RegistrationForm, FormQuestion, Child,
     Registration, InstanceRoleAssignment, ProgramRequest
 )
 from communications.models import Contact
+from people.models import Contractor, NDASignature
 from programs.forms import (
     ProgramTypeForm, ProgramBuildoutForm, RoleForm, ResponsibilityForm,
     BaseCostForm, BuildoutRoleAssignmentForm, BuildoutResponsibilityAssignmentForm,
-    BuildoutBaseCostAssignmentForm, BuildoutBaseCostAssignmentFormSet, RegistrationFormForm, FormQuestionForm
+    BuildoutBaseCostAssignmentForm, BuildoutBaseCostAssignmentFormSet,
+    BuildoutLocationAssignmentForm, BuildoutLocationAssignmentFormSet,
+    RegistrationFormForm, FormQuestionForm
 )
 from admin_interface.forms import AdminProgramInstanceForm
 from accounts.mixins import role_required
@@ -76,7 +80,7 @@ def admin_dashboard(request):
 @role_required(['Admin'])
 def user_management(request):
     """User management interface."""
-    users = User.objects.select_related('profile').prefetch_related('groups').order_by('-date_joined')
+    users = User.objects.select_related('profile', 'contractor').prefetch_related('groups').order_by('-date_joined')
     
     # Search functionality
     search = request.GET.get('search', '')
@@ -122,10 +126,19 @@ def user_detail(request, user_id):
     # Get user's programs if they're a contractor
     programs = ProgramInstance.objects.filter(contractor_assignments__contractor=user) if 'Contractor' in user.get_role_names() else None
     
+    # Get contractor profile if they're a contractor
+    contractor = None
+    if 'Contractor' in user.get_role_names():
+        try:
+            contractor = Contractor.objects.get(user=user)
+        except Contractor.DoesNotExist:
+            contractor = None
+    
     context = {
         'user_detail': user,
         'children': children,
         'programs': programs,
+        'contractor': contractor,
     }
     
     return render(request, 'admin_interface/user_detail.html', context)
@@ -431,7 +444,7 @@ def contact_management(request):
 @role_required(['Admin'])
 def role_management(request):
     """Role management interface."""
-    roles = Role.objects.order_by('title')
+    roles = Role.objects.prefetch_related('user_assignments__user').order_by('title')
     
     # Search functionality
     search = request.GET.get('search', '')
@@ -486,8 +499,8 @@ def role_detail(request, role_id):
     program_types = ProgramType.objects.filter(
         buildouts__role_lines__role=role
     ).distinct()
-    # Get users through groups (since Role doesn't have direct user relationship)
-    users = User.objects.filter(groups__name=role.title)
+    # Get users through role assignments
+    users = role.get_assigned_users()
     # Get responsibilities for this role
     responsibilities = role.responsibilities.all()
     
@@ -545,25 +558,53 @@ def role_delete(request, role_id):
 @login_required
 @role_required(['Admin'])
 def role_manage_users(request, role_id):
-    """Manage users for a role."""
+    """Manage users for a role with individual add/remove actions."""
+    from programs.models import RoleAssignment
+    
     role = get_object_or_404(Role, id=role_id)
     
     if request.method == 'POST':
-        user_ids = request.POST.getlist('users')
-        # Note: Since Role doesn't have a direct many-to-many with User,
-        # we'll need to handle this through groups or a different mechanism
-        # For now, we'll just show a message that this needs to be implemented
-        messages.success(request, f"User management for roles needs to be implemented through groups.")
-        return redirect('admin_interface:role_detail', role_id=role.id)
+        action = request.POST.get('action')
+        user_id = request.POST.get('user_id')
+        
+        if action and user_id:
+            user = get_object_or_404(User, id=user_id)
+            
+            if action == 'add':
+                assignment, created = RoleAssignment.objects.get_or_create(
+                    user=user,
+                    role=role,
+                    defaults={'assigned_by': request.user}
+                )
+                if created:
+                    messages.success(request, f"Added {user.get_full_name() or user.username} to role '{role.title}'.")
+                else:
+                    messages.info(request, f"{user.get_full_name() or user.username} is already assigned to this role.")
+                    
+            elif action == 'remove':
+                deleted_count = RoleAssignment.objects.filter(
+                    user=user,
+                    role=role
+                ).delete()[0]
+                if deleted_count > 0:
+                    messages.success(request, f"Removed {user.get_full_name() or user.username} from role '{role.title}'.")
+                else:
+                    messages.warning(request, f"{user.get_full_name() or user.username} was not assigned to this role.")
+        
+        return redirect('admin_interface:role_manage_users', role_id=role.id)
     
-    all_users = User.objects.all()
-    # Since there's no direct relationship, we'll show all users for now
-    selected_users = []
+    # Get users
+    all_users = User.objects.select_related('profile').order_by('first_name', 'last_name', 'email')
+    selected_users = role.get_assigned_users()
+    
+    # Get unassigned users (all users minus selected users)
+    selected_user_ids = set(selected_users.values_list('id', flat=True))
+    unassigned_users = all_users.exclude(id__in=selected_user_ids)
     
     context = {
         'role': role,
-        'all_users': all_users,
         'selected_users': selected_users,
+        'unassigned_users': unassigned_users,
     }
     return render(request, 'admin_interface/role_manage_users.html', context)
 
@@ -698,6 +739,156 @@ def cost_delete(request, cost_id):
     return render(request, 'admin_interface/cost_confirm_delete.html', context)
 
 
+# ============================================================================
+# LOCATION MANAGEMENT
+# ============================================================================
+
+@login_required
+@role_required(['Admin'])
+def location_management(request):
+    """Location management interface."""
+    if request.method == 'POST':
+        # Handle location creation
+        name = request.POST.get('name')
+        address = request.POST.get('address')
+        default_rate = request.POST.get('default_rate')
+        default_frequency = request.POST.get('default_frequency')
+        description = request.POST.get('description')
+        max_capacity = request.POST.get('max_capacity')
+        
+        if name and default_rate and default_frequency:
+            try:
+                from programs.models import Location
+                Location.objects.create(
+                    name=name,
+                    address=address or '',
+                    default_rate=default_rate,
+                    default_frequency=default_frequency,
+                    description=description or '',
+                    max_capacity=max_capacity if max_capacity else None
+                )
+                messages.success(request, f"Location '{name}' created successfully!")
+                return redirect('admin_interface:location_management')
+            except Exception as e:
+                messages.error(request, f"Error creating location: {str(e)}")
+        else:
+            messages.error(request, "Please fill in all required fields.")
+    
+    from programs.models import Location
+    locations = Location.objects.order_by('name')
+    
+    # Search functionality
+    search = request.GET.get('search', '')
+    if search:
+        locations = locations.filter(
+            Q(name__icontains=search) |
+            Q(address__icontains=search) |
+            Q(description__icontains=search)
+        )
+    
+    # Calculate statistics
+    total_locations = locations.count()
+    active_locations = locations.filter(is_active=True).count()
+    if total_locations > 0:
+        average_rate = sum(location.default_rate for location in locations) / total_locations
+    else:
+        average_rate = 0
+    
+    context = {
+        'locations': locations,
+        'search': search,
+        'total_locations': total_locations,
+        'active_locations': active_locations,
+        'average_rate': average_rate,
+    }
+    
+    return render(request, 'admin_interface/location_management.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def location_create(request):
+    """Create a new location."""
+    if request.method == 'POST':
+        from programs.forms import LocationForm
+        form = LocationForm(request.POST)
+        if form.is_valid():
+            location = form.save()
+            messages.success(request, f"Location '{location.name}' created successfully!")
+            return redirect('admin_interface:location_management')
+    else:
+        from programs.forms import LocationForm
+        form = LocationForm()
+    
+    context = {
+        'form': form,
+        'action': 'Create',
+    }
+    return render(request, 'admin_interface/location_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def location_detail(request, location_id):
+    """View location details."""
+    from programs.models import Location
+    location = get_object_or_404(Location, id=location_id)
+    
+    # Get buildout assignments
+    buildout_assignments = location.buildoutlocationassignment_set.select_related('buildout__program_type').all()
+    
+    context = {
+        'location': location,
+        'buildout_assignments': buildout_assignments,
+    }
+    return render(request, 'admin_interface/location_detail.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def location_edit(request, location_id):
+    """Edit a location."""
+    from programs.models import Location
+    location = get_object_or_404(Location, id=location_id)
+    
+    if request.method == 'POST':
+        from programs.forms import LocationForm
+        form = LocationForm(request.POST, instance=location)
+        if form.is_valid():
+            location = form.save()
+            messages.success(request, f"Location '{location.name}' updated successfully!")
+            return redirect('admin_interface:location_management')
+    else:
+        from programs.forms import LocationForm
+        form = LocationForm(instance=location)
+    
+    context = {
+        'form': form,
+        'location': location,
+        'action': 'Edit',
+    }
+    return render(request, 'admin_interface/location_form.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def location_delete(request, location_id):
+    """Delete a location."""
+    from programs.models import Location
+    location = get_object_or_404(Location, id=location_id)
+    
+    if request.method == 'POST':
+        name = location.name
+        location.delete()
+        messages.success(request, f"Location '{name}' deleted successfully!")
+        return redirect('admin_interface:location_management')
+    
+    context = {
+        'location': location,
+    }
+    return render(request, 'admin_interface/location_confirm_delete.html', context)
+
+
 @login_required
 @role_required(['Admin'])
 def buildout_management(request):
@@ -827,15 +1018,44 @@ def buildout_detail(request, buildout_id):
         yearly_cost = base_cost_assignment.calculate_yearly_cost()
         total_base_costs += yearly_cost
         
+        # Calculate cost per program for Excel-like display
+        cost_per_program = yearly_cost / buildout.num_programs_per_year if buildout.num_programs_per_year > 0 else 0
+        
         base_costs_data.append({
             'base_cost': base_cost_assignment.base_cost,
+            'assignment': base_cost_assignment,
+            'rate': base_cost_assignment.rate if hasattr(base_cost_assignment, 'rate') and base_cost_assignment.rate else base_cost_assignment.base_cost.rate,
+            'frequency': base_cost_assignment.frequency if hasattr(base_cost_assignment, 'frequency') and base_cost_assignment.frequency else base_cost_assignment.base_cost.frequency,
             'multiplier': base_cost_assignment.multiplier,
+            'cost_per_program': cost_per_program,
             'yearly_cost': yearly_cost,
             'percentage': (yearly_cost / total_revenue * 100) if total_revenue > 0 else 0
         })
     
-    # Calculate total costs including base costs
-    total_all_costs = total_payouts + total_base_costs
+    # Calculate location costs
+    location_costs_data = []
+    total_location_costs = 0
+    for location_assignment in buildout.location_assignments.all():
+        yearly_cost = location_assignment.calculate_yearly_cost()
+        total_location_costs += yearly_cost
+        
+        # Calculate cost per program for Excel-like display
+        cost_per_program = yearly_cost / buildout.num_programs_per_year if buildout.num_programs_per_year > 0 else 0
+        
+        location_costs_data.append({
+            'location': location_assignment.location,
+            'assignment': location_assignment,
+            'rate': location_assignment.rate if hasattr(location_assignment, 'rate') and location_assignment.rate else location_assignment.location.default_rate,
+            'frequency': location_assignment.frequency if hasattr(location_assignment, 'frequency') and location_assignment.frequency else location_assignment.location.default_frequency,
+            'multiplier': location_assignment.multiplier,
+            'cost_per_program': cost_per_program,
+            'yearly_cost': yearly_cost,
+            'percentage': (yearly_cost / total_revenue * 100) if total_revenue > 0 else 0
+        })
+    
+    # Calculate total costs including base costs and location costs
+    total_overhead_costs = total_base_costs + total_location_costs
+    total_all_costs = total_payouts + total_overhead_costs
     total_profit = total_revenue - total_all_costs
     total_profit_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
     
@@ -850,11 +1070,14 @@ def buildout_detail(request, buildout_id):
         'total_revenue': total_revenue,
         'total_payouts': total_payouts,
         'total_base_costs': total_base_costs,
+        'total_location_costs': total_location_costs,
+        'total_overhead_costs': total_overhead_costs,
         'total_all_costs': total_all_costs,
         'total_profit': total_profit,
         'total_profit_margin': total_profit_margin,
         'roles_data': roles_data,
         'base_costs_data': base_costs_data,
+        'location_costs_data': location_costs_data,
     }
     return render(request, 'admin_interface/buildout_detail.html', context)
 
@@ -867,20 +1090,16 @@ def buildout_edit(request, buildout_id):
     
     if request.method == 'POST':
         form = ProgramBuildoutForm(request.POST, instance=buildout)
-        cost_formset = BuildoutBaseCostAssignmentFormSet(request.POST, instance=buildout)
         
-        if form.is_valid() and cost_formset.is_valid():
+        if form.is_valid():
             buildout = form.save()
-            cost_formset.save()
             messages.success(request, f"Buildout '{buildout.title}' updated successfully!")
             return redirect('admin_interface:buildout_detail', buildout_id=buildout.id)
     else:
         form = ProgramBuildoutForm(instance=buildout)
-        cost_formset = BuildoutBaseCostAssignmentFormSet(instance=buildout)
     
     context = {
         'form': form,
-        'cost_formset': cost_formset,
         'buildout': buildout,
         'action': 'Edit',
     }
@@ -1264,10 +1483,23 @@ def buildout_manage_responsibilities(request, buildout_id):
                 responsibility_id = key.split('_')[1]
                 try:
                     responsibility = Responsibility.objects.get(id=responsibility_id)
-                    new_hours = Decimal(value)
+                    
+                    # Safely convert hours to Decimal
+                    hours_str = value.strip()
+                    if not hours_str or hours_str == '':
+                        hours_str = '0.00'
+                    try:
+                        new_hours = Decimal(hours_str)
+                    except (ValueError, decimal.InvalidOperation):
+                        messages.error(request, f"Invalid hours value for responsibility '{responsibility.name}'. Skipping update.")
+                        continue
+                    
                     if new_hours >= 0:
                         responsibility.default_hours = new_hours
                         responsibility.save()
+                    else:
+                        messages.error(request, f"Hours value for responsibility '{responsibility.name}' must be non-negative. Skipping update.")
+                        
                 except (Responsibility.DoesNotExist, ValueError):
                     continue
         
@@ -1294,79 +1526,287 @@ def buildout_manage_responsibilities(request, buildout_id):
 
 @login_required
 @role_required(['Admin'])
-def buildout_assign_roles(request, buildout_id):
-    """Assign roles to a buildout with contractor selection."""
+def buildout_manage_roles(request, buildout_id):
+    """Manage buildout role assignments with individual add/remove actions."""
     buildout = get_object_or_404(ProgramBuildout, id=buildout_id)
     
     if request.method == 'POST':
-        # Get selected roles
-        selected_roles = request.POST.getlist('roles')
+        action = request.POST.get('action')
+        role_id = request.POST.get('role_id')
+        contractor_id = request.POST.get('contractor_id')
         
-        if not selected_roles:
-            messages.error(request, "No roles were selected. Please select at least one role.")
-            return redirect('admin_interface:buildout_assign_roles', buildout_id=buildout_id)
-        
-        # Clear existing role lines and responsibility lines
-        buildout.role_lines.all().delete()
-        buildout.responsibility_lines.all().delete()
-        
-        # Add selected roles with contractors
-        for role_id in selected_roles:
+        if action and role_id and contractor_id:
             try:
                 role = Role.objects.get(id=role_id)
+                contractor = User.objects.get(id=contractor_id)
                 
-                # Get contractor for this role
-                contractor_id = request.POST.get(f'contractors_{role_id}')
-                if contractor_id:
-                    contractor = User.objects.get(id=contractor_id)
-                else:
-                    # Skip this role if no contractor selected
-                    continue
-                
-                # Get pay overrides for this role
-                pay_type = request.POST.get(f'pay_type_{role_id}', 'HOURLY')
-                pay_value = Decimal(request.POST.get(f'pay_value_{role_id}', '0.00'))
-                hours_per_frequency = Decimal(request.POST.get(f'hours_{role_id}', str(role.default_hours_per_frequency)))
-                
-                # Create role line with overrides
-                role_line = BuildoutRoleLine.objects.create(
-                    buildout=buildout,
-                    role=role,
-                    contractor=contractor,
-                    pay_type=pay_type,
-                    pay_value=pay_value,
-                    frequency_unit=role.default_frequency_unit,
-                    frequency_count=1,
-                    hours_per_frequency=hours_per_frequency
-                )
-                
-                # Create responsibility lines for this role
-                for responsibility in role.responsibilities.all():
-                    BuildoutResponsibilityLine.objects.create(
+                if action == 'add':
+                    # Check if this role-contractor combination already exists
+                    existing_assignment = BuildoutRoleLine.objects.filter(
                         buildout=buildout,
-                        responsibility=responsibility,
-                        hours=responsibility.default_hours
-                    )
-                
-            except (Role.DoesNotExist, User.DoesNotExist, ValueError) as e:
-                continue
+                        role=role,
+                        contractor=contractor
+                    ).first()
+                    
+                    if existing_assignment:
+                        messages.info(request, f"{contractor.get_full_name() or contractor.email} is already assigned to {role.title} for this buildout.")
+                    else:
+                        # Get pay overrides from form or use defaults
+                        pay_type = request.POST.get('pay_type', 'HOURLY')
+                        pay_value_str = request.POST.get('pay_value', '0.00').strip()
+                        if not pay_value_str or pay_value_str == '':
+                            pay_value_str = '0.00'
+                        try:
+                            pay_value = Decimal(pay_value_str)
+                        except (ValueError, decimal.InvalidOperation):
+                            pay_value = Decimal('0.00')
+                        
+                        hours_str = request.POST.get('hours', str(role.default_hours_per_frequency)).strip()
+                        if not hours_str or hours_str == '':
+                            hours_str = str(role.default_hours_per_frequency)
+                        try:
+                            hours_per_frequency = Decimal(hours_str)
+                        except (ValueError, decimal.InvalidOperation):
+                            hours_per_frequency = Decimal(str(role.default_hours_per_frequency))
+                        
+                        # Create role line with overrides
+                        role_line = BuildoutRoleLine.objects.create(
+                            buildout=buildout,
+                            role=role,
+                            contractor=contractor,
+                            pay_type=pay_type,
+                            pay_value=pay_value,
+                            frequency_unit=role.default_frequency_unit,
+                            frequency_count=1,
+                            hours_per_frequency=hours_per_frequency
+                        )
+                        
+                        # Create responsibility lines for this role if they don't exist
+                        for responsibility in role.responsibilities.all():
+                            if not BuildoutResponsibilityLine.objects.filter(
+                                buildout=buildout,
+                                responsibility=responsibility
+                            ).exists():
+                                BuildoutResponsibilityLine.objects.create(
+                                    buildout=buildout,
+                                    responsibility=responsibility,
+                                    hours=responsibility.default_hours
+                                )
+                        
+                        messages.success(request, f"Added {contractor.get_full_name() or contractor.email} to {role.title} for this buildout.")
+                        
+                elif action == 'remove':
+                    deleted_count = BuildoutRoleLine.objects.filter(
+                        buildout=buildout,
+                        role=role,
+                        contractor=contractor
+                    ).delete()[0]
+                    
+                    if deleted_count > 0:
+                        messages.success(request, f"Removed {contractor.get_full_name() or contractor.email} from {role.title} for this buildout.")
+                    else:
+                        messages.warning(request, f"{contractor.get_full_name() or contractor.email} was not assigned to {role.title} for this buildout.")
+                        
+            except (Role.DoesNotExist, User.DoesNotExist) as e:
+                messages.error(request, "Invalid role or contractor selected.")
         
-        messages.success(request, f"Assigned {len(selected_roles)} roles to buildout with contractors.")
-        return redirect('admin_interface:buildout_detail', buildout_id=buildout.id)
+        return redirect('admin_interface:buildout_manage_roles', buildout_id=buildout.id)
     
-    # Get all available roles and contractors
+    # Get assigned role lines
+    assigned_role_lines = buildout.role_lines.select_related('role', 'contractor').all()
+    
+    # Get all available roles
     all_roles = Role.objects.all().order_by('title')
-    assigned_roles = [role_line.role for role_line in buildout.role_lines.all()]
-    contractors = User.objects.filter(groups__name__in=['Contractor', 'Admin']).order_by('email')
+    
+    # Get available contractors for each role
+    contractors_by_role = {}
+    for role in all_roles:
+        contractors_by_role[role.id] = role.get_assigned_contractors()
     
     context = {
         'buildout': buildout,
+        'assigned_role_lines': assigned_role_lines,
         'all_roles': all_roles,
-        'assigned_roles': assigned_roles,
-        'contractors': contractors,
+        'contractors_by_role': contractors_by_role,
     }
     
-    return render(request, 'admin_interface/buildout_assign_roles.html', context)
+    return render(request, 'admin_interface/buildout_manage_roles.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def buildout_assign_roles(request, buildout_id):
+    """Legacy view - redirect to new manage roles view."""
+    return redirect('admin_interface:buildout_manage_roles', buildout_id=buildout_id)
+
+
+@login_required
+@role_required(['Admin'])
+def buildout_assign_costs(request, buildout_id):
+    """Assign costs to a buildout with rate and frequency configuration."""
+    buildout = get_object_or_404(ProgramBuildout, id=buildout_id)
+    
+    if request.method == 'POST':
+        # Get selected costs
+        selected_costs = request.POST.getlist('costs')
+        
+        if not selected_costs:
+            messages.error(request, "No costs were selected. Please select at least one cost.")
+            return redirect('admin_interface:buildout_assign_costs', buildout_id=buildout_id)
+        
+        # Clear existing cost assignments
+        buildout.base_cost_assignments.all().delete()
+        
+        # Add selected costs
+        for cost_id in selected_costs:
+            try:
+                base_cost = BaseCost.objects.get(id=cost_id)
+                
+                # Get rate and frequency for this cost
+                # Safely convert rate to Decimal
+                rate_str = request.POST.get(f'rate_{cost_id}', str(base_cost.rate)).strip()
+                if not rate_str or rate_str == '':
+                    rate_str = str(base_cost.rate)
+                try:
+                    rate = Decimal(rate_str)
+                except (ValueError, decimal.InvalidOperation):
+                    messages.error(request, f"Invalid rate value for cost '{base_cost.name}'. Using default rate.")
+                    rate = base_cost.rate
+                
+                frequency = request.POST.get(f'frequency_{cost_id}', base_cost.frequency)
+                
+                # Safely convert multiplier to Decimal
+                multiplier_str = request.POST.get(f'multiplier_{cost_id}', '1.00').strip()
+                if not multiplier_str or multiplier_str == '':
+                    multiplier_str = '1.00'
+                try:
+                    multiplier = Decimal(multiplier_str)
+                except (ValueError, decimal.InvalidOperation):
+                    messages.error(request, f"Invalid multiplier value for cost '{base_cost.name}'. Using default multiplier.")
+                    multiplier = Decimal('1.00')
+                
+                # Create cost assignment
+                BuildoutBaseCostAssignment.objects.create(
+                    buildout=buildout,
+                    base_cost=base_cost,
+                    rate=rate,
+                    frequency=frequency,
+                    multiplier=multiplier
+                )
+                
+            except (BaseCost.DoesNotExist, ValueError) as e:
+                continue
+        
+        messages.success(request, f"Assigned {len(selected_costs)} costs to buildout.")
+        return redirect('admin_interface:buildout_detail', buildout_id=buildout.id)
+    
+    # Get all available costs
+    all_costs = BaseCost.objects.all().order_by('name')
+    assigned_costs = [assignment.base_cost for assignment in buildout.base_cost_assignments.all()]
+    
+    context = {
+        'buildout': buildout,
+        'all_costs': all_costs,
+        'assigned_costs': assigned_costs,
+    }
+    
+    return render(request, 'admin_interface/buildout_assign_costs.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def buildout_manage_locations(request, buildout_id):
+    """Manage buildout location assignments with individual add/remove actions."""
+    buildout = get_object_or_404(ProgramBuildout, id=buildout_id)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        location_id = request.POST.get('location_id')
+        
+        if action and location_id:
+            try:
+                location = Location.objects.get(id=location_id)
+                
+                if action == 'add':
+                    # Check if this location is already assigned
+                    existing_assignment = BuildoutLocationAssignment.objects.filter(
+                        buildout=buildout,
+                        location=location
+                    ).first()
+                    
+                    if existing_assignment:
+                        messages.info(request, f"{location.name} is already assigned to this buildout.")
+                    else:
+                        # Get rate and frequency from form or use defaults
+                        rate_str = request.POST.get('rate', str(location.default_rate)).strip()
+                        if not rate_str or rate_str == '':
+                            rate_str = str(location.default_rate)
+                        try:
+                            rate = Decimal(rate_str)
+                        except (ValueError, decimal.InvalidOperation):
+                            rate = location.default_rate
+                        
+                        frequency = request.POST.get('frequency', location.default_frequency)
+                        
+                        multiplier_str = request.POST.get('multiplier', '1.00').strip()
+                        if not multiplier_str or multiplier_str == '':
+                            multiplier_str = '1.00'
+                        try:
+                            multiplier = Decimal(multiplier_str)
+                        except (ValueError, decimal.InvalidOperation):
+                            multiplier = Decimal('1.00')
+                        
+                        # Create location assignment
+                        BuildoutLocationAssignment.objects.create(
+                            buildout=buildout,
+                            location=location,
+                            rate=rate,
+                            frequency=frequency,
+                            multiplier=multiplier
+                        )
+                        
+                        messages.success(request, f"Added {location.name} to this buildout.")
+                        
+                elif action == 'remove':
+                    deleted_count = BuildoutLocationAssignment.objects.filter(
+                        buildout=buildout,
+                        location=location
+                    ).delete()[0]
+                    
+                    if deleted_count > 0:
+                        messages.success(request, f"Removed {location.name} from this buildout.")
+                    else:
+                        messages.warning(request, f"{location.name} was not assigned to this buildout.")
+                        
+            except Location.DoesNotExist:
+                messages.error(request, "Invalid location selected.")
+        
+        return redirect('admin_interface:buildout_manage_locations', buildout_id=buildout.id)
+    
+    # Get assigned location assignments
+    assigned_location_assignments = buildout.location_assignments.select_related('location').all()
+    
+    # Get all available locations
+    all_locations = Location.objects.all().order_by('name')
+    
+    # Get unassigned locations
+    assigned_location_ids = set(assigned_location_assignments.values_list('location_id', flat=True))
+    unassigned_locations = all_locations.exclude(id__in=assigned_location_ids)
+    
+    context = {
+        'buildout': buildout,
+        'assigned_location_assignments': assigned_location_assignments,
+        'unassigned_locations': unassigned_locations,
+    }
+    
+    return render(request, 'admin_interface/buildout_manage_locations.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def buildout_assign_locations(request, buildout_id):
+    """Legacy view - redirect to new manage locations view."""
+    return redirect('admin_interface:buildout_manage_locations', buildout_id=buildout_id)
 
 
 @login_required
@@ -1630,3 +2070,212 @@ def program_instance_delete(request, instance_id):
         'instance': instance,
     }
     return render(request, 'admin_interface/program_instance_confirm_delete.html', context)
+
+
+# ============================================================================
+# NDA AND W-9 MANAGEMENT
+# ============================================================================
+
+@login_required
+@role_required(['Admin'])
+def contractor_document_management(request):
+    """Contractor document management interface for NDA and W-9."""
+    contractors = Contractor.objects.select_related('user', 'nda_signature').all()
+    
+    # Search functionality
+    search = request.GET.get('search', '')
+    if search:
+        contractors = contractors.filter(
+            Q(user__email__icontains=search) |
+            Q(user__first_name__icontains=search) |
+            Q(user__last_name__icontains=search)
+        )
+    
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'nda_pending':
+        contractors = contractors.filter(nda_signed=True, nda_approved=False)
+    elif status_filter == 'w9_pending':
+        contractors = contractors.filter(w9_file__isnull=False, w9_approved=False)
+    elif status_filter == 'both_pending':
+        contractors = contractors.filter(
+            Q(nda_signed=True, nda_approved=False) | 
+            Q(w9_file__isnull=False, w9_approved=False)
+        )
+    elif status_filter == 'approved':
+        contractors = contractors.filter(nda_approved=True, w9_approved=True)
+    
+    # Pagination
+    paginator = Paginator(contractors, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'search': search,
+        'status_filter': status_filter,
+    }
+    
+    return render(request, 'admin_interface/contractor_document_management.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def contractor_document_detail(request, contractor_id):
+    """View contractor document details including NDA signature and W-9."""
+    contractor = get_object_or_404(Contractor, id=contractor_id)
+    
+    # Get NDA signature if it exists
+    nda_signature = None
+    if hasattr(contractor, 'nda_signature'):
+        nda_signature = contractor.nda_signature
+    
+    context = {
+        'contractor': contractor,
+        'nda_signature': nda_signature,
+    }
+    
+    return render(request, 'admin_interface/contractor_document_detail.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def approve_nda(request, contractor_id):
+    """Approve contractor NDA signature."""
+    contractor = get_object_or_404(Contractor, id=contractor_id)
+    
+    if not contractor.nda_signed:
+        messages.error(request, "Contractor has not signed the NDA yet.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+    
+    if contractor.nda_approved:
+        messages.info(request, "NDA is already approved.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+    
+    contractor.nda_approved = True
+    contractor.nda_approved_by = request.user
+    contractor.nda_approved_at = timezone.now()
+    contractor.save()
+    
+    messages.success(request, f"NDA approved for {contractor.user.get_full_name() or contractor.user.email}")
+    return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+
+
+@login_required
+@role_required(['Admin'])
+def approve_w9(request, contractor_id):
+    """Approve contractor W-9 document."""
+    contractor = get_object_or_404(Contractor, id=contractor_id)
+    
+    if not contractor.w9_file:
+        messages.error(request, "Contractor has not uploaded W-9 yet.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+    
+    if contractor.w9_approved:
+        messages.info(request, "W-9 is already approved.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+    
+    contractor.w9_approved = True
+    contractor.w9_approved_by = request.user
+    contractor.w9_approved_at = timezone.now()
+    contractor.save()
+    
+    messages.success(request, f"W-9 approved for {contractor.user.get_full_name() or contractor.user.email}")
+    return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+
+
+@login_required
+@role_required(['Admin'])
+def reset_nda(request, contractor_id):
+    """Reset contractor NDA status (requires re-signing)."""
+    contractor = get_object_or_404(Contractor, id=contractor_id)
+    
+    if request.method == 'POST':
+        contractor.nda_signed = False
+        contractor.nda_approved = False
+        contractor.nda_approved_by = None
+        contractor.nda_approved_at = None
+        contractor.save()
+        
+        # Delete the NDA signature record
+        if hasattr(contractor, 'nda_signature'):
+            contractor.nda_signature.delete()
+        
+        messages.success(request, f"NDA status reset for {contractor.user.get_full_name() or contractor.user.email}. They will need to sign again.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+    
+    context = {
+        'contractor': contractor,
+        'document_type': 'NDA',
+    }
+    
+    return render(request, 'admin_interface/contractor_document_reset_confirm.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def reset_w9(request, contractor_id):
+    """Reset contractor W-9 status (requires re-uploading)."""
+    contractor = get_object_or_404(Contractor, id=contractor_id)
+    
+    if request.method == 'POST':
+        contractor.w9_file = None
+        contractor.w9_approved = False
+        contractor.w9_approved_by = None
+        contractor.w9_approved_at = None
+        contractor.save()
+        
+        messages.success(request, f"W-9 status reset for {contractor.user.get_full_name() or contractor.user.email}. They will need to upload again.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+    
+    context = {
+        'contractor': contractor,
+        'document_type': 'W-9',
+    }
+    
+    return render(request, 'admin_interface/contractor_document_reset_confirm.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def view_nda_signature(request, contractor_id):
+    """View NDA signature image."""
+    contractor = get_object_or_404(Contractor, id=contractor_id)
+    
+    if not hasattr(contractor, 'nda_signature'):
+        messages.error(request, "No NDA signature found for this contractor.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+    
+    nda_signature = contractor.nda_signature
+    
+    context = {
+        'contractor': contractor,
+        'nda_signature': nda_signature,
+    }
+    
+    return render(request, 'admin_interface/view_nda_signature.html', context)
+
+
+@login_required
+@role_required(['Admin'])
+def download_w9(request, contractor_id):
+    """Download contractor W-9 file."""
+    contractor = get_object_or_404(Contractor, id=contractor_id)
+    
+    if not contractor.w9_file:
+        messages.error(request, "No W-9 file found for this contractor.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)
+    
+    from django.http import FileResponse
+    from django.conf import settings
+    import os
+    
+    file_path = os.path.join(settings.MEDIA_ROOT, contractor.w9_file.name)
+    
+    if os.path.exists(file_path):
+        response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="w9_{contractor.user.email}_{contractor.id}.pdf"'
+        return response
+    else:
+        messages.error(request, "W-9 file not found on server.")
+        return redirect('admin_interface:contractor_document_detail', contractor_id=contractor.id)

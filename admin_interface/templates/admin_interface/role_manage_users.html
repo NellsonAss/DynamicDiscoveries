@@ -13,49 +13,111 @@
                 </a>
             </div>
             
-            <div class="admin-card">
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="mb-4">
-                            <h6>Select users for this role:</h6>
-                            <div class="row">
-                                {% for user in all_users %}
-                                    <div class="col-md-6 col-lg-4 mb-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                   name="users" value="{{ user.id }}" 
-                                                   id="user_{{ user.id }}"
-                                                   {% if user in selected_users %}checked{% endif %}>
-                                            <label class="form-check-label" for="user_{{ user.id }}">
-                                                <strong>{{ user.get_full_name|default:user.username }}</strong>
-                                                <br>
-                                                <small class="text-muted">{{ user.email }}</small>
-                                                <br>
-                                                <small class="text-{% if user.is_active %}success{% else %}secondary{% endif %}">
-                                                    {% if user.is_active %}Active{% else %}Inactive{% endif %}
-                                                </small>
-                                            </label>
-                                        </div>
-                                    </div>
-                                {% empty %}
-                                    <div class="col-12">
-                                        <p class="text-muted">No users available.</p>
-                                    </div>
+            <!-- Currently Assigned Users -->
+            {% if selected_users %}
+            <div class="admin-card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people-fill me-2"></i>Currently Assigned Users
+                        <span class="badge bg-light text-success ms-2">{{ selected_users.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in selected_users %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ user.get_full_name|default:user.username }}</strong>
+                                    </td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if user.is_active %}success{% else %}secondary{% endif %}">
+                                            {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form method="post" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="remove">
+                                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                    onclick="return confirm('Remove {{ user.get_full_name|default:user.username }} from this role?')">
+                                                <i class="bi bi-person-dash me-1"></i>Remove
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
                                 {% endfor %}
-                            </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Available Users to Add -->
+            <div class="admin-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-plus me-2"></i>Available Users to Add
+                        <span class="badge bg-light text-primary ms-2">{{ unassigned_users.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if unassigned_users %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in unassigned_users %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ user.get_full_name|default:user.username }}</strong>
+                                        </td>
+                                        <td>{{ user.email }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if user.is_active %}success{% else %}secondary{% endif %}">
+                                                {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <form method="post" style="display: inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="add">
+                                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                <button type="submit" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-person-plus me-1"></i>Add to Role
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
-                        
-                        <div class="d-flex justify-content-between">
-                            <a href="{% url 'admin_interface:role_detail' role.id %}" class="btn btn-outline-secondary">
-                                Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle me-1"></i>Update Users
-                            </button>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                            <h6 class="text-muted mt-3">All users are already assigned to this role</h6>
                         </div>
-                    </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
