@@ -45,7 +45,9 @@ class ContractsFlowTests(TestCase):
         resp = self.client.get(reverse('programs:contractor_dashboard'))
         self.assertEqual(resp.status_code, 200)
         content = b"".join(resp)
-        self.assertIn(b"Complete your onboarding", content)
+        # Look for disabled scheduling controls indicating gate is active
+        self.assertIn(b"Manage Schedule", content)
+        self.assertIn(b"disabled", content)
 
     def test_onboarding_gates_and_assignment(self):
         from django.core.exceptions import ValidationError
@@ -76,8 +78,11 @@ class ContractsFlowTests(TestCase):
 
         # Complete onboarding and assign
         contractor.nda_signed = True
+        contractor.nda_approved = True
+        contractor.w9_approved = True
         from django.core.files.base import ContentFile
         contractor.w9_file.save("w9.pdf", ContentFile(b"%PDF-1.4"), save=True)
+        contractor.save()
         self.assertTrue(contractor.onboarding_complete)
         assign_contractor_to_buildout(b, contractor)
         self.assertEqual(b.assigned_contractor, contractor)

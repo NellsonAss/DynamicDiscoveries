@@ -199,7 +199,7 @@
       "status": "implemented"
     },
     {
-      "id": "REQ-019",
+      "id": "REQ-094",
       "title": "Buildout Form Field Validation",
       "description": "Fixed buildout creation form to include all required fields (program_type, title, num_facilitators, num_new_facilitators, workshops_per_facilitator_per_year, students_per_workshop, sessions_per_workshop, new_workshop_concepts_per_year) with proper validation and styling",
       "status": "implemented"
@@ -223,13 +223,13 @@
       "status": "implemented"
     },
     {
-      "id": "REQ-017",
+      "id": "REQ-092",
       "title": "Registration Management System",
       "description": "Child registration system with form responses, status tracking, and parent dashboard",
       "status": "implemented"
     },
     {
-      "id": "REQ-018",
+      "id": "REQ-093",
       "title": "Program Management Data Model Refactoring",
       "description": "Refactored program management data model to implement clean architecture with ProgramType (name/description only), Role (reusable with default responsibilities), Responsibility (frequency-based with hours), ProgramBuildout (versioning with computed properties), BaseCost (frequency-based costs), and ProgramInstance (contractor assignments with actual enrollment calculations). Replaced old ProgramRole system with new Responsibility structure.",
       "status": "implemented"
@@ -319,7 +319,7 @@
       "status": "implemented"
     },
     {
-      "id": "REQ-036",
+      "id": "REQ-095",
       "title": "Responsibility Edit and Delete Functionality",
       "description": "Admin interface for editing and deleting responsibilities within roles. Includes edit form with pre-populated data, delete confirmation page, and proper navigation back to responsibility management. Edit functionality allows updating responsibility name, description, frequency type, and default hours. Delete functionality includes confirmation dialog and proper cleanup.",
       "status": "implemented"
@@ -565,7 +565,7 @@
       "status": "implemented"
     },
     {
-      "id": "REQ-077",
+      "id": "REQ-096",
       "title": "Day Off Request Date Range Support",
       "description": "Enhanced ContractorDayOffRequest system to support date ranges instead of single dates. Updated model to use start_date and end_date fields, modified forms to show date range selection, updated templates to display date ranges, and created database migrations to preserve existing data. Contractors can now request time off for multiple consecutive days in a single request, improving efficiency for vacation and extended leave requests.",
       "status": "implemented"
@@ -677,11 +677,59 @@
       "title": "Test2",
       "description": "Test2",
       "status": "implemented"
+    },
+    {
+      "id": "REQ-982",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-981",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-980",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-979",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-978",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-977",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-976",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-975",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-01-27T12:30:00.000000",
+    "last_updated": "2025-09-30T01:12:23.986543",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

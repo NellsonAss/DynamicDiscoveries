@@ -29,10 +29,12 @@ class DashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'dashboard/partials/stats.html')
         
-        # Check that stats are in the response
-        self.assertIn('total_users', response.context)
-        self.assertIn('active_users', response.context)
-        self.assertIn('new_users_today', response.context)
+        # Check that stats keys are present in the stats context
+        self.assertIn('stats', response.context)
+        stats = response.context['stats']
+        self.assertIn('total_users', stats)
+        self.assertIn('active_users', stats)
+        self.assertIn('new_users_today', stats)
         
     def test_dashboard_stats_accuracy(self):
         """Test that dashboard stats reflect actual database counts."""

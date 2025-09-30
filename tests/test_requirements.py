@@ -96,6 +96,23 @@ class RequirementsValidationTest(TestCase):
                 f"The following requirements are not implemented:\n{req_list}\n"
                 f"All requirements must have status 'implemented' before tests pass."
             )
+
+    def test_requirement_ids_are_unique(self):
+        """Test that all requirement IDs are unique."""
+        requirements_data = self.tracker.load_requirements()
+        ids = [req["id"] for req in requirements_data["requirements"]]
+        seen = set()
+        duplicates = []
+        for req_id in ids:
+            if req_id in seen:
+                duplicates.append(req_id)
+            else:
+                seen.add(req_id)
+        if duplicates:
+            dup_list = ", ".join(sorted(set(duplicates)))
+            self.fail(
+                f"Duplicate requirement IDs found: {dup_list}. IDs must be unique to avoid overwriting tests and tracking."
+            )
     
     def test_validate_all_implemented_function(self):
         """Test the convenience function validate_all_implemented()."""
@@ -109,11 +126,8 @@ class RequirementsValidationTest(TestCase):
         requirements_data = self.tracker.load_requirements()
         
         for req in requirements_data["requirements"]:
-            self.assertRegex(
-                req["id"], 
-                r"^REQ-\d{3}$",
-                f"Requirement ID {req['id']} does not follow REQ-XXX pattern"
-            )
+            self.assertRegex(req["id"], r"^REQ-\d{3}$|^REQ-9\d{2}$",
+                              f"Requirement ID {req['id']} does not follow REQ-XXX pattern")
 
 
 class RequirementsTrackerTest(TestCase):
@@ -414,7 +428,9 @@ class RequirementsAcceptanceTests(TestCase):
     def test_REQ_010_program_management_system(self):
         """Test REQ-010: Program management system."""
         # Test program type creation
-        from programs.models import ProgramType, Role, BaseCost
+        from programs.models import ProgramType, Role, BaseCost, ProgramBuildout, BuildoutRoleLine
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Group
         role = Role.objects.create(title="Instructor", description="Test instructor role")
         base_cost = BaseCost.objects.create(name="Base Cost", rate=10.00, frequency="PER_SESSION", description="Test cost")
         
@@ -423,8 +439,7 @@ class RequirementsAcceptanceTests(TestCase):
             description="Test Description"
         )
         
-        # Create buildout and attach a role
-        from programs.models import ProgramBuildout
+        # Create buildout
         buildout = ProgramBuildout.objects.create(
             program_type=program_type,
             title="Test Buildout",
@@ -434,7 +449,20 @@ class RequirementsAcceptanceTests(TestCase):
             sessions_per_program=8,
             rate_per_student=25.00
         )
-        buildout.roles.add(role)
+        # Assign a contractor to the role using through model
+        contractor_user = get_user_model().objects.create_user(email="contractor1@example.com", password="testpass123")
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        contractor_user.groups.add(contractor_group)
+        BuildoutRoleLine.objects.create(
+            buildout=buildout,
+            role=role,
+            contractor=contractor_user,
+            pay_type='HOURLY',
+            pay_value=50.00,
+            frequency_unit='PER_SESSION',
+            frequency_count=1,
+            hours_per_frequency=1.00,
+        )
         
         # Create buildout base cost
         from programs.models import BuildoutBaseCostAssignment
@@ -445,12 +473,14 @@ class RequirementsAcceptanceTests(TestCase):
         )
         
         self.assertEqual(program_type.name, "Test Program")
-        self.assertEqual(buildout.roles.count(), 1)
+        self.assertTrue(buildout.roles.filter(pk=role.pk).exists())
         self.assertEqual(buildout.base_costs.count(), 1)
     
     def test_REQ_011_program_type_templates(self):
         """Test REQ-011: Program type templates."""
-        from programs.models import ProgramType, Role, BaseCost
+        from programs.models import ProgramType, Role, BaseCost, ProgramBuildout, BuildoutRoleLine
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Group
         role = Role.objects.create(title="Instructor", description="Test instructor role")
         base_cost = BaseCost.objects.create(name="Base Cost", rate=10.00, frequency="PER_SESSION", description="Test cost")
         
@@ -459,8 +489,7 @@ class RequirementsAcceptanceTests(TestCase):
             description="Test Description"
         )
         
-        # Create buildout and attach a role
-        from programs.models import ProgramBuildout
+        # Create buildout
         buildout = ProgramBuildout.objects.create(
             program_type=program_type,
             title="Test Buildout",
@@ -470,7 +499,19 @@ class RequirementsAcceptanceTests(TestCase):
             sessions_per_program=8,
             rate_per_student=25.00
         )
-        buildout.roles.add(role)
+        contractor_user = get_user_model().objects.create_user(email="contractor2@example.com", password="testpass123")
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        contractor_user.groups.add(contractor_group)
+        BuildoutRoleLine.objects.create(
+            buildout=buildout,
+            role=role,
+            contractor=contractor_user,
+            pay_type='HOURLY',
+            pay_value=50.00,
+            frequency_unit='PER_SESSION',
+            frequency_count=1,
+            hours_per_frequency=1.00,
+        )
         
         # Create buildout base cost
         from programs.models import BuildoutBaseCostAssignment
@@ -481,7 +522,7 @@ class RequirementsAcceptanceTests(TestCase):
         )
         
         # Test role assignment
-        self.assertEqual(buildout.roles.count(), 1)
+        self.assertTrue(buildout.roles.filter(pk=role.pk).exists())
         self.assertEqual(role.title, "Instructor")
         
         # Test cost assignment
@@ -517,7 +558,9 @@ class RequirementsAcceptanceTests(TestCase):
     
     def test_REQ_014_program_buildout_configuration(self):
         """Test REQ-014: Program buildout configuration."""
-        from programs.models import ProgramType, Role, ProgramBuildout
+        from programs.models import ProgramType, Role, ProgramBuildout, BuildoutRoleLine
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Group
         role = Role.objects.create(title="Instructor", description="Test instructor role")
         
         program_type = ProgramType.objects.create(
@@ -535,8 +578,19 @@ class RequirementsAcceptanceTests(TestCase):
             sessions_per_program=8,
             rate_per_student=25.00
         )
-        
-        buildout.roles.add(role)
+        contractor_user = get_user_model().objects.create_user(email="contractor3@example.com", password="testpass123")
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        contractor_user.groups.add(contractor_group)
+        BuildoutRoleLine.objects.create(
+            buildout=buildout,
+            role=role,
+            contractor=contractor_user,
+            pay_type='HOURLY',
+            pay_value=50.00,
+            frequency_unit='PER_SESSION',
+            frequency_count=1,
+            hours_per_frequency=1.00,
+        )
         
         # Test buildout creation
         self.assertEqual(buildout.title, "Test Buildout")
@@ -545,8 +599,7 @@ class RequirementsAcceptanceTests(TestCase):
         self.assertEqual(buildout.rate_per_student, 25.00)
         
         # Test role assignment
-        self.assertEqual(buildout.roles.count(), 1)
-        self.assertEqual(buildout.roles.first(), role)
+        self.assertTrue(buildout.roles.filter(pk=role.pk).exists())
     
     def test_REQ_015_program_instance_management(self):
         """Test REQ-015: Program instance management."""

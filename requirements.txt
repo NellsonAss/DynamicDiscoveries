@@ -11,3 +11,4 @@ django-otp-yubikey>=1.0.0  # For passwordless login
 azure-communication-email
 django-simple-captcha>=0.5.20
 requests>=2.31.0
+beautifulsoup4>=4.12.2
