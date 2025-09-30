@@ -434,7 +434,18 @@ class RequirementsAcceptanceTests(TestCase):
             sessions_per_program=8,
             rate_per_student=25.00
         )
-        buildout.roles.add(role)
+        # Create BuildoutRoleLine manually with required fields
+        from programs.models import BuildoutRoleLine
+        BuildoutRoleLine.objects.create(
+            buildout=buildout,
+            role=role,
+            contractor=self.admin_user,
+            pay_type='HOURLY',
+            pay_value=25.00,
+            frequency_unit='PER_SESSION',
+            frequency_count=1,
+            hours_per_frequency=2.0
+        )
         
         # Create buildout base cost
         from programs.models import BuildoutBaseCostAssignment
@@ -445,7 +456,7 @@ class RequirementsAcceptanceTests(TestCase):
         )
         
         self.assertEqual(program_type.name, "Test Program")
-        self.assertEqual(buildout.roles.count(), 1)
+        self.assertEqual(buildout.role_lines.count(), 1)
         self.assertEqual(buildout.base_costs.count(), 1)
     
     def test_REQ_011_program_type_templates(self):
@@ -470,7 +481,18 @@ class RequirementsAcceptanceTests(TestCase):
             sessions_per_program=8,
             rate_per_student=25.00
         )
-        buildout.roles.add(role)
+        # Create BuildoutRoleLine manually with required fields
+        from programs.models import BuildoutRoleLine
+        BuildoutRoleLine.objects.create(
+            buildout=buildout,
+            role=role,
+            contractor=self.admin_user,
+            pay_type='HOURLY',
+            pay_value=25.00,
+            frequency_unit='PER_SESSION',
+            frequency_count=1,
+            hours_per_frequency=2.0
+        )
         
         # Create buildout base cost
         from programs.models import BuildoutBaseCostAssignment
@@ -481,7 +503,7 @@ class RequirementsAcceptanceTests(TestCase):
         )
         
         # Test role assignment
-        self.assertEqual(buildout.roles.count(), 1)
+        self.assertEqual(buildout.role_lines.count(), 1)
         self.assertEqual(role.title, "Instructor")
         
         # Test cost assignment
@@ -536,7 +558,18 @@ class RequirementsAcceptanceTests(TestCase):
             rate_per_student=25.00
         )
         
-        buildout.roles.add(role)
+        # Create BuildoutRoleLine manually with required fields
+        from programs.models import BuildoutRoleLine
+        BuildoutRoleLine.objects.create(
+            buildout=buildout,
+            role=role,
+            contractor=self.admin_user,
+            pay_type='HOURLY',
+            pay_value=25.00,
+            frequency_unit='PER_SESSION',
+            frequency_count=1,
+            hours_per_frequency=2.0
+        )
         
         # Test buildout creation
         self.assertEqual(buildout.title, "Test Buildout")
@@ -545,8 +578,8 @@ class RequirementsAcceptanceTests(TestCase):
         self.assertEqual(buildout.rate_per_student, 25.00)
         
         # Test role assignment
-        self.assertEqual(buildout.roles.count(), 1)
-        self.assertEqual(buildout.roles.first(), role)
+        self.assertEqual(buildout.role_lines.count(), 1)
+        self.assertEqual(buildout.role_lines.first().role, role)
     
     def test_REQ_015_program_instance_management(self):
         """Test REQ-015: Program instance management."""

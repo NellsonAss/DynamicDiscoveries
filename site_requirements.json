@@ -677,11 +677,35 @@
       "title": "Test2",
       "description": "Test2",
       "status": "implemented"
+    },
+    {
+      "id": "REQ-982",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-981",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-980",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-979",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-01-27T12:30:00.000000",
+    "last_updated": "2025-09-30T01:12:20.132581",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }
