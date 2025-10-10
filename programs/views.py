@@ -276,11 +276,11 @@ def parent_dashboard_calendar_partial(request):
     start_datetime, end_datetime = get_month_bounds(year, month)
     
     # Base queryset: all non-archived, future/active availability
+    # that overlaps with the visible month
     availability_qs = ContractorAvailability.objects.filter(
         is_archived=False,
         end_datetime__gte=now,  # Hide past entries
-        start_datetime__lte=end_datetime,
-        end_datetime__gte=start_datetime
+        start_datetime__lte=end_datetime  # Within month bounds
     ).select_related('contractor').prefetch_related(
         'program_offerings__program_buildout__program_type'
     )
