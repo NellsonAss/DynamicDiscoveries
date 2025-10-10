@@ -1,0 +1,84 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-file-text me-2"></i>{{ action }} Form
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:form_management' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Forms
+        </a>
+    </div>
+</div>
+
+<div class="admin-card p-4">
+    <form method="post" action="{% if form_instance %}{% url 'admin_interface:form_edit' form_instance.id %}{% else %}{% url 'admin_interface:form_create' %}{% endif %}">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-8">
+                <h5 class="mb-3">
+                    <i class="bi bi-info-circle me-2"></i>Form Information
+                </h5>
+                
+                <div class="mb-3">
+                    <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
+                    {{ form.title }}
+                    {% if form.title.errors %}
+                        <div class="text-danger small">{{ form.title.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <div class="text-danger small">{{ form.description.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        {{ form.is_active }}
+                        <label for="{{ form.is_active.id_for_label }}" class="form-check-label">Active</label>
+                        {% if form.is_active.errors %}
+                            <div class="text-danger small">{{ form.is_active.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <h5 class="mb-3">
+                    <i class="bi bi-info-circle me-2"></i>Form Status
+                </h5>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Form Builder:</strong> After creating this form, you can add questions using the form builder interface.
+                </div>
+                
+                {% if form.instance.pk %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>Form ID:</strong> {{ form.instance.pk }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <hr class="my-4">
+        
+        <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'admin_interface:form_management' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x me-1"></i>Cancel
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check me-1"></i>{{ action }} Form
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,121 @@
+<!-- Calendar Month View -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-calendar"></i>
+            {{ calendar.month_name }} {{ calendar.year }}
+        </h5>
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-secondary"
+                    {% if view_type == 'contractor' %}
+                    hx-get="{% url 'programs:contractor_availability_calendar_partial' %}?year={{ prev_year }}&month={{ prev_month }}{% for id in program_buildout_ids %}&program_buildout_id={{ id }}{% endfor %}"
+                    {% else %}
+                    hx-get="{% url 'programs:parent_dashboard_calendar_partial' %}?year={{ prev_year }}&month={{ prev_month }}{% for id in facilitator_ids %}&facilitator_id={{ id }}{% endfor %}{% for id in program_type_ids %}&program_type_id={{ id }}{% endfor %}"
+                    {% endif %}
+                    hx-target="#calendar-container"
+                    hx-push-url="true">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button type="button" class="btn btn-outline-primary"
+                    {% if view_type == 'contractor' %}
+                    hx-get="{% url 'programs:contractor_availability_calendar_partial' %}?year={{ now.year }}&month={{ now.month }}{% for id in program_buildout_ids %}&program_buildout_id={{ id }}{% endfor %}"
+                    {% else %}
+                    hx-get="{% url 'programs:parent_dashboard_calendar_partial' %}?year={{ now.year }}&month={{ now.month }}{% for id in facilitator_ids %}&facilitator_id={{ id }}{% endfor %}{% for id in program_type_ids %}&program_type_id={{ id }}{% endfor %}"
+                    {% endif %}
+                    hx-target="#calendar-container"
+                    hx-push-url="true">
+                Today
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    {% if view_type == 'contractor' %}
+                    hx-get="{% url 'programs:contractor_availability_calendar_partial' %}?year={{ next_year }}&month={{ next_month }}{% for id in program_buildout_ids %}&program_buildout_id={{ id }}{% endfor %}"
+                    {% else %}
+                    hx-get="{% url 'programs:parent_dashboard_calendar_partial' %}?year={{ next_year }}&month={{ next_month }}{% for id in facilitator_ids %}&facilitator_id={{ id }}{% endfor %}{% for id in program_type_ids %}&program_type_id={{ id }}{% endfor %}"
+                    {% endif %}
+                    hx-target="#calendar-container"
+                    hx-push-url="true">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0 calendar-table">
+                <thead>
+                    <tr class="text-center">
+                        <th class="bg-light">Sun</th>
+                        <th class="bg-light">Mon</th>
+                        <th class="bg-light">Tue</th>
+                        <th class="bg-light">Wed</th>
+                        <th class="bg-light">Thu</th>
+                        <th class="bg-light">Fri</th>
+                        <th class="bg-light">Sat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in calendar.weeks %}
+                    <tr>
+                        {% for day in week.days %}
+                        <td class="calendar-day {% if day.is_today %}bg-info bg-opacity-10{% endif %} {% if not day.is_current_month %}text-muted{% endif %}" 
+                            style="vertical-align: top; height: 100px; min-width: 120px;">
+                            {% if day.day %}
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <span class="fw-bold {% if day.is_today %}text-primary{% endif %}">
+                                        {{ day.day }}
+                                    </span>
+                                </div>
+                                
+                                {% if day.availability %}
+                                    <div class="availability-chips">
+                                        {% for avail in day.availability %}
+                                            {% if view_type == 'contractor' %}
+                                                <!-- Contractor view: link to detail -->
+                                                <a href="{% url 'programs:contractor_availability_detail' avail.pk %}" 
+                                                   class="badge bg-primary text-white text-decoration-none d-block mb-1 text-start small"
+                                                   style="white-space: normal;">
+                                                    {{ avail.start_datetime|time:"g:iA" }}–{{ avail.end_datetime|time:"g:iA" }}
+                                                    {% if avail.program_offerings.all %}
+                                                        <br>{{ avail.program_offerings.all.0.program_buildout.title|truncatechars:25 }}
+                                                    {% endif %}
+                                                </a>
+                                            {% else %}
+                                                <!-- Parent view: show contractor name and link to detail -->
+                                                <a href="{% url 'programs:contractor_availability_detail' avail.pk %}" 
+                                                   class="badge bg-success text-white text-decoration-none d-block mb-1 text-start small"
+                                                   style="white-space: normal;">
+                                                    <span class="badge bg-warning text-dark">{{ avail.contractor.get_full_name|default:avail.contractor.email }}</span>
+                                                    <br>{{ avail.start_datetime|time:"g:iA" }}–{{ avail.end_datetime|time:"g:iA" }}
+                                                    {% if avail.program_offerings.all %}
+                                                        <br>{{ avail.program_offerings.all.0.program_buildout.title|truncatechars:20 }}
+                                                    {% endif %}
+                                                </a>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.calendar-table td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+}
+.calendar-day {
+    position: relative;
+}
+.availability-chips .badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.35rem;
+    line-height: 1.3;
+}
+</style>
+

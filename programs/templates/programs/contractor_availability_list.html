@@ -13,94 +13,100 @@
                 </a>
             </div>
 
-            {% if availability_slots %}
-                <div class="row">
-                    {% for slot in availability_slots %}
-                        <div class="col-md-6 col-lg-4 mb-4">
-                            <div class="card h-100">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <span class="fw-bold">{{ slot.start_datetime|date:"M d, Y" }}</span>
-                                    <span class="badge 
-                                        {% if slot.status == 'available' %}bg-success
-                                        {% elif slot.status == 'partially_booked' %}bg-warning
-                                        {% elif slot.status == 'fully_booked' %}bg-danger
-                                        {% else %}bg-secondary{% endif %}">
-                                        {{ slot.get_status_display }}
-                                    </span>
-                                </div>
-                                <div class="card-body">
-                                    <p class="mb-2">
-                                        <i class="fas fa-clock"></i>
-                                        {{ slot.start_datetime|time:"g:i A" }} - {{ slot.end_datetime|time:"g:i A" }}
-                                        <br>
-                                        <small class="text-muted">{{ slot.duration_hours }}h total</small>
-                                    </p>
-
-                                    {% if slot.program_offerings.all %}
-                                        <h6 class="fw-bold mb-2">Programs Offered:</h6>
-                                        <ul class="list-unstyled mb-2">
-                                            {% for offering in slot.program_offerings.all %}
-                                                <li class="mb-1">
-                                                    <small>
-                                                        <span class="badge bg-info">{{ offering.session_duration_hours }}h</span>
-                                                        {{ offering.program_buildout.title }}
-                                                        <br>
-                                                        <span class="text-muted">Max {{ offering.max_sessions }} session{{ offering.max_sessions|pluralize }}</span>
-                                                    </small>
-                                                </li>
-                                            {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <p class="text-muted mb-2">
-                                            <small>No programs assigned yet</small>
-                                        </p>
-                                    {% endif %}
-
-                                    {% if slot.remaining_hours > 0 %}
-                                        <p class="mb-2">
-                                            <small class="text-success">
-                                                <i class="fas fa-check-circle"></i>
-                                                {{ slot.remaining_hours }}h remaining
-                                            </small>
-                                        </p>
-                                    {% endif %}
-
-                                    {% if slot.notes %}
-                                        <p class="mb-2">
-                                            <small class="text-muted">
-                                                <i class="fas fa-sticky-note"></i>
-                                                {{ slot.notes|truncatechars:50 }}
-                                            </small>
-                                        </p>
-                                    {% endif %}
-                                </div>
-                                <div class="card-footer">
-                                    <a href="{% url 'programs:contractor_availability_detail' slot.pk %}" 
-                                       class="btn btn-sm btn-outline-primary">
-                                        View Details
-                                    </a>
-                                    <a href="{% url 'programs:contractor_availability_edit' slot.pk %}" 
-                                       class="btn btn-sm btn-outline-secondary">
-                                        Edit
-                                    </a>
+            <!-- Filters and Month Navigation -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form id="filter-form" hx-get="{% url 'programs:contractor_availability_list_partial' %}" 
+                          hx-target="#availability-list-container" hx-push-url="true">
+                        <div class="row align-items-end">
+                            <div class="col-md-4 mb-3">
+                                <label for="program-buildout-filter" class="form-label">Filter by Program</label>
+                                <select name="program_buildout_id" id="program-buildout-filter" class="form-select" multiple size="3">
+                                    {% for buildout in contractor_buildouts %}
+                                        <option value="{{ buildout.id }}" {% if buildout.id|stringformat:"s" in program_buildout_ids %}selected{% endif %}>
+                                            {{ buildout.title }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Month Navigation</label>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            hx-get="{% url 'programs:contractor_availability_calendar_partial' %}?year={{ calendar.prev_year|default:year }}&month={{ calendar.prev_month|default:month }}"
+                                            hx-target="#calendar-container"
+                                            hx-include="#filter-form"
+                                            hx-push-url="true">
+                                        <i class="fas fa-chevron-left"></i> Prev
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary"
+                                            hx-get="{% url 'programs:contractor_availability_calendar_partial' %}?year={{ now.year }}&month={{ now.month }}"
+                                            hx-target="#calendar-container"
+                                            hx-include="#filter-form"
+                                            hx-push-url="true">
+                                        Today
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            hx-get="{% url 'programs:contractor_availability_calendar_partial' %}?year={{ calendar.next_year|default:year }}&month={{ calendar.next_month|default:month }}"
+                                            hx-target="#calendar-container"
+                                            hx-include="#filter-form"
+                                            hx-push-url="true">
+                                        Next <i class="fas fa-chevron-right"></i>
+                                    </button>
                                 </div>
                             </div>
+                            
+                            <div class="col-md-2 mb-3">
+                                <button type="button" class="btn btn-secondary w-100" 
+                                        hx-get="{% url 'programs:contractor_availability_list_partial' %}"
+                                        hx-target="#availability-list-container"
+                                        hx-include="#filter-form"
+                                        hx-trigger="click, change from:#program-buildout-filter">
+                                    Apply Filters
+                                </button>
+                            </div>
                         </div>
-                    {% endfor %}
+                    </form>
                 </div>
-            {% else %}
-                <div class="text-center py-5">
-                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                    <h3 class="text-muted">No Availability Set</h3>
-                    <p class="text-muted mb-4">
-                        Set your availability to start offering programs to parents.
-                    </p>
-                    <a href="{% url 'programs:contractor_availability_create' %}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Set Your First Availability
-                    </a>
+            </div>
+
+            <!-- Two-column layout: List and Calendar -->
+            <div class="row">
+                <!-- List View -->
+                <div class="col-lg-5 mb-4">
+                    <div id="availability-list-container" 
+                         hx-get="{% url 'programs:contractor_availability_list_partial' %}?year={{ year }}&month={{ month }}{% for id in program_buildout_ids %}&program_buildout_id={{ id }}{% endfor %}" 
+                         hx-trigger="load"
+                         hx-swap="innerHTML">
+                        <!-- List will load here via HTMX -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            {% endif %}
+
+                <!-- Calendar View -->
+                <div class="col-lg-7 mb-4">
+                    <div id="calendar-container" 
+                         hx-get="{% url 'programs:contractor_availability_calendar_partial' %}?year={{ year }}&month={{ month }}{% for id in program_buildout_ids %}&program_buildout_id={{ id }}{% endfor %}" 
+                         hx-trigger="load"
+                         hx-swap="innerHTML">
+                        <!-- Calendar will load here via HTMX -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
 {% endblock %}

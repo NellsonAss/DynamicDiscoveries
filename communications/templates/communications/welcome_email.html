@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Dynamic Discoveries</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .verification-code {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 18px;
+            text-align: center;
+            margin: 20px 0;
+            border: 2px dashed #007bff;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            font-size: 14px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌟 Welcome to Dynamic Discoveries!</h1>
+    </div>
+    
+    <div class="content">
+        <h2>Hello {{ user.first_name|default:"there" }}!</h2>
+        
+        <p>Your account has been successfully created and your message has been sent to our team. We're excited to help you and your child discover new learning opportunities!</p>
+        
+        <h3>What's Next?</h3>
+        <p><strong>To access your account and view your messages, you must log in using our secure email verification process.</strong> Here's how:</p>
+        
+        <ol>
+            <li>Go to our <a href="{{ login_url }}">login page</a></li>
+            <li>Enter your email address: <strong>{{ user.email }}</strong></li>
+            <li>Solve the security captcha</li>
+            <li>We'll send you a verification code to complete the login process</li>
+            <li>Enter the verification code to access your account</li>
+        </ol>
+        
+        <div style="text-align: center;">
+            <a href="{{ login_url }}" class="button">Log In Now</a>
+        </div>
+        
+        <h3>Your Message</h3>
+        <p>Your message has been received and our team will respond within 24 hours. You can view the conversation and any responses by logging into your account.</p>
+        
+        <div class="footer">
+            <p><strong>Need Help?</strong><br>
+            If you have any questions or need assistance, please don't hesitate to contact us.</p>
+            
+            <p>Best regards,<br>
+            The Dynamic Discoveries Team</p>
+        </div>
+    </div>
+</body>
+</html>

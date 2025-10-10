@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Welcome, {{ parent_name }} - Parent Home{% endblock %}
+
+{% block content %}
+<style>
+@keyframes messagesPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
+        transform: scale(1);
+    }
+    25% {
+        box-shadow: 0 0 0 10px rgba(13, 110, 253, 0.2);
+        transform: scale(1.02);
+    }
+    50% {
+        box-shadow: 0 0 0 20px rgba(13, 110, 253, 0.1);
+        transform: scale(1.01);
+    }
+    75% {
+        box-shadow: 0 0 0 10px rgba(13, 110, 253, 0.2);
+        transform: scale(1.02);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+        transform: scale(1);
+    }
+}
+
+.messages-pulse {
+    animation: messagesPulse 2s ease-in-out;
+    border: 2px solid #0d6efd !important;
+}
+</style>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-2">Welcome, {{ parent_name }}</h1>
+            <p class="lead text-muted mb-4">Here's everything for your family at a glance.</p>
+        </div>
+    </div>
+
+    <!-- Section 1: Your Kids -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Your Kids</h5>
+            {% if children %}
+                <a href="{% url 'programs:manage_children' %}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus"></i> Add Another Child
+                </a>
+            {% endif %}
+        </div>
+        <div class="card-body" id="kids-section">
+            {% if children %}
+                <div class="row">
+                    {% for child in children %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ child.full_name }}</h6>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            Grade: {{ child.grade_level|default:"Not specified" }}
+                                        </small>
+                                    </p>
+                                    <div class="d-flex gap-1">
+                                        <a href="{% url 'programs:edit_child' child.pk %}" class="btn btn-outline-primary btn-sm">
+                                            View profile
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <h6>No kids on file yet</h6>
+                    <p class="text-muted">Add your child to get started.</p>
+                    <a href="{% url 'programs:manage_children' %}" class="btn btn-primary">
+                        <i class="bi bi-plus"></i> Add a Child
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 2: Messages -->
+    <div class="card mb-4" id="messages-section">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Your Messages</h5>
+            <div>
+                    <a href="{% url 'communications:parent_messages_compose' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> New Message
+                    </a>
+                <a href="{% url 'communications:parent_messages_list' %}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-list"></i> View All
+                </a>
+            </div>
+        </div>
+        <div class="card-body" id="messages-content">
+            {% if recent_conversations %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Subject</th>
+                                <th>Status</th>
+                                <th>Messages</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for conversation in recent_conversations %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'communications:parent_messages_detail' conversation.pk %}" 
+                                           class="text-decoration-none fw-bold">
+                                            {{ conversation.subject }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if conversation.status == 'open' %}
+                                            <span class="badge bg-success">Open</span>
+                                        {% elif conversation.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Closed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ conversation.message_count }}</span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ conversation.updated_at|timesince }} ago
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'communications:parent_messages_detail' conversation.pk %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3 text-center">
+                    <a href="{% url 'communications:parent_messages_list' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-arrow-right"></i> View All Messages
+                    </a>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">No messages yet</h6>
+                    <p class="text-muted mb-3">
+                        Have a question? Need help with programs? We're here to help!
+                    </p>
+                        <a href="{% url 'communications:parent_messages_compose' %}" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Send Your First Message
+                        </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 3: Current Sign-ups -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Current Sign-ups</h5>
+        </div>
+        <div class="card-body" id="signups-section">
+            {% if current_registrations %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Child</th>
+                                <th>Program</th>
+                                <th>Dates</th>
+                                <th>Sessions</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for registration in current_registrations %}
+                                <tr>
+                                    <td>{{ registration.child.full_name }}</td>
+                                    <td>{{ registration.program_instance.buildout.program_type.name }}</td>
+                                    <td>
+                                        {{ registration.program_instance.start_date|date:"M j" }} – 
+                                        {{ registration.program_instance.end_date|date:"M j, Y" }}
+                                    </td>
+                                    <td>{{ registration.program_instance.buildout.sessions_per_program }} sessions</td>
+                                    <td>
+                                        {% if registration.status == 'approved' %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% elif registration.status == 'pending' %}
+                                            <span class="badge bg-warning">Upcoming</span>
+                                        {% elif registration.status == 'waitlisted' %}
+                                            <span class="badge bg-info">Waitlisted</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ registration.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'programs:program_instance_detail' registration.program_instance.pk %}" class="btn btn-outline-primary btn-sm">
+                                            View details
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Not currently enrolled. Explore running programs below.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 3: Availability Calendar -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Available Sessions</h5>
+            <p class="mb-0 text-muted small">View facilitator availability and sign up for sessions</p>
+        </div>
+        <div class="card-body">
+            <!-- Filters -->
+            <form id="parent-calendar-filter-form">
+                <div class="row mb-3">
+                    <div class="col-md-5">
+                        <label for="facilitator-filter" class="form-label">Filter by Facilitator</label>
+                        <select name="facilitator_id" id="facilitator-filter" class="form-select" multiple size="3">
+                            {% for contractor in all_contractors %}
+                                <option value="{{ contractor.id }}" {% if contractor.id|stringformat:"s" in facilitator_ids %}selected{% endif %}>
+                                    {{ contractor.get_full_name|default:contractor.email }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
+                    <div class="col-md-5">
+                        <label for="program-type-filter" class="form-label">Filter by Program Type</label>
+                        <select name="program_type_id" id="program-type-filter" class="form-select" multiple size="3">
+                            {% for program_type in all_program_types %}
+                                <option value="{{ program_type.id }}" {% if program_type.id|stringformat:"s" in program_type_ids %}selected{% endif %}>
+                                    {{ program_type.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary w-100"
+                                hx-get="{% url 'programs:parent_dashboard_calendar_partial' %}"
+                                hx-target="#parent-calendar-container"
+                                hx-include="#parent-calendar-filter-form"
+                                hx-trigger="click, change from:#facilitator-filter, change from:#program-type-filter">
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Calendar Container -->
+            <div id="parent-calendar-container"
+                 hx-get="{% url 'programs:parent_dashboard_calendar_partial' %}?year={{ year }}&month={{ month }}{% for id in facilitator_ids %}&facilitator_id={{ id }}{% endfor %}{% for id in program_type_ids %}&program_type_id={{ id }}{% endfor %}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <!-- Calendar will load here via HTMX -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading calendar...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Available Programs to Inquire -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Available Programs to Inquire</h5>
+            {% if children %}
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="gradeFilter">
+                    <label class="form-check-label" for="gradeFilter">
+                        Match my kids' grades only
+                    </label>
+                </div>
+            {% endif %}
+        </div>
+        <div class="card-body" id="inquiry-section">
+            {% if available_program_types %}
+                <div class="row">
+                    {% for program_type in available_program_types %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 program-type-card" data-program-type-id="{{ program_type.id }}">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ program_type.name }}</h6>
+                                    {% if program_type.description %}
+                                        <p class="card-text">{{ program_type.description|truncatewords:20 }}</p>
+                                    {% endif %}
+                                    
+                                    <div class="inquiry-form-container">
+                                        <button class="btn btn-primary btn-sm inquiry-btn" data-program-type-id="{{ program_type.id }}">
+                                            Inquire
+                                        </button>
+                                        
+                                        <div class="inquiry-form d-none mt-3">
+                                            <form class="inquiry-form-element" data-program-type-id="{{ program_type.id }}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="program_type_id" value="{{ program_type.id }}">
+                                                
+                                                {% if children.count > 1 %}
+                                                    <div class="mb-2">
+                                                        <select name="child_id" class="form-select form-select-sm">
+                                                            <option value="">Choose a child</option>
+                                                            {% for child in children %}
+                                                                <option value="{{ child.id }}">{{ child.full_name }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                {% elif children.count == 1 %}
+                                                    <input type="hidden" name="child_id" value="{{ children.first.id }}">
+                                                {% endif %}
+                                                
+                                                <div class="mb-2">
+                                                    <textarea name="note" class="form-control form-control-sm" 
+                                                              rows="2" placeholder="Note (optional)"></textarea>
+                                                </div>
+                                                
+                                                <button type="submit" class="btn btn-success btn-sm">
+                                                    Send Inquiry
+                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-sm cancel-inquiry">
+                                                    Cancel
+                                                </button>
+                                            </form>
+                                        </div>
+                                        
+                                        <div class="inquiry-success d-none">
+                                            <div class="alert alert-success alert-sm mb-0">
+                                                <small class="success-message"></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">More programs are on the way.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Section 5: Facilitators -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Facilitators</h5>
+        </div>
+        <div class="card-body" id="facilitators-section">
+            {% if facilitators %}
+                <div class="row">
+                    {% for facilitator in facilitators %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ facilitator.get_full_name|default:facilitator.email }}</h6>
+                                    {% if facilitator.profile.bio %}
+                                        <p class="card-text">{{ facilitator.profile.bio|truncatewords:15 }}</p>
+                                    {% endif %}
+                                    
+                                    <button class="btn btn-outline-primary btn-sm toggle-programs" 
+                                            data-facilitator-id="{{ facilitator.id }}">
+                                        View programs
+                                    </button>
+                                    
+                                    <div class="facilitator-programs d-none mt-3" data-facilitator-id="{{ facilitator.id }}">
+                                        {% if facilitator.visible_program_types %}
+                                            <h6 class="small">Program Types:</h6>
+                                            <ul class="list-unstyled small">
+                                                {% for program_type in facilitator.visible_program_types %}
+                                                    <li>• {{ program_type.name }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                        
+                                        {% if facilitator.current_instances %}
+                                            <h6 class="small">Current Programs:</h6>
+                                            <ul class="list-unstyled small">
+                                                {% for instance in facilitator.current_instances %}
+                                                    <li>• {{ instance.buildout.program_type.name }} ({{ instance.start_date|date:"M j" }})</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">No facilitators to show yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inquiry form handling
+    document.querySelectorAll('.inquiry-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const programTypeId = this.dataset.programTypeId;
+            const card = this.closest('.program-type-card');
+            const form = card.querySelector('.inquiry-form');
+            const button = this;
+            
+            form.classList.remove('d-none');
+            button.style.display = 'none';
+        });
+    });
+    
+    document.querySelectorAll('.cancel-inquiry').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const card = this.closest('.program-type-card');
+            const form = card.querySelector('.inquiry-form');
+            const button = card.querySelector('.inquiry-btn');
+            
+            form.classList.add('d-none');
+            button.style.display = 'inline-block';
+        });
+    });
+    
+    document.querySelectorAll('.inquiry-form-element').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const card = this.closest('.program-type-card');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            
+            submitBtn.textContent = 'Sending...';
+            submitBtn.disabled = true;
+            
+            fetch('{% url "programs:send_program_inquiry" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const inquiryForm = card.querySelector('.inquiry-form');
+                    const successDiv = card.querySelector('.inquiry-success');
+                    const successMessage = successDiv.querySelector('.success-message');
+                    
+                    inquiryForm.classList.add('d-none');
+                    successMessage.textContent = data.message;
+                    successDiv.classList.remove('d-none');
+                } else {
+                    alert(data.error || 'Something went wrong. Please try again.');
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Something went wrong. Please try again.');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    });
+    
+    // Facilitator programs toggle
+    document.querySelectorAll('.toggle-programs').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const facilitatorId = this.dataset.facilitatorId;
+            const programsDiv = document.querySelector(`.facilitator-programs[data-facilitator-id="${facilitatorId}"]`);
+            
+            if (programsDiv.classList.contains('d-none')) {
+                programsDiv.classList.remove('d-none');
+                this.textContent = 'Hide programs';
+            } else {
+                programsDiv.classList.add('d-none');
+                this.textContent = 'View programs';
+            }
+        });
+    });
+    
+    // Grade filter (placeholder - would need grade data on program types to implement fully)
+    const gradeFilter = document.getElementById('gradeFilter');
+    if (gradeFilter) {
+        gradeFilter.addEventListener('change', function() {
+            // This would filter program types based on children's grades
+            // For now, just show/hide all program types
+            const programCards = document.querySelectorAll('.program-type-card');
+            programCards.forEach(card => {
+                if (this.checked) {
+                    // Would implement grade matching logic here
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'block';
+                }
+            });
+        });
+    }
+    
+    // Handle ?show=messages parameter for success redirects
+    const urlParams = new URLSearchParams(window.location.search);
+    const showSection = urlParams.get('show');
+    
+    if (showSection === 'messages') {
+        // Add pulse animation to messages section instead of scrolling
+        const messagesSection = document.getElementById('messages-section');
+        if (messagesSection) {
+            // Add pulse animation class
+            messagesSection.classList.add('messages-pulse');
+            
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                messagesSection.classList.remove('messages-pulse');
+            }, 2000);
+        }
+        
+        // Clean up URL
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+});
+</script>
+{% endblock %}
+

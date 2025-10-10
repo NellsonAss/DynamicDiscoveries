@@ -32,7 +32,7 @@ SECRET_KEY = env('DJANGO_SECRET_KEY', default='django-insecure-development-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DJANGO_DEBUG', default=True)
 
-ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['*'])
+ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['*', 'testserver', 'localhost', '127.0.0.1'])
 
 
 # Application definition
@@ -185,7 +185,7 @@ ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1
 EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 
 # Login/Logout URLs
-LOGIN_REDIRECT_URL = 'dashboard'
+LOGIN_REDIRECT_URL = 'accounts:role_based_redirect'
 LOGOUT_REDIRECT_URL = 'home'
 
 # OTP settings
@@ -207,6 +207,9 @@ if not DEBUG:
 # Azure Communication Service settings
 AZURE_COMMUNICATION_CONNECTION_STRING = env('AZURE_COMMUNICATION_CONNECTION_STRING', default='')
 AZURE_COMMUNICATION_SENDER_ADDRESS = env('AZURE_COMMUNICATION_SENDER_ADDRESS', default='')
+
+# Contact notification settings
+CONTACT_NOTIFY_EMAIL = env('CONTACT_NOTIFY_EMAIL', default='DynamicDiscoveries@nellson.net')
 
 # Optional Azure Storage for private files (W-9, signed contracts)
 DEFAULT_FILE_STORAGE = env('DEFAULT_FILE_STORAGE', default='django.core.files.storage.FileSystemStorage')

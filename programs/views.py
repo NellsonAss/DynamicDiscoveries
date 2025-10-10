@@ -14,6 +14,9 @@ from django.forms import modelformset_factory
 from django.db import transaction
 import json
 from decimal import Decimal
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import (
     ProgramType, ProgramInstance, RegistrationForm, FormQuestion,
@@ -21,7 +24,7 @@ from .models import (
     BuildoutResponsibilityAssignment, BuildoutRoleAssignment, BaseCost, 
     BuildoutBaseCostAssignment, InstanceRoleAssignment,
     ContractorAvailability, AvailabilityProgram, ProgramSession, SessionBooking,
-    ProgramBuildoutScheduling, ContractorDayOffRequest
+    ProgramBuildoutScheduling, ContractorDayOffRequest, ProgramRequest
 )
 from .forms import (
     ChildForm, RegistrationFormForm,
@@ -56,43 +59,265 @@ def user_is_admin(user):
 
 @login_required
 def parent_dashboard(request):
-    """Parent dashboard showing programs and registrations."""
+    """Enhanced Parent Landing Page with comprehensive sections and calendar."""
+    logger.info(f"Parent dashboard called for user: {request.user}, is_parent: {user_is_parent(request.user)}")
     if not user_is_parent(request.user):
-        messages.error(request, "Access denied. Parent role required.")
+        logger.info(f"User {request.user} is not a parent, redirecting to general dashboard")
+        messages.error(request, "This page is for parents. If you think this is a mistake, contact support.")
         return redirect('dashboard:dashboard')
     
-    # Get active/upcoming programs
     now = timezone.now()
-    active_programs = ProgramInstance.objects.filter(
+    
+    # Get user's children (sorted by first name)
+    children = request.user.children.all().order_by('first_name')
+    
+    # Get current registrations/sign-ups for user's children
+    current_registrations = Registration.objects.filter(
+        child__parent=request.user,
+        program_instance__end_date__gte=now,
+        status__in=['pending', 'approved', 'waitlisted']
+    ).select_related(
+        'child', 
+        'program_instance', 
+        'program_instance__buildout__program_type'
+    ).order_by('child__first_name', 'program_instance__start_date')
+    
+    # Get filters for calendar
+    facilitator_ids = request.GET.getlist('facilitator_id')
+    program_type_ids = request.GET.getlist('program_type_id')
+    year = int(request.GET.get('year', now.year))
+    month = int(request.GET.get('month', now.month))
+    
+    # Get running and pending program instances (public view) - KEPT FOR LEGACY
+    running_pending_instances = ProgramInstance.objects.filter(
         is_active=True,
-        start_date__gte=now
+        start_date__gte=now,
+        buildout__status__in=['active', 'ready']
+    ).select_related(
+        'buildout__program_type'
+    ).prefetch_related(
+        'contractor_assignments__role',
+        'contractor_assignments__contractor'
     ).order_by('start_date')
     
-    # Get user's children
-    children = request.user.children.all()
+    # Add enrollment info and facilitator data for each instance
+    for instance in running_pending_instances:
+        instance.enrolled_count = instance.current_enrollment
+        instance.spots_left = instance.available_spots
+        instance.is_nearly_full = instance.spots_left <= 3 and instance.spots_left > 0
+        instance.user_already_enrolled = current_registrations.filter(program_instance=instance).exists()
+        
+        # Get visible facilitators
+        instance.visible_facilitators = []
+        for assignment in instance.contractor_assignments.all():
+            if assignment.role.visible_to_parents:
+                facilitator_name = assignment.contractor.get_full_name() or assignment.contractor.email
+                instance.visible_facilitators.append(facilitator_name)
     
-    # Get registrations for user's children
-    registrations = Registration.objects.filter(
-        child__parent=request.user
-    ).select_related('child', 'program_instance', 'program_instance__buildout__program_type')
+    # Get available program types for inquiry
+    available_program_types = ProgramType.objects.filter(
+        buildouts__is_active=True
+    ).distinct().order_by('name')
     
-    # Separate current and past registrations
-    current_registrations = registrations.filter(
-        program_instance__end_date__gte=now,
-        status__in=['pending', 'approved']
-    )
-    past_registrations = registrations.filter(
-        program_instance__end_date__lt=now
-    )
+    # Get facilitators (contractors with visible roles in active instances)
+    facilitators = User.objects.filter(
+        groups__name='Contractor',
+        role_assignments__role__visible_to_parents=True,
+        role_assignments__program_instance__is_active=True
+    ).distinct().order_by('first_name', 'last_name')
+    
+    # Add program info for each facilitator
+    for facilitator in facilitators:
+        # Get program types this facilitator works with (through visible roles)
+        facilitator.visible_program_types = ProgramType.objects.filter(
+            buildouts__instances__contractor_assignments__contractor=facilitator,
+            buildouts__instances__contractor_assignments__role__visible_to_parents=True
+        ).distinct()
+        
+        # Get current instances this facilitator is assigned to
+        facilitator.current_instances = running_pending_instances.filter(
+            contractor_assignments__contractor=facilitator,
+            contractor_assignments__role__visible_to_parents=True
+        ).distinct()
+    
+    # Get recent conversations for messages section
+    from communications.models import Conversation
+    recent_conversations = Conversation.objects.filter(
+        owner=request.user
+    ).prefetch_related('messages').order_by('-updated_at')[:5]
+    
+    # Get all contractors for calendar filter
+    all_contractors = User.objects.filter(
+        groups__name='Contractor',
+        availability_slots__is_archived=False,
+        availability_slots__end_datetime__gte=now
+    ).distinct().order_by('first_name', 'last_name')
+    
+    # Get all program types for calendar filter
+    all_program_types = ProgramType.objects.filter(
+        buildouts__availability_offerings__availability__is_archived=False,
+        buildouts__availability_offerings__availability__end_datetime__gte=now
+    ).distinct().order_by('name')
     
     context = {
-        'active_programs': active_programs,
         'children': children,
         'current_registrations': current_registrations,
-        'past_registrations': past_registrations,
+        'running_pending_instances': running_pending_instances,
+        'available_program_types': available_program_types,
+        'facilitators': facilitators,
+        'parent_name': request.user.get_full_name() or request.user.email.split('@')[0],
+        'recent_conversations': recent_conversations,
+        # Calendar data
+        'year': year,
+        'month': month,
+        'facilitator_ids': facilitator_ids,
+        'program_type_ids': program_type_ids,
+        'all_contractors': all_contractors,
+        'all_program_types': all_program_types,
     }
     
-    return render(request, 'programs/parent_dashboard.html', context)
+    return render(request, 'programs/parent_home.html', context)
+
+
+@login_required
+def send_program_inquiry(request):
+    """Handle program inquiry submission from parent landing page."""
+    if not user_is_parent(request.user):
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        program_type_id = request.POST.get('program_type_id')
+        child_id = request.POST.get('child_id')  # Optional
+        note = request.POST.get('note', '').strip()
+        
+        if not program_type_id:
+            return JsonResponse({'error': 'Program type is required'}, status=400)
+        
+        program_type = ProgramType.objects.get(id=program_type_id)
+        
+        # Validate child belongs to parent if provided
+        child = None
+        if child_id:
+            try:
+                child = Child.objects.get(id=child_id, parent=request.user)
+            except Child.DoesNotExist:
+                return JsonResponse({'error': 'Invalid child selection'}, status=400)
+        
+        # Check for recent duplicate inquiry (same program type + child combination within last hour)
+        from datetime import timedelta
+        recent_cutoff = timezone.now() - timedelta(hours=1)
+        
+        existing_inquiry = ProgramRequest.objects.filter(
+            requester=request.user,
+            program_type=program_type,
+            created_at__gte=recent_cutoff
+        )
+        
+        if child:
+            # Check if we have a recent inquiry for this specific child
+            existing_inquiry = existing_inquiry.filter(
+                additional_notes__icontains=f"Child: {child.full_name}"
+            )
+        
+        if existing_inquiry.exists():
+            return JsonResponse({
+                'success': True,
+                'message': 'Inquiry already sent recently.'
+            })
+        
+        # Create the inquiry
+        inquiry_notes = note
+        if child:
+            inquiry_notes = f"Child: {child.full_name}\n{note}".strip()
+        
+        inquiry = ProgramRequest.objects.create(
+            request_type='parent_request',
+            program_type=program_type,
+            requester=request.user,
+            contact_name=request.user.get_full_name() or request.user.email,
+            contact_email=request.user.email,
+            additional_notes=inquiry_notes
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Thanks! We\'ll be in touch about {program_type.name}.'
+        })
+        
+    except ProgramType.DoesNotExist:
+        return JsonResponse({'error': 'Program type not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': 'Something went wrong. Please try again.'}, status=500)
+
+
+@login_required
+def parent_dashboard_calendar_partial(request):
+    """
+    HTMX partial: Return calendar month view for parents.
+    
+    Shows all contractors' non-archived, active+future availability.
+    Filters by facilitator (contractor) and program type.
+    """
+    if not user_is_parent(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    from .utils.calendar_utils import build_calendar_data, get_prev_month, get_next_month, get_month_bounds
+    
+    now = timezone.now()
+    year = int(request.GET.get('year', now.year))
+    month = int(request.GET.get('month', now.month))
+    facilitator_ids = request.GET.getlist('facilitator_id')
+    program_type_ids = request.GET.getlist('program_type_id')
+    
+    # Get availability for the month (with buffer)
+    start_datetime, end_datetime = get_month_bounds(year, month)
+    
+    # Base queryset: all non-archived, future/active availability
+    availability_qs = ContractorAvailability.objects.filter(
+        is_archived=False,
+        end_datetime__gte=now,  # Hide past entries
+        start_datetime__lte=end_datetime,
+        end_datetime__gte=start_datetime
+    ).select_related('contractor').prefetch_related(
+        'program_offerings__program_buildout__program_type'
+    )
+    
+    # Apply facilitator filter
+    if facilitator_ids:
+        availability_qs = availability_qs.filter(
+            contractor__id__in=facilitator_ids
+        )
+    
+    # Apply program type filter
+    if program_type_ids:
+        availability_qs = availability_qs.filter(
+            program_offerings__program_buildout__program_type__id__in=program_type_ids
+        ).distinct()
+    
+    # Build calendar data
+    calendar_data = build_calendar_data(year, month, availability_qs)
+    
+    # Get prev/next month
+    prev_year, prev_month = get_prev_month(year, month)
+    next_year, next_month = get_next_month(year, month)
+    
+    context = {
+        'calendar': calendar_data,
+        'prev_year': prev_year,
+        'prev_month': prev_month,
+        'next_year': next_year,
+        'next_month': next_month,
+        'current_year': year,
+        'current_month': month,
+        'facilitator_ids': facilitator_ids,
+        'program_type_ids': program_type_ids,
+        'view_type': 'parent',
+    }
+    
+    return render(request, 'programs/partials/_availability_calendar.html', context)
 
 
 @login_required
@@ -109,18 +334,24 @@ def program_instance_detail(request, pk):
             program_instance.start_date > timezone.now()
         )
     
-    # Get existing registration if user is parent
-    existing_registration = None
+    # Get existing registrations if user is parent
+    existing_registrations = []
+    available_children = []
     if user_is_parent(request.user):
-        existing_registration = Registration.objects.filter(
+        existing_registrations = Registration.objects.filter(
             child__parent=request.user,
             program_instance=program_instance
-        ).first()
+        ).select_related('child')
+        
+        # Get children who aren't already registered for this program
+        registered_child_ids = existing_registrations.values_list('child_id', flat=True)
+        available_children = request.user.children.exclude(id__in=registered_child_ids)
     
     context = {
         'program_instance': program_instance,
         'can_register': can_register,
-        'existing_registration': existing_registration,
+        'existing_registrations': existing_registrations,
+        'available_children': available_children,
     }
     
     return render(request, 'programs/program_instance_detail.html', context)
@@ -144,21 +375,21 @@ def register_child(request, program_instance_pk):
         messages.error(request, "Registration is closed for this program.")
         return redirect('programs:program_instance_detail', pk=program_instance_pk)
     
-    # Check if already registered
-    existing_registration = Registration.objects.filter(
-        child__parent=request.user,
-        program_instance=program_instance
-    ).first()
-    
-    if existing_registration:
-        messages.warning(request, "You are already registered for this program.")
-        return redirect('programs:program_instance_detail', pk=program_instance_pk)
-    
     if request.method == 'POST':
         child_pk = request.POST.get('child')
         if child_pk:
             try:
                 child = request.user.children.get(pk=child_pk)
+                
+                # Check if this specific child is already registered
+                existing_registration = Registration.objects.filter(
+                    child=child,
+                    program_instance=program_instance
+                ).first()
+                
+                if existing_registration:
+                    messages.warning(request, f"{child.full_name} is already registered for this program.")
+                    return redirect('programs:program_instance_detail', pk=program_instance_pk)
                 
                 # Create registration
                 registration = Registration.objects.create(
@@ -429,13 +660,19 @@ def form_builder(request, form_pk=None):
     
     form_instance = None
     if form_pk:
-        form_instance = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
+        # Allow admins to edit any form, contractors can only edit their own
+        if user_is_admin(request.user):
+            form_instance = get_object_or_404(RegistrationForm, pk=form_pk)
+        else:
+            form_instance = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
     
     if request.method == 'POST':
         form = RegistrationFormForm(request.POST, instance=form_instance)
         if form.is_valid():
             form_instance = form.save(commit=False)
-            form_instance.created_by = request.user
+            # Only set created_by for new forms, preserve original creator for existing forms
+            if not form_instance.pk:
+                form_instance.created_by = request.user
             form_instance.save()
             
             messages.success(request, f"Form '{form_instance.title}' saved successfully!")
@@ -461,7 +698,11 @@ def add_form_question(request, form_pk):
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         return HttpResponse("Access denied", status=403)
     
-    form = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
+    # Allow admins to add questions to any form, contractors can only add to their own
+    if user_is_admin(request.user):
+        form = get_object_or_404(RegistrationForm, pk=form_pk)
+    else:
+        form = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
     
     if request.method == 'POST':
         question_form = FormQuestionForm(request.POST)
@@ -470,7 +711,7 @@ def add_form_question(request, form_pk):
             question.form = form
             question.save()
             
-            return render(request, 'programs/partials/question_item.html', {
+            return render(request, 'programs/partials/question_row.html', {
                 'question': question,
                 'form': form
             })
@@ -484,7 +725,11 @@ def delete_form_question(request, question_pk):
     if not (user_is_contractor(request.user) or user_is_admin(request.user)):
         return HttpResponse("Access denied", status=403)
     
-    question = get_object_or_404(FormQuestion, pk=question_pk, form__created_by=request.user)
+    # Allow admins to delete questions from any form, contractors can only delete from their own
+    if user_is_admin(request.user):
+        question = get_object_or_404(FormQuestion, pk=question_pk)
+    else:
+        question = get_object_or_404(FormQuestion, pk=question_pk, form__created_by=request.user)
     question.delete()
     
     return HttpResponse("Question deleted")
@@ -497,7 +742,11 @@ def duplicate_form(request, form_pk):
         messages.error(request, "Access denied. Contractor or Admin role required.")
         return redirect('programs:form_builder')
     
-    original_form = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
+    # Allow admins to duplicate any form, contractors can only duplicate their own
+    if user_is_admin(request.user):
+        original_form = get_object_or_404(RegistrationForm, pk=form_pk)
+    else:
+        original_form = get_object_or_404(RegistrationForm, pk=form_pk, created_by=request.user)
     new_form = original_form.duplicate()
     
     messages.success(request, f"Form '{original_form.title}' duplicated successfully!")
@@ -936,18 +1185,59 @@ def program_type_buildouts(request, program_type_pk):
 
 @login_required
 def contractor_availability_list(request):
-    """List contractor's availability slots."""
+    """
+    List contractor's availability slots with calendar and filtering.
+    
+    Shows:
+    - Grouped list (Active, Future, Past)
+    - Calendar month view
+    - Filters by Program Instance
+    - Archive functionality
+    """
     if not user_is_contractor(request.user) and not user_is_admin(request.user):
         messages.error(request, "You don't have permission to access this page.")
         return redirect('dashboard')
     
-    # Get contractor's availability slots
-    availability_slots = ContractorAvailability.objects.filter(
-        contractor=request.user
-    ).prefetch_related('program_offerings__program_buildout', 'program_offerings__sessions')
+    now = timezone.now()
+    
+    # Auto-inactivate past availability
+    ContractorAvailability.objects.filter(
+        end_datetime__lt=now,
+        is_active=True
+    ).update(is_active=False)
+    
+    # Get filters from request
+    program_buildout_ids = request.GET.getlist('program_buildout_id')
+    year = int(request.GET.get('year', now.year))
+    month = int(request.GET.get('month', now.month))
+    
+    # Base queryset: non-archived availability for this contractor
+    base_qs = ContractorAvailability.objects.filter(
+        contractor=request.user,
+        is_archived=False
+    ).select_related('contractor').prefetch_related(
+        'program_offerings__program_buildout__program_type',
+        'program_offerings__sessions'
+    )
+    
+    # Apply program buildout filter if provided
+    if program_buildout_ids:
+        base_qs = base_qs.filter(
+            program_offerings__program_buildout__id__in=program_buildout_ids
+        ).distinct()
+    
+    # Get all program buildouts this contractor has availability for (for filter dropdown)
+    from django.db.models import Q
+    contractor_buildouts = ProgramBuildout.objects.filter(
+        availability_offerings__availability__contractor=request.user,
+        availability_offerings__availability__is_archived=False
+    ).distinct().order_by('title')
     
     context = {
-        'availability_slots': availability_slots,
+        'year': year,
+        'month': month,
+        'program_buildout_ids': program_buildout_ids,
+        'contractor_buildouts': contractor_buildouts,
         'can_add': True,
     }
     
@@ -1067,6 +1357,149 @@ def contractor_availability_edit(request, pk):
     }
     
     return render(request, 'programs/contractor_availability_form.html', context)
+
+
+@login_required
+def contractor_availability_list_partial(request):
+    """HTMX partial: Return availability list grouped by status."""
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    now = timezone.now()
+    
+    # Get filters
+    program_buildout_ids = request.GET.getlist('program_buildout_id')
+    
+    # Base queryset
+    base_qs = ContractorAvailability.objects.filter(
+        contractor=request.user,
+        is_archived=False
+    ).select_related('contractor').prefetch_related(
+        'program_offerings__program_buildout__program_type',
+        'program_offerings__sessions'
+    )
+    
+    # Apply filters
+    if program_buildout_ids:
+        base_qs = base_qs.filter(
+            program_offerings__program_buildout__id__in=program_buildout_ids
+        ).distinct()
+    
+    # Group by status
+    active_qs = base_qs.filter(
+        start_datetime__lte=now,
+        end_datetime__gte=now
+    ).order_by('start_datetime')
+    
+    future_qs = base_qs.filter(
+        start_datetime__gt=now
+    ).order_by('start_datetime')
+    
+    past_qs = base_qs.filter(
+        end_datetime__lt=now
+    ).order_by('-start_datetime')
+    
+    context = {
+        'active_availability': active_qs,
+        'future_availability': future_qs,
+        'past_availability': past_qs,
+    }
+    
+    return render(request, 'programs/partials/_availability_list.html', context)
+
+
+@login_required
+def contractor_availability_calendar_partial(request):
+    """HTMX partial: Return calendar month view."""
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    from .utils.calendar_utils import build_calendar_data, get_prev_month, get_next_month, get_month_bounds
+    
+    now = timezone.now()
+    year = int(request.GET.get('year', now.year))
+    month = int(request.GET.get('month', now.month))
+    program_buildout_ids = request.GET.getlist('program_buildout_id')
+    
+    # Get availability for the month (with buffer)
+    start_datetime, end_datetime = get_month_bounds(year, month)
+    
+    availability_qs = ContractorAvailability.objects.filter(
+        contractor=request.user,
+        is_archived=False,
+        start_datetime__lte=end_datetime,
+        end_datetime__gte=start_datetime
+    ).select_related('contractor').prefetch_related(
+        'program_offerings__program_buildout__program_type'
+    )
+    
+    # Apply program buildout filter
+    if program_buildout_ids:
+        availability_qs = availability_qs.filter(
+            program_offerings__program_buildout__id__in=program_buildout_ids
+        ).distinct()
+    
+    # Build calendar data
+    calendar_data = build_calendar_data(year, month, availability_qs)
+    
+    # Get prev/next month
+    prev_year, prev_month = get_prev_month(year, month)
+    next_year, next_month = get_next_month(year, month)
+    
+    context = {
+        'calendar': calendar_data,
+        'prev_year': prev_year,
+        'prev_month': prev_month,
+        'next_year': next_year,
+        'next_month': next_month,
+        'current_year': year,
+        'current_month': month,
+        'program_buildout_ids': program_buildout_ids,
+        'view_type': 'contractor',
+    }
+    
+    return render(request, 'programs/partials/_availability_calendar.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def contractor_availability_archive(request):
+    """
+    Archive availability entries (per-row or bulk).
+    
+    POST params:
+        - availability_id: single ID to archive
+        - bulk_archive_past: if 'true', archive all past entries
+    """
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    now = timezone.now()
+    availability_id = request.POST.get('availability_id')
+    bulk_archive_past = request.POST.get('bulk_archive_past') == 'true'
+    
+    if availability_id:
+        # Archive single entry
+        availability = get_object_or_404(
+            ContractorAvailability,
+            pk=availability_id,
+            contractor=request.user
+        )
+        availability.is_archived = True
+        availability.save(update_fields=['is_archived'])
+        messages.success(request, "Availability archived successfully.")
+    
+    elif bulk_archive_past:
+        # Bulk archive all past entries
+        count = ContractorAvailability.objects.filter(
+            contractor=request.user,
+            end_datetime__lt=now,
+            is_archived=False
+        ).update(is_archived=True)
+        messages.success(request, f"Archived {count} past availability entries.")
+    
+    # Return updated list partial
+    return contractor_availability_list_partial(request)
 
 
 @login_required

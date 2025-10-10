@@ -27,7 +27,7 @@
                     <a href="#programs" class="btn btn-light btn-lg px-4">
                         <i class="bi bi-rocket-takeoff me-2"></i>Explore Programs
                     </a>
-                    <a href="#contact" class="btn btn-outline-light btn-lg px-4">
+                    <a href="{% url 'communications:contact_entry' %}" class="btn btn-outline-light btn-lg px-4">
                         <i class="bi bi-envelope me-2"></i>Contact Us
                     </a>
                 </div>
@@ -98,7 +98,7 @@
                     <p class="lead mb-4">
                         Our popular STEAM Series and Lunar Explorers Program are filling up fast. Spots are limited—registration opens soon!
                     </p>
-                    <a href="#contact" class="btn btn-primary btn-lg">
+                    <a href="{% url 'communications:contact_entry' %}" class="btn btn-primary btn-lg">
                         <i class="bi bi-calendar-check me-2"></i>Get Early Access
                     </a>
                 </div>
@@ -278,67 +278,24 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-lg-6 mx-auto">
-                <div class="contact-form">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                    
-                    <form method="post" action="{% url 'communications:contact_form' %}">
-                        {% csrf_token %}
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <input type="text" 
-                                       class="form-control" 
-                                       name="parent_name" 
-                                       placeholder="Parent's Name" 
-                                       value="{{ contact_form_data.parent_name|default:'' }}"
-                                       required>
-                            </div>
-                            <div class="col-md-6">
-                                <input type="email" 
-                                       class="form-control" 
-                                       name="email" 
-                                       placeholder="Email Address" 
-                                       value="{{ contact_form_data.email|default:'' }}"
-                                       required>
-                            </div>
-                            <div class="col-12">
-                                <input type="tel" 
-                                       class="form-control" 
-                                       name="phone" 
-                                       placeholder="Phone Number"
-                                       value="{{ contact_form_data.phone|default:'' }}">
-                            </div>
-                            <div class="col-12">
-                                <select class="form-control" name="interest" required>
-                                    <option value="">I'm interested in...</option>
-                                    <option value="after_school" {% if contact_form_data.interest == 'after_school' %}selected{% endif %}>After-School Enrichment</option>
-                                    <option value="small_group" {% if contact_form_data.interest == 'small_group' %}selected{% endif %}>Small Group Tutoring</option>
-                                    <option value="assessments" {% if contact_form_data.interest == 'assessments' %}selected{% endif %}>Educational Assessments</option>
-                                    <option value="programs" {% if contact_form_data.interest == 'programs' %}selected{% endif %}>Signature Programs</option>
-                                    <option value="other" {% if contact_form_data.interest == 'other' %}selected{% endif %}>Other</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <textarea class="form-control" 
-                                          name="message" 
-                                          rows="4" 
-                                          placeholder="Tell us about your child and their interests..."
-                                          required>{{ contact_form_data.message|default:'' }}</textarea>
-                            </div>
-                            <div class="col-12 text-center">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="bi bi-send me-2"></i>Send Message
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+            <div class="col-lg-6 mx-auto text-center">
+                <div class="contact-cta p-5 bg-light rounded">
+                    <div class="mb-4">
+                        <i class="bi bi-chat-dots text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="mb-3">Get in Touch</h4>
+                    <p class="text-muted mb-4">
+                        Whether you're new to Dynamic Discoveries or already part of our community, 
+                        we'd love to hear from you! Send us a message and we'll get back to you soon.
+                    </p>
+                    <a href="{% url 'communications:contact_entry' %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-envelope me-2"></i>Send Us a Message
+                    </a>
+                    <div class="mt-4 text-muted">
+                        <small>
+                            <i class="bi bi-clock me-1"></i>We typically respond within 24 hours
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>

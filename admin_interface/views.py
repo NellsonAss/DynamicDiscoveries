@@ -1413,6 +1413,48 @@ def toggle_user_status(request, user_id):
 @login_required
 @role_required(['Admin'])
 @require_http_methods(['POST'])
+def delete_user(request, user_id):
+    """Delete a user."""
+    user = get_object_or_404(User, id=user_id)
+    
+    # Prevent deletion of superusers
+    if user.is_superuser:
+        messages.error(request, 'Cannot delete superuser accounts.')
+        return redirect('admin_interface:user_detail', user_id=user_id)
+    
+    # Prevent deletion of the current user
+    if user == request.user:
+        messages.error(request, 'Cannot delete your own account.')
+        return redirect('admin_interface:user_detail', user_id=user_id)
+    
+    # Store user email for success message
+    user_email = user.email
+    
+    try:
+        with transaction.atomic():
+            # Delete related objects first
+            # Delete profile if exists
+            if hasattr(user, 'profile'):
+                user.profile.delete()
+            
+            # Delete contractor if exists
+            if hasattr(user, 'contractor'):
+                user.contractor.delete()
+            
+            # Delete the user
+            user.delete()
+            
+        messages.success(request, f'User {user_email} has been deleted successfully.')
+        return redirect('admin_interface:user_management')
+        
+    except Exception as e:
+        messages.error(request, f'Error deleting user: {str(e)}')
+        return redirect('admin_interface:user_detail', user_id=user_id)
+
+
+@login_required
+@role_required(['Admin'])
+@require_http_methods(['POST'])
 def update_contact_status(request, contact_id):
     """Update contact status."""
     contact = get_object_or_404(Contact, id=contact_id)

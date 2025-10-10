@@ -11,11 +11,19 @@ class UserManager(BaseUserManager):
         """Create and save a user with the given email and password."""
         if not email:
             raise ValueError('The Email field must be set')
+        # Only normalize the domain part (standard Django behavior)
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
+    
+    def get_by_email_case_insensitive(self, email):
+        """Get user by email using case-insensitive lookup."""
+        try:
+            return self.get(email__iexact=email)
+        except self.model.DoesNotExist:
+            return None
     
     def create_superuser(self, email, password=None, **extra_fields):
         """Create and save a superuser with the given email and password."""

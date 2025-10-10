@@ -50,36 +50,65 @@
             </div>
 
             <!-- Registration Form -->
-            {% if can_register and not user_registrations %}
+            {% if can_register and available_children %}
                 <div class="card mb-4">
                     <div class="card-header">
                         <h5 class="mb-0">Register for this Program</h5>
                     </div>
                     <div class="card-body">
+                        <!-- Show existing registrations if any -->
+                        {% if existing_registrations %}
+                            <div class="mb-3">
+                                <h6>Your Current Registrations:</h6>
+                                {% for registration in existing_registrations %}
+                                    <div class="alert alert-info">
+                                        <strong>{{ registration.child.full_name }}</strong> is registered for this program.
+                                        <br>
+                                        <small>Status: 
+                                            <span class="badge bg-{% if registration.status == 'approved' %}success{% elif registration.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                                {{ registration.get_status_display }}
+                                            </span>
+                                        </small>
+                                        {% if registration.program_instance.assigned_form and not registration.form_responses %}
+                                            <br>
+                                            <a href="{% url 'programs:complete_registration_form' registration.pk %}" class="btn btn-warning btn-sm mt-2">
+                                                Complete Registration Form
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
                         <form method="post" action="{% url 'programs:register_child' program_instance.pk %}">
                             {% csrf_token %}
                             <div class="mb-3">
-                                <label for="child" class="form-label">Select Child</label>
+                                <label for="child" class="form-label">Select Child to Register</label>
                                 <select name="child" id="child" class="form-select" required>
                                     <option value="">Choose a child...</option>
-                                    {% for child in request.user.children.all %}
+                                    {% for child in available_children %}
                                         <option value="{{ child.pk }}">{{ child.full_name }} (Age: {{ child.age }})</option>
                                     {% endfor %}
                                 </select>
+                                {% if not available_children %}
+                                    <div class="form-text text-muted">All your children are already registered for this program.</div>
+                                {% else %}
+                                    <div class="form-text">Select which child you'd like to register for this program.</div>
+                                {% endif %}
                             </div>
                             <button type="submit" class="btn btn-primary">
-                                Register for Program
+                                Register Child for Program
                             </button>
                         </form>
                     </div>
                 </div>
-            {% elif user_registrations %}
+            {% elif existing_registrations %}
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0">Your Registration</h5>
+                        <h5 class="mb-0">Your Registrations</h5>
                     </div>
                     <div class="card-body">
-                        {% for registration in user_registrations %}
+                        {% for registration in existing_registrations %}
                             <div class="alert alert-info">
                                 <strong>{{ registration.child.full_name }}</strong> is registered for this program.
                                 <br>
