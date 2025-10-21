@@ -875,11 +875,33 @@
         "calendar_scope": "Limits queries to visible month +/- 1 week buffer",
         "htmx_partials": "Only updates necessary DOM sections, avoiding full page reloads"
       }
+    },
+    {
+      "id": "REQ-099",
+      "title": "Admin View As (Role Preview & Safe User Impersonation)",
+      "description": "Comprehensive admin 'View As' feature enabling authenticated admins to switch application context for role preview (viewing site as different roles they have) and safe user impersonation (previewing site as another user with read-only mode by default). Includes session-based role switching with automatic redirect to role-appropriate landing pages, user impersonation with audit logging, read-only enforcement, role switcher dropdown UI, impersonation banner, permission checks preventing privilege escalation, comprehensive impersonation audit logs with IP/UA tracking, admin user management integration with impersonation modal, and full test coverage. All impersonation events are logged in ImpersonationLog model with admin/target users, timestamps, readonly flag, reason notes, and session metadata.",
+      "status": "implemented",
+      "priority": "high",
+      "category": "admin_tools",
+      "created_date": "2025-10-21T00:00:00.000000",
+      "updated_date": "2025-10-21T00:00:00.000000",
+      "implementation_notes": "Implemented using Django 5.x with HTMX and Bootstrap. No JavaScript frameworks. Context processor provides effective_role and impersonation context to all templates. RoleRequiredMixin updated to consider effective_role during access checks. Read-only enforcement via readonly_enforcement_required decorator. Impersonation actions integrated into user management interface with Bootstrap modal. All audit logs stored in new audit app with ImpersonationLog model. Role switching redirects to appropriate landing page for selected role.",
+      "acceptance_criteria": [
+        "Header shows 'Viewing as: <Role>' badge when role preview is active",
+        "Persistent banner appears with target identity during impersonation",
+        "All role-gated views respect effective_role for presentation and routing",
+        "Read-only enforcement blocks writes during impersonation with helpful message",
+        "Impersonation events fully audited (start/stop, who, when, target)",
+        "No JavaScript frameworks; HTMX + Bootstrap only",
+        "Zero or minimal middleware additions",
+        "All tests pass with comprehensive coverage",
+        "Role switching redirects to appropriate dashboard for that role"
+      ]
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-01-27T23:15:00.000000",
+    "last_updated": "2025-10-21T00:00:00.000000",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

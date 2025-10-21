@@ -1,4 +1,5 @@
 {% load static %}
+{% load role_tags %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,6 +32,9 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <!-- Impersonation Banner (shown when admin is impersonating another user) -->
+    {% include 'accounts/partials/_impersonation_banner.html' %}
+    
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top" style="z-index: 1031;">
         <div class="container">
             <a class="navbar-brand fw-bold text-primary" href="{% url 'home' %}">
@@ -52,7 +56,8 @@
                             </a>
                         </li>
                         <!-- Parent Navigation -->
-                        {% if 'Parent' in user.get_role_names %}
+                        {% show_role_menu 'Parent' as show_parent_menu %}
+                        {% if show_parent_menu %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-people me-1"></i>Parent Tools
@@ -80,7 +85,8 @@
                         {% endif %}
                         
                         <!-- Contractor/Admin Navigation -->
-                        {% if 'Contractor' in user.get_role_names or 'Admin' in user.get_role_names %}
+                        {% should_show_contractor_menu as show_contractor_menu %}
+                        {% if show_contractor_menu %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-tools me-1"></i>Contractor Tools
@@ -118,7 +124,8 @@
                         {% endif %}
                         
                         <!-- Admin Navigation -->
-                        {% if 'Admin' in user.get_role_names %}
+                        {% show_role_menu 'Admin' as show_admin_menu %}
+                        {% if show_admin_menu %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-gear me-1"></i>Admin Tools
@@ -148,6 +155,10 @@
                                     <li><a class="dropdown-item" href="{% url 'admin_interface:contact_management' %}">
                                         <i class="bi bi-envelope me-2"></i>Contact Inquiries
                                     </a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_interface:impersonation_logs' %}">
+                                        <i class="bi bi-shield-check me-2"></i>Impersonation Logs
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="{% url 'admin:index' %}">
                                         <i class="bi bi-gear me-2"></i>Django Admin (Legacy)
                                     </a></li>
@@ -156,7 +167,8 @@
                         {% endif %}
                         
                         <!-- Consultant Navigation -->
-                        {% if 'Consultant' in user.get_role_names %}
+                        {% show_role_menu 'Consultant' as show_consultant_menu %}
+                        {% if show_consultant_menu %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'communications:contact_list' %}">
                                     <i class="bi bi-envelope me-1"></i>Contact Inquiries
@@ -180,6 +192,11 @@
                 </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
+                        <!-- Role Switcher (for multi-role users) -->
+                        <li class="nav-item d-flex align-items-center me-2">
+                            {% include 'accounts/partials/_role_switcher.html' %}
+                        </li>
+                        
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-person-circle me-1"></i>{{ user.email }}
@@ -191,7 +208,8 @@
                                 <li><hr class="dropdown-divider"></li>
                                 
                                 <!-- Quick Access based on role -->
-                                {% if 'Parent' in user.get_role_names %}
+                                {% show_role_menu 'Parent' as show_parent_quick_menu %}
+                                {% if show_parent_quick_menu %}
                                     <li><a class="dropdown-item" href="{% url 'programs:parent_dashboard' %}">
                                         <i class="bi bi-house me-2"></i>Parent Dashboard
                                     </a></li>
@@ -203,7 +221,8 @@
                                     </a></li>
                                 {% endif %}
                                 
-                                {% if 'Contractor' in user.get_role_names %}
+                                {% show_role_menu 'Contractor' as show_contractor_quick_menu %}
+                                {% if show_contractor_quick_menu %}
                                     <li><a class="dropdown-item" href="{% url 'programs:contractor_dashboard' %}">
                                         <i class="bi bi-speedometer2 me-2"></i>Contractor Dashboard
                                     </a></li>
@@ -215,7 +234,8 @@
                                     </a></li>
                                 {% endif %}
                                 
-                                {% if 'Admin' in user.get_role_names %}
+                                {% show_role_menu 'Admin' as show_admin_quick_menu %}
+                                {% if show_admin_quick_menu %}
                                     <li><a class="dropdown-item" href="{% url 'accounts:user_list' %}">
                                         <i class="bi bi-people me-2"></i>User Management
                                     </a></li>

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_impersonation
 
 app_name = 'admin_interface'
 
@@ -107,4 +108,7 @@ urlpatterns = [
     path('contractor-documents/<int:contractor_id>/reset-w9/', views.reset_w9, name='reset_w9'),
     path('contractor-documents/<int:contractor_id>/view-nda/', views.view_nda_signature, name='view_nda_signature'),
     path('contractor-documents/<int:contractor_id>/download-w9/', views.download_w9, name='download_w9'),
+    
+    # Impersonation Logs
+    path('impersonation-logs/', views_impersonation.impersonation_log_list, name='impersonation_logs'),
 ] 

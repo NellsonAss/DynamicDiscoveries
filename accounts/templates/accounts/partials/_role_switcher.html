@@ -1,0 +1,57 @@
+{% comment %}
+Role switcher dropdown for multi-role users.
+Allows users to preview the site as different roles they have.
+{% endcomment %}
+
+{% if user.is_authenticated and user_has_multiple_roles %}
+<div class="d-inline-block" id="role-switcher-container">
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="roleSwitcherDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-person-badge me-1"></i>
+            <span id="current-role-badge">
+                {% if effective_role == 'Auto' %}
+                    <span class="badge bg-secondary">Auto</span>
+                {% else %}
+                    <span class="badge bg-info text-dark">Viewing as: {{ effective_role }}</span>
+                {% endif %}
+            </span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="roleSwitcherDropdown">
+            <li>
+                <h6 class="dropdown-header">Preview As Role</h6>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form hx-post="{% url 'accounts:role_switch' %}" 
+                      class="role-switch-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="role" value="Auto">
+                    <button type="submit" class="dropdown-item {% if effective_role == 'Auto' %}active{% endif %}">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Auto (Default)
+                    </button>
+                </form>
+            </li>
+            {% for role in user_roles %}
+            <li>
+                <form hx-post="{% url 'accounts:role_switch' %}" 
+                      class="role-switch-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="role" value="{{ role.name }}">
+                    <button type="submit" class="dropdown-item {% if effective_role == role.name %}active{% endif %}">
+                        <i class="bi bi-person-check me-2"></i>{{ role.name }}
+                    </button>
+                </form>
+            </li>
+            {% endfor %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <span class="dropdown-item-text text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    UI only - permissions unchanged
+                </span>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endif %}
+

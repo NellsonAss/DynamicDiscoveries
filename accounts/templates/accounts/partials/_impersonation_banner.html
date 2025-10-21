@@ -1,0 +1,65 @@
+{% comment %}
+Impersonation banner shown at the top of the page when admin is impersonating another user.
+Always visible during impersonation with clear stop button.
+{% endcomment %}
+
+{% if is_impersonating and impersonated_user %}
+<div class="alert alert-warning border-warning mb-0 rounded-0 shadow-sm" role="alert" style="position: sticky; top: 0; z-index: 1030;">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h6 class="mb-0 d-inline">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Impersonating User:</strong>
+                </h6>
+                <span class="ms-2">
+                    {% if impersonated_user.get_full_name %}
+                        {{ impersonated_user.get_full_name }} ({{ impersonated_user.email }})
+                    {% else %}
+                        {{ impersonated_user.email }}
+                    {% endif %}
+                </span>
+                {% if impersonation_readonly %}
+                <span class="badge bg-info text-dark ms-2" data-bs-toggle="tooltip" title="Write operations (POST/PUT/PATCH/DELETE) are blocked">
+                    <i class="bi bi-lock me-1"></i>Read-Only Mode
+                </span>
+                {% else %}
+                <span class="badge bg-danger ms-2" data-bs-toggle="tooltip" title="Full access - writes are enabled">
+                    <i class="bi bi-unlock me-1"></i>Full Access Mode
+                </span>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                <form method="post" action="{% url 'accounts:impersonate_stop' %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-dark">
+                        <i class="bi bi-x-circle me-1"></i>Stop Impersonating
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <small class="text-muted">
+                    <i class="bi bi-shield-check me-1"></i>
+                    You are logged in as: <strong>{{ user.email }}</strong>
+                    {% if impersonation_readonly %}
+                    | All write actions are disabled for safety.
+                    {% else %}
+                    | <span class="text-danger">Caution: Write actions are enabled!</span>
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Enable Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+{% endif %}
+

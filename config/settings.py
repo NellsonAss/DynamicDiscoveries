@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     
     # Local
     "accounts.apps.AccountsConfig",
+    "audit.apps.AuditConfig",
     "dashboard.apps.DashboardConfig",
     "communications",
     "people.apps.PeopleConfig",
@@ -99,6 +100,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.user_roles",
+                "accounts.context_processors.effective_role",
             ],
         },
     },

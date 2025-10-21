@@ -98,12 +98,23 @@
                             <td>
                                 <div class="btn-group" role="group">
                                     <a href="{% url 'admin_interface:user_detail' user.id %}" 
-                                       class="btn btn-sm btn-outline-primary">
+                                       class="btn btn-sm btn-outline-primary"
+                                       data-bs-toggle="tooltip" title="View Details">
                                         <i class="bi bi-eye"></i>
                                     </a>
+                                    {% if can_impersonate and user.id != request.user.id and user.is_active %}
+                                        <button type="button" class="btn btn-sm btn-outline-info impersonate-user"
+                                                data-user-id="{{ user.id }}"
+                                                data-user-email="{{ user.email }}"
+                                                data-user-name="{{ user.get_full_name|default:user.email }}"
+                                                data-bs-toggle="tooltip" title="Impersonate User">
+                                            <i class="bi bi-person-badge"></i>
+                                        </button>
+                                    {% endif %}
                                     <button type="button" class="btn btn-sm btn-outline-warning toggle-user-status"
                                             data-user-id="{{ user.id }}" 
-                                            data-current-status="{{ user.is_active|yesno:'true,false' }}">
+                                            data-current-status="{{ user.is_active|yesno:'true,false' }}"
+                                            data-bs-toggle="tooltip" title="{% if user.is_active %}Deactivate{% else %}Activate{% endif %} User">
                                         <i class="bi bi-{% if user.is_active %}pause{% else %}play{% endif %}"></i>
                                     </button>
                                 </div>
@@ -226,6 +237,98 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Impersonation functionality
+    const impersonateButtons = document.querySelectorAll('.impersonate-user');
+    
+    impersonateButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const userEmail = this.dataset.userEmail;
+            const userName = this.dataset.userName;
+            
+            // Set values in modal
+            document.getElementById('impersonateUserId').value = userId;
+            document.getElementById('impersonateUserName').textContent = userName;
+            document.getElementById('impersonateUserEmail').textContent = userEmail;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('impersonateModal'));
+            modal.show();
+        });
+    });
+    
+    // Enable tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });
 </script>
+
+<!-- Impersonation Modal -->
+<div class="modal fade" id="impersonateModal" tabindex="-1" aria-labelledby="impersonateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-dark">
+                <h5 class="modal-title" id="impersonateModalLabel">
+                    <i class="bi bi-person-badge me-2"></i>Impersonate User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'accounts:impersonate_start' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="user_id" id="impersonateUserId">
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Caution:</strong> You are about to view the site as another user.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">User to Impersonate:</label>
+                        <div class="p-3 bg-light rounded">
+                            <div><strong id="impersonateUserName"></strong></div>
+                            <div class="text-muted small" id="impersonateUserEmail"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Access Mode:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="readonly" id="readonlyTrue" value="true" checked>
+                            <label class="form-check-label" for="readonlyTrue">
+                                <i class="bi bi-lock me-1"></i>
+                                <strong>Read-Only Mode</strong> (Recommended)
+                                <div class="text-muted small">Prevents accidental data modifications</div>
+                            </label>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="radio" name="readonly" id="readonlyFalse" value="false">
+                            <label class="form-check-label" for="readonlyFalse">
+                                <i class="bi bi-unlock me-1"></i>
+                                <strong>Full Access Mode</strong>
+                                <div class="text-muted small">Allows data modifications (use with caution)</div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="impersonateReason" class="form-label">Reason (Optional):</label>
+                        <textarea class="form-control" id="impersonateReason" name="reason" rows="2" 
+                                  placeholder="e.g., Testing parent dashboard, Helping with registration issue..."></textarea>
+                        <div class="form-text">This will be logged for audit purposes.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="bi bi-person-badge me-2"></i>Start Impersonation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %} 

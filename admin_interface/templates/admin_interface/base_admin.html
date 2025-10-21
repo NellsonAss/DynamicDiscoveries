@@ -242,6 +242,14 @@
                        href="{% url 'admin_interface:location_management' %}">
                         <i class="bi bi-geo-alt"></i>Locations
                     </a>
+                    
+                    <div class="mt-3 mb-2">
+                        <small class="text-white-50 text-uppercase">Security & Audit</small>
+                    </div>
+                    <a class="nav-link {% if 'impersonation' in request.resolver_match.url_name %}active{% endif %}" 
+                       href="{% url 'admin_interface:impersonation_logs' %}">
+                        <i class="bi bi-shield-check"></i>Impersonation Logs
+                    </a>
                 </nav>
             </div>
         </div>

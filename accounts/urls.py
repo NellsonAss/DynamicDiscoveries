@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import impersonation_views
 
 app_name = 'accounts'
 
@@ -12,4 +13,9 @@ urlpatterns = [
     path('users/', views.UserListView.as_view(), name='user_list'),
     path('users/<int:pk>/roles/', views.UserRoleUpdateView.as_view(), name='user_role_update'),
     path('debug/', views.debug_user, name='debug_user'),
+    
+    # Role Preview & Impersonation
+    path('role/switch/', impersonation_views.role_switch, name='role_switch'),
+    path('impersonate/start/', impersonation_views.impersonate_start, name='impersonate_start'),
+    path('impersonate/stop/', impersonation_views.impersonate_stop, name='impersonate_stop'),
 ] 
