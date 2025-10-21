@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Message Received - Dynamic Discoveries</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2c3e50; margin-bottom: 10px;">Dynamic Discoveries</h1>
+            <p style="color: #7f8c8d; margin: 0;">Empowering Young Minds Through Discovery</p>
+        </div>
+        
+        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+            Thank You for Your Message!
+        </h2>
+        
+        <p>Dear {% if user.first_name %}{{ user.first_name }}{% else %}{{ user.email }}{% endif %},</p>
+        
+        <p>We've received your message and wanted to confirm that it reached us successfully.</p>
+        
+        <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #2c3e50;">Your Message Details</h3>
+            <p><strong>Subject:</strong> {{ conversation.subject }}</p>
+            <p><strong>Sent:</strong> {{ conversation.created_at|date:"F j, Y g:i A" }}</p>
+            <p><strong>Reference ID:</strong> #{{ conversation.id }}</p>
+        </div>
+        
+        <h3 style="color: #2c3e50;">What's Next?</h3>
+        <ul style="padding-left: 20px;">
+            <li>Our team will review your message within 1-2 business days</li>
+            <li>We'll respond directly to this email address: <strong>{{ user.email }}</strong></li>
+            <li>You can view and reply to our conversation in your parent dashboard</li>
+        </ul>
+        
+        <div style="background-color: #e8f5e8; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0;">
+            <h4 style="margin-top: 0; color: #155724;">
+                <i>💡 Tip:</i> Access Your Messages Anytime
+            </h4>
+            <p style="margin-bottom: 0;">
+                Sign in to your parent dashboard to view all your conversations with us and send additional messages.
+            </p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <p style="margin-bottom: 15px;">Questions? Need immediate assistance?</p>
+            <p style="margin: 0;">
+                <strong>Email:</strong> DynamicDiscoveries@nellson.net<br>
+                <strong>Response Time:</strong> Within 1-2 business days
+            </p>
+        </div>
+        
+        <div style="border-top: 1px solid #dee2e6; padding-top: 15px; margin-top: 30px; font-size: 12px; color: #6c757d; text-align: center;">
+            <p>Thank you for choosing Dynamic Discoveries!</p>
+            <p style="margin: 0;">This is an automated confirmation email.</p>
+        </div>
+    </div>
+</body>
+</html>

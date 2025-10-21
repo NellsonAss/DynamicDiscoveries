@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import Group
 from django.http import HttpResponse
+from .models import Profile
 from django.conf import settings
 from django.urls import reverse
 from .mixins import RoleRequiredMixin
@@ -22,6 +23,27 @@ from communications.services import AzureEmailService
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+def get_user_redirect_url(user):
+    """Get the appropriate redirect URL based on user's role."""
+    if user.groups.filter(name='Parent').exists():
+        return 'programs:parent_dashboard'
+    # Add other role-based redirects here as needed
+    # elif user.groups.filter(name='Contractor').exists():
+    #     return 'programs:contractor_dashboard'
+    # elif user.groups.filter(name='Admin').exists():
+    #     return 'admin_interface:dashboard'
+    else:
+        return 'dashboard:dashboard'
+
+
+@login_required
+def role_based_redirect(request):
+    """Redirect users to their appropriate dashboard based on role."""
+    redirect_url = get_user_redirect_url(request.user)
+    return redirect(redirect_url)
+
 
 def get_user_totp_device(user, confirmed=None):
     """Get the user's TOTP device."""
@@ -123,8 +145,18 @@ def verify_code(request):
     if request.method == 'POST':
         submitted_code = request.POST.get('code')
         if submitted_code == stored_code:
-            # Get or create user
-            user, created = User.objects.get_or_create(email=email)
+            # Get or create user using case-insensitive lookup
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            # Try to find existing user with case-insensitive lookup
+            user = User.objects.get_by_email_case_insensitive(email)
+            created = False
+            
+            if not user:
+                # Create new user with the email as entered
+                user = User.objects.create_user(email=email)
+                created = True
             
             # Explicitly create profile if user was just created
             if created:
@@ -140,13 +172,16 @@ def verify_code(request):
             request.session.pop('verification_email', None)
             request.session.pop('verification_code', None)
             
+            # Determine redirect URL based on user role
+            redirect_url = get_user_redirect_url(user)
+            
             if request.headers.get('HX-Request'):
                 # Return a response that will trigger a full page reload
                 response = HttpResponse()
-                response['HX-Redirect'] = reverse('dashboard:dashboard')
+                response['HX-Redirect'] = reverse(redirect_url)
                 response['HX-Trigger'] = '{"pageReload": true}'
                 return response
-            return redirect('dashboard:dashboard')
+            return redirect(redirect_url)
         else:
             if request.headers.get('HX-Request'):
                 return render(request, 'accounts/_verify_code_card.html', {

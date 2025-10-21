@@ -1,0 +1,162 @@
+<!-- Active Availability -->
+{% if active_availability %}
+<div class="card mb-3">
+    <div class="card-header bg-success text-white">
+        <h6 class="mb-0"><i class="fas fa-check-circle"></i> Active ({{ active_availability|length }})</h6>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for availability in active_availability %}
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">
+                        {{ availability.start_datetime|date:"M d, Y" }}
+                        <span class="badge bg-success">Active</span>
+                    </h6>
+                    <p class="mb-1">
+                        <i class="fas fa-clock"></i>
+                        {{ availability.start_datetime|time:"g:i A" }} - {{ availability.end_datetime|time:"g:i A" }}
+                        <span class="text-muted">({{ availability.duration_hours }}h)</span>
+                    </p>
+                    {% if availability.program_offerings.all %}
+                        <div class="mb-1">
+                            <small class="text-muted">Programs:</small>
+                            {% for offering in availability.program_offerings.all %}
+                                <span class="badge bg-info">{{ offering.program_buildout.title }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if availability.notes %}
+                        <p class="mb-1"><small class="text-muted">{{ availability.notes|truncatechars:100 }}</small></p>
+                    {% endif %}
+                </div>
+                <div class="ms-2">
+                    <a href="{% url 'programs:contractor_availability_detail' availability.pk %}" 
+                       class="btn btn-sm btn-outline-primary">
+                        View
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Future Availability -->
+{% if future_availability %}
+<div class="card mb-3">
+    <div class="card-header bg-primary text-white">
+        <h6 class="mb-0"><i class="fas fa-calendar-plus"></i> Future ({{ future_availability|length }})</h6>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for availability in future_availability %}
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">
+                        {{ availability.start_datetime|date:"M d, Y" }}
+                        <span class="badge bg-secondary">Future</span>
+                    </h6>
+                    <p class="mb-1">
+                        <i class="fas fa-clock"></i>
+                        {{ availability.start_datetime|time:"g:i A" }} - {{ availability.end_datetime|time:"g:i A" }}
+                        <span class="text-muted">({{ availability.duration_hours }}h)</span>
+                    </p>
+                    {% if availability.program_offerings.all %}
+                        <div class="mb-1">
+                            <small class="text-muted">Programs:</small>
+                            {% for offering in availability.program_offerings.all %}
+                                <span class="badge bg-info">{{ offering.program_buildout.title }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if availability.notes %}
+                        <p class="mb-1"><small class="text-muted">{{ availability.notes|truncatechars:100 }}</small></p>
+                    {% endif %}
+                </div>
+                <div class="ms-2">
+                    <a href="{% url 'programs:contractor_availability_detail' availability.pk %}" 
+                       class="btn btn-sm btn-outline-primary">
+                        View
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Past Availability -->
+{% if past_availability %}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="fas fa-history"></i> Past ({{ past_availability|length }})</h6>
+        {% if past_availability %}
+        <button class="btn btn-sm btn-warning"
+                hx-post="{% url 'programs:contractor_availability_archive' %}"
+                hx-vals='{"bulk_archive_past": "true"}'
+                hx-target="#availability-list-container"
+                hx-confirm="Archive all past availability entries?">
+            <i class="fas fa-archive"></i> Archive All Past
+        </button>
+        {% endif %}
+    </div>
+    <div class="list-group list-group-flush">
+        {% for availability in past_availability %}
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">
+                        {{ availability.start_datetime|date:"M d, Y" }}
+                        <span class="badge bg-light text-dark">Past</span>
+                    </h6>
+                    <p class="mb-1">
+                        <i class="fas fa-clock"></i>
+                        {{ availability.start_datetime|time:"g:i A" }} - {{ availability.end_datetime|time:"g:i A" }}
+                        <span class="text-muted">({{ availability.duration_hours }}h)</span>
+                    </p>
+                    {% if availability.program_offerings.all %}
+                        <div class="mb-1">
+                            <small class="text-muted">Programs:</small>
+                            {% for offering in availability.program_offerings.all %}
+                                <span class="badge bg-info">{{ offering.program_buildout.title }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="ms-2">
+                    <button class="btn btn-sm btn-outline-warning"
+                            hx-post="{% url 'programs:contractor_availability_archive' %}"
+                            hx-vals='{"availability_id": "{{ availability.pk }}"}'
+                            hx-target="#availability-list-container"
+                            hx-confirm="Archive this availability entry?">
+                        <i class="fas fa-archive"></i> Archive
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Empty state -->
+{% if not active_availability and not future_availability and not past_availability %}
+<div class="text-center py-5">
+    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+    <h5 class="text-muted">No availability found</h5>
+    <p class="text-muted mb-4">
+        {% if contractor_buildouts %}
+            Try adjusting your filters or add new availability.
+        {% else %}
+            Set your availability to start offering programs to parents.
+        {% endif %}
+    </p>
+    <a href="{% url 'programs:contractor_availability_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Set New Availability
+    </a>
+</div>
+{% endif %}
+

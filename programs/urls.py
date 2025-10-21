@@ -6,8 +6,12 @@ app_name = 'programs'
 urlpatterns = [
     # Parent views
     path('parent/dashboard/', views.parent_dashboard, name='parent_dashboard'),
+    path('parent/home/', views.parent_dashboard, name='parent_home'),  # Alias for new parent landing page
+    path('parent/inquiry/', views.send_program_inquiry, name='send_program_inquiry'),
     path('parent/children/', views.manage_children, name='manage_children'),
     path('parent/children/<int:child_pk>/edit/', views.edit_child, name='edit_child'),
+    # HTMX partials for parent dashboard
+    path('parent/dashboard/calendar-partial/', views.parent_dashboard_calendar_partial, name='parent_dashboard_calendar_partial'),
     
     # Program views
     path('programs/<int:pk>/', views.program_instance_detail, name='program_instance_detail'),
@@ -56,6 +60,10 @@ urlpatterns = [
     path('contractor/availability/<int:pk>/', views.contractor_availability_detail, name='contractor_availability_detail'),
     path('contractor/availability/<int:pk>/edit/', views.contractor_availability_edit, name='contractor_availability_edit'),
     path('contractor/availability/<int:availability_pk>/add-program/', views.add_program_to_availability, name='add_program_to_availability'),
+    # HTMX partials for contractor availability
+    path('contractor/availability/list-partial/', views.contractor_availability_list_partial, name='contractor_availability_list_partial'),
+    path('contractor/availability/calendar-partial/', views.contractor_availability_calendar_partial, name='contractor_availability_calendar_partial'),
+    path('contractor/availability/archive/', views.contractor_availability_archive, name='contractor_availability_archive'),
     
     # Session management for contractors
     path('contractor/sessions/', views.contractor_sessions_list, name='contractor_sessions_list'),

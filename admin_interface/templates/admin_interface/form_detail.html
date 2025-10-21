@@ -1,0 +1,189 @@
+{% extends 'admin_interface/base_admin.html' %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-file-text me-2"></i>{{ form_instance.title }}
+    </h2>
+    <div>
+        <a href="{% url 'admin_interface:form_management' %}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left me-1"></i>Back to Forms
+        </a>
+        <a href="{% url 'admin_interface:form_edit' form_instance.id %}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i>Edit Form
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="admin-card p-4 mb-4">
+            <h5 class="mb-3">
+                <i class="bi bi-info-circle me-2"></i>Form Information
+            </h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Title</label>
+                        <p class="form-control-plaintext">{{ form_instance.title }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Status</label>
+                        <p class="form-control-plaintext">
+                            {% if form_instance.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            {% if form_instance.description %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">Description</label>
+                <p class="form-control-plaintext">{{ form_instance.description }}</p>
+            </div>
+            {% endif %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Created By</label>
+                        <p class="form-control-plaintext">{{ form_instance.created_by.get_full_name|default:form_instance.created_by.username }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Created At</label>
+                        <p class="form-control-plaintext">{{ form_instance.created_at|date:"F j, Y g:i A" }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Last Updated</label>
+                        <p class="form-control-plaintext">{{ form_instance.updated_at|date:"F j, Y g:i A" }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Form ID</label>
+                        <p class="form-control-plaintext">#{{ form_instance.id }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="admin-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="bi bi-question-circle me-2"></i>Form Questions
+                </h5>
+                <span class="badge bg-primary">{{ questions|length }} question{{ questions|length|pluralize }}</span>
+            </div>
+            
+            {% if questions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Question</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for question in questions %}
+                            <tr>
+                                <td>{{ question.order }}</td>
+                                <td>{{ question.question_text }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ question.get_question_type_display }}</span>
+                                </td>
+                                <td>
+                                    {% if question.is_required %}
+                                        <span class="badge bg-warning">Required</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Optional</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    This form doesn't have any questions yet. Use the form builder to add questions.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="admin-card p-4">
+            <h5 class="mb-3">
+                <i class="bi bi-gear me-2"></i>Actions
+            </h5>
+            
+            <div class="d-grid gap-2">
+                <a href="{% url 'admin_interface:form_edit' form_instance.id %}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil me-1"></i>Edit Form
+                </a>
+                
+                <a href="{% url 'programs:form_edit' form_instance.id %}" class="btn btn-outline-success">
+                    <i class="bi bi-tools me-1"></i>Form Builder
+                </a>
+                
+                <button type="button" class="btn btn-outline-info" onclick="duplicateForm({{ form_instance.id }})">
+                    <i class="bi bi-files me-1"></i>Duplicate Form
+                </button>
+                
+                <a href="{% url 'admin_interface:form_delete' form_instance.id %}" class="btn btn-outline-danger">
+                    <i class="bi bi-trash me-1"></i>Delete Form
+                </a>
+            </div>
+        </div>
+        
+        <div class="admin-card p-4 mt-3">
+            <h5 class="mb-3">
+                <i class="bi bi-graph-up me-2"></i>Form Statistics
+            </h5>
+            
+            <div class="row text-center">
+                <div class="col-6">
+                    <div class="border-end">
+                        <h4 class="text-primary mb-0">{{ questions|length }}</h4>
+                        <small class="text-muted">Questions</small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <h4 class="text-success mb-0">
+                        {% if form_instance.is_active %}Active{% else %}Inactive{% endif %}
+                    </h4>
+                    <small class="text-muted">Status</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function duplicateForm(formId) {
+    if (confirm('Are you sure you want to duplicate this form?')) {
+        // This would need to be implemented as a view
+        window.location.href = "{% url 'admin_interface:form_duplicate' form_instance.id %}";
+    }
+}
+</script>
+
+{% endblock %}

@@ -979,3 +979,131 @@ class RequirementsAcceptanceTests(TestCase):
         self.client.force_login(user)
         resp = self.client.get(reverse('programs:contractor_availability_create'))
         self.assertEqual(resp.status_code, 403)
+
+    def test_req_092_comprehensive_parent_landing_page(self):
+        """Test REQ-092: Comprehensive Parent Landing Page."""
+        from programs.models import Child, ProgramType, ProgramBuildout, ProgramInstance, Registration
+        from programs.views import parent_dashboard, send_program_inquiry
+        from django.contrib.auth.models import Group
+        
+        # Create parent user and group
+        parent_group, _ = Group.objects.get_or_create(name='Parent')
+        parent_user = User.objects.create_user(
+            email='parent@test.com',
+            password='testpass123',
+            first_name='Test',
+            last_name='Parent'
+        )
+        parent_user.groups.add(parent_group)
+        
+        # Test parent dashboard access control
+        client = Client()
+        response = client.get(reverse('programs:parent_dashboard'))
+        self.assertEqual(response.status_code, 302)  # Should redirect to login
+        
+        # Login as parent
+        client.login(email='parent@test.com', password='testpass123')
+        response = client.get(reverse('programs:parent_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Welcome, Test')
+        
+        # Test sections are present
+        self.assertContains(response, 'Your Kids')
+        self.assertContains(response, 'Current Sign-ups')
+        self.assertContains(response, 'Running & Pending')
+        self.assertContains(response, 'Available Programs to Inquire')
+        self.assertContains(response, 'Facilitators')
+        
+        # Test empty state for kids
+        self.assertContains(response, 'No kids on file yet')
+        self.assertContains(response, 'Add a Child')
+        
+        # Create a child and test it appears
+        child = Child.objects.create(
+            parent=parent_user,
+            first_name='Test',
+            last_name='Child',
+            date_of_birth='2015-01-01',
+            grade_level='3rd'
+        )
+        
+        response = client.get(reverse('programs:parent_dashboard'))
+        self.assertContains(response, 'Test Child')
+        self.assertContains(response, 'Grade: 3rd')
+        
+        # Test program inquiry functionality
+        program_type = ProgramType.objects.create(
+            name='Test Program',
+            description='A test program'
+        )
+        
+        # Test inquiry submission
+        response = client.post(reverse('programs:send_program_inquiry'), {
+            'program_type_id': program_type.id,
+            'child_id': child.id,
+            'note': 'Test inquiry'
+        })
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertTrue(response_data['success'])
+        self.assertIn('Thanks! We\'ll be in touch about Test Program', response_data['message'])
+        
+        # Test that program request was created
+        from programs.models import ProgramRequest
+        inquiry = ProgramRequest.objects.filter(
+            requester=parent_user,
+            program_type=program_type
+        ).first()
+        self.assertIsNotNone(inquiry)
+        self.assertEqual(inquiry.request_type, 'parent_request')
+        self.assertIn('Child: Test Child', inquiry.additional_notes)
+        
+        # Test non-parent access is denied
+        non_parent = User.objects.create_user(
+            email='notparent@test.com',
+            password='testpass123'
+        )
+        client.logout()
+        client.login(email='notparent@test.com', password='testpass123')
+        response = client.get(reverse('programs:parent_dashboard'))
+        self.assertEqual(response.status_code, 302)  # Should redirect
+
+    def test_req_093_parent_login_redirect(self):
+        """Test that parents are automatically redirected to Parent Landing Page after login."""
+        from django.contrib.auth.models import Group
+        from accounts.views import get_user_redirect_url, role_based_redirect
+        
+        # Create parent user
+        parent_group, _ = Group.objects.get_or_create(name='Parent')
+        parent_user = User.objects.create_user(
+            email='parentredirect@test.com',
+            password='testpass123',
+            first_name='Parent',
+            last_name='User'
+        )
+        parent_user.groups.add(parent_group)
+        
+        # Test utility function
+        redirect_url = get_user_redirect_url(parent_user)
+        self.assertEqual(redirect_url, 'programs:parent_dashboard')
+        
+        # Test role-based redirect view
+        client = Client()
+        client.force_login(parent_user)
+        response = client.get(reverse('accounts:role_based_redirect'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('programs:parent_dashboard'))
+        
+        # Test with non-parent user
+        regular_user = User.objects.create_user(
+            email='regularredirect@test.com',
+            password='testpass123'
+        )
+        
+        redirect_url = get_user_redirect_url(regular_user)
+        self.assertEqual(redirect_url, 'dashboard:dashboard')
+        
+        client.force_login(regular_user)
+        response = client.get(reverse('accounts:role_based_redirect'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('dashboard:dashboard'))

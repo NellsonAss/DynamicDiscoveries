@@ -12,6 +12,7 @@ urlpatterns = [
     path('users/<int:user_id>/', views.user_detail, name='user_detail'),
     path('users/<int:user_id>/edit/', views.user_edit, name='user_edit'),
     path('users/<int:user_id>/toggle-status/', views.toggle_user_status, name='toggle_user_status'),
+    path('users/<int:user_id>/delete/', views.delete_user, name='delete_user'),
     
     # Program Management
     path('program-types/', views.program_type_management, name='program_type_management'),

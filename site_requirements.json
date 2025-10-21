@@ -677,11 +677,209 @@
       "title": "Test2",
       "description": "Test2",
       "status": "implemented"
+    },
+    {
+      "id": "REQ-092",
+      "title": "Comprehensive Parent Landing Page",
+      "description": "Enhanced parent landing page with five distinct sections: Your Kids (child management with cards and empty states), Current Sign-ups (enrollment status with dates and actions), Running & Pending Programs (available instances with capacity and facilitator info), Available Programs to Inquire (program type inquiry system with grade filtering), and Facilitators (directory with program visibility toggles). Features progressive loading, role-based access control, mobile-first responsive design, comprehensive empty/loading/error states, AJAX-powered inquiry forms, and duplicate prevention.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-093",
+      "title": "Email Case-Insensitive Authentication",
+      "description": "User authentication system handles email addresses in a case-insensitive manner during user lookup while preserving the original email format for display. When users log in with different capitalizations (e.g., Test@Example.Com, test@example.com, TEST@EXAMPLE.COM), the system finds the same user account and maintains their permissions and roles. Email addresses are stored as originally entered but lookup uses case-insensitive comparison to prevent duplicate accounts and security issues. Includes comprehensive test coverage validating case-insensitive login behavior.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-094",
+      "title": "Role-Based Login Redirect System",
+      "description": "Automatic role-based redirect system that directs users to their appropriate dashboard immediately after successful login. Parents with the 'Parent' role are automatically redirected to the Parent Landing Page (/programs/parent/dashboard/) instead of the general dashboard. System includes a utility function get_user_redirect_url() for determining appropriate redirect URLs based on user roles, a role_based_redirect view for handling Django's LOGIN_REDIRECT_URL, and extensible architecture for adding redirects for other roles (contractors, admins, etc.). Both custom email verification login flow and standard Django authentication paths are supported.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-095",
+      "title": "Multi-Child Program Enrollment System",
+      "description": "Fixed program registration system to properly support parents enrolling multiple children in the same program instance. Corrected registration logic that was incorrectly preventing parents from enrolling more than one child per program by checking for specific child registration instead of any child from the parent. Updated program instance detail view to show existing registrations per child and allow registration of additional children. Enhanced user interface to display which children are already registered and only show unregistered children in the enrollment form. System now properly supports families with multiple children enrolling in the same programs.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-096",
+      "title": "Contact → One-Step Account + Message → Parent Dashboard System",
+      "description": "Comprehensive contact and messaging system that allows both authenticated and anonymous users to send messages to staff. For authenticated users, provides a compose form that creates conversations and messages. For anonymous users, implements a one-step account creation and message flow that creates a user account, logs them in immediately, sends password setup instructions, and creates their first message. Includes a complete parent dashboard integration with Messages section showing recent conversations, message history, and reply functionality. Features conversation threading, status management (open/pending/closed), role-based messaging (parent/staff), admin notification system with internal alerts and parent acknowledgments, security measures including honeypot protection and rate limiting, comprehensive email templates for notifications and password setup, and complete test coverage. Integrates seamlessly with existing parent dashboard and provides HTMX-powered UI for dynamic interactions.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-097",
+      "title": "Navigation Links Fix",
+      "description": "Fix logo and Home navigation links in the header to properly navigate to the homepage instead of the dashboard. Both the Dynamic Discoveries logo and the Home navigation link should point to the home URL pattern.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-USER-MGMT-001",
+      "title": "User Deactivation and Deletion in Admin Dashboard",
+      "description": "Administrators must be able to deactivate and delete users from the admin dashboard. User deactivation toggles the is_active status, while user deletion permanently removes the user and related data. Superusers and the current user cannot be deleted for security reasons.",
+      "status": "implemented",
+      "priority": "high",
+      "category": "user_management",
+      "last_updated": "2025-01-27T12:50:00.000000"
+    },
+    {
+      "id": "REQ-098",
+      "title": "Contact Form Template Fix",
+      "description": "Fix contact entry view to use the proper contact form template instead of the test template. The contact form should display the actual form for anonymous users (quick form) and authenticated users (compose form) rather than showing test content.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-2025-001-038",
+      "title": "Fix contact form redirect after account creation",
+      "description": "After submitting the contact form and creating a new account, users should be properly redirected to the parent dashboard instead of seeing dashboard content within the contact page. This was caused by HTMX not properly handling redirect responses.",
+      "category": "bug_fix",
+      "priority": "high",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-2025-001-039",
+      "title": "Replace dashboard scroll with pulse animation for messages section",
+      "description": "When users are redirected to the dashboard with ?show=messages parameter, instead of scrolling down to the messages section (which hides the top of the page), use a pulse animation with shadow effect to draw attention to the messages section while keeping the full page visible.",
+      "category": "ui_improvement",
+      "priority": "medium",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-2025-001-040",
+      "title": "Contact Form Authentication Messaging Fix",
+      "description": "Updated contact form Quick Start text and email flow to reflect passwordless authentication system using email verification codes instead of password setup emails",
+      "category": "bug_fix",
+      "priority": "high",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-2025-001-041",
+      "title": "Contact Form Captcha Security Enhancement",
+      "description": "Added captcha protection to contact form for additional security against bot submissions, matching the security level of login and signup forms",
+      "category": "security",
+      "priority": "high",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-2025-001-042",
+      "title": "Contact Form Auto-Login Security Fix",
+      "description": "Removed automatic login from contact form submission. New users created through contact form must now verify their email address through the standard login process with captcha and verification code, ensuring consistent security across all authentication paths",
+      "category": "security",
+      "priority": "critical",
+      "status": "implemented"
+    },
+    {
+      "id": "unified_communication_system",
+      "title": "Unified Communication System",
+      "description": "Logged-in users sending messages through contact form or compose message should create both Contact records (for admin tracking) and Conversation records (for user messaging). This ensures messages appear in both the admin panel contact inquiries and the user's message dashboard.",
+      "category": "communications",
+      "priority": "high",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-2025-01-27-002",
+      "title": "Contractor Role Assignment Fix",
+      "description": "Fixed issue where user jon.nellson@gmail.com was missing the Contractor role, preventing access to contractor dashboard and navigation menu. Added Contractor role to user account to restore full contractor functionality.",
+      "status": "completed",
+      "priority": "high",
+      "category": "bug_fix",
+      "created_date": "2025-01-27T23:15:00.000000",
+      "updated_date": "2025-01-27T23:15:00.000000",
+      "implementation_notes": "User had Consultant and Facilitators roles but was missing Contractor role. Added Contractor role via Django shell command. Verified contractor dashboard and navigation menu now display correctly.",
+      "acceptance_criteria": [
+        "User jon.nellson@gmail.com can access contractor dashboard",
+        "Contractor Tools navigation menu is visible",
+        "All contractor-specific features are accessible"
+      ]
+    },
+    {
+      "id": "REQ-2025-10-09-001",
+      "title": "Contractor Availability Calendar & Archiving",
+      "description": "Comprehensive contractor availability management system with server-rendered calendar views, archiving functionality, and parent-facing availability discovery interface. Includes list view with status grouping (Active/Future/Past), month-view calendar with HTMX-powered navigation, program instance filtering for contractors, facilitator and program type filtering for parents, automatic inactivation of past entries, per-row and bulk archiving capabilities, and integrated parent dashboard calendar showing all contractors' availability with sign-up links.",
+      "status": "implemented",
+      "priority": "high",
+      "category": "feature",
+      "created_date": "2025-10-09T00:00:00.000000",
+      "updated_date": "2025-10-09T00:00:00.000000",
+      "implementation_notes": "Implemented using Django templates with HTMX for dynamic updates. No JavaScript frameworks. Server-side calendar rendering using Python's calendar module. Bootstrap styling for responsive design. Added is_active and is_archived fields to ContractorAvailability model. Created calendar utility module with month grid generation and availability aggregation functions.",
+      "acceptance_criteria": [
+        "Contractor page shows grouped list (Active, Future, Past) with clear status badges",
+        "Contractor calendar displays month view with availability chips showing time and program",
+        "Contractor can filter by Program Instance with multi-select dropdown",
+        "Contractor month navigation (Prev, Today, Next) works via HTMX",
+        "Past availability entries are automatically marked as inactive on page load",
+        "Per-row archive button works for individual past entries",
+        "Bulk archive all past button archives all past entries at once",
+        "Parent dashboard shows availability calendar with all contractors",
+        "Parent can filter by Facilitator (multi-select) and Program Type (multi-select)",
+        "Parent calendar hides past entries by default",
+        "Calendar chips on parent view show facilitator name and link to sign-up",
+        "All HTMX partials load correctly without full page refresh",
+        "URL query parameters maintain state for shareable links",
+        "Mobile responsive design with stacked layout on narrow screens"
+      ],
+      "technical_details": {
+        "models": {
+          "ContractorAvailability": {
+            "new_fields": ["is_active (BooleanField)", "is_archived (BooleanField)"]
+          }
+        },
+        "views": [
+          "contractor_availability_list - Main page with filters and initial load",
+          "contractor_availability_list_partial - HTMX partial returning grouped list",
+          "contractor_availability_calendar_partial - HTMX partial returning month calendar",
+          "contractor_availability_archive - POST endpoint for archiving",
+          "parent_dashboard - Updated with calendar filters",
+          "parent_dashboard_calendar_partial - HTMX partial for parent calendar view"
+        ],
+        "urls": [
+          "/programs/contractor/availability/ - Main contractor availability page",
+          "/programs/contractor/availability/list-partial/ - List HTMX endpoint",
+          "/programs/contractor/availability/calendar-partial/ - Calendar HTMX endpoint",
+          "/programs/contractor/availability/archive/ - Archive POST endpoint",
+          "/programs/parent/dashboard/ - Parent dashboard with calendar",
+          "/programs/parent/dashboard/calendar-partial/ - Parent calendar HTMX endpoint"
+        ],
+        "templates": [
+          "programs/contractor_availability_list.html - Main contractor page",
+          "programs/partials/_availability_list.html - Grouped list partial",
+          "programs/partials/_availability_calendar.html - Shared calendar partial",
+          "programs/parent_home.html - Updated with calendar section"
+        ],
+        "utilities": [
+          "programs/utils/calendar_utils.py - Calendar grid generation and aggregation"
+        ],
+        "tests": [
+          "ContractorAvailabilityArchivingTest - Archive and inactivation tests",
+          "ContractorAvailabilityStatusBucketingTest - Status grouping tests",
+          "ContractorAvailabilityFilteringTest - Program buildout filtering tests",
+          "CalendarUtilsTest - Calendar utility function tests",
+          "ParentDashboardCalendarTest - Parent filtering and visibility tests"
+        ]
+      },
+      "dependencies": [
+        "Django 4.2+",
+        "HTMX 1.9+",
+        "Bootstrap 5 (CSS only)",
+        "Python calendar module",
+        "Existing ContractorAvailability, AvailabilityProgram, ProgramBuildout models"
+      ],
+      "security": {
+        "authentication": "login_required decorator on all views",
+        "authorization": "Contractor views check user_is_contractor or user_is_admin, Parent views check user_is_parent",
+        "data_isolation": "Contractors only see their own availability, Parents see all non-archived future/active availability"
+      },
+      "performance": {
+        "query_optimization": "Uses select_related and prefetch_related for efficient database queries",
+        "calendar_scope": "Limits queries to visible month +/- 1 week buffer",
+        "htmx_partials": "Only updates necessary DOM sections, avoiding full page reloads"
+      }
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-01-27T12:30:00.000000",
+    "last_updated": "2025-01-27T23:15:00.000000",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

@@ -276,3 +276,498 @@ class ProgramInstanceModelTest(TestCase):
         self.assertEqual(self.instance.title, "Test Instance")
         self.assertEqual(self.instance.capacity, 20)
         self.assertEqual(self.instance.available_spots, 20)  # No registrations yet
+
+
+# ============================================================================
+# AVAILABILITY CALENDAR & ARCHIVING TESTS
+# ============================================================================
+
+class ContractorAvailabilityArchivingTest(TestCase):
+    """Tests for availability archiving and status management."""
+    
+    def setUp(self):
+        from django.contrib.auth.models import Group
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import ContractorAvailability, ProgramBuildout
+        
+        # Create contractor group
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        
+        # Create contractor user
+        self.contractor = User.objects.create_user(
+            username='contractor1',
+            email='contractor1@test.com',
+            password='testpass123'
+        )
+        self.contractor.groups.add(contractor_group)
+        
+        # Create program buildout
+        program_type = ProgramType.objects.create(name="Test Program")
+        self.buildout = ProgramBuildout.objects.create(
+            program_type=program_type,
+            title="Test Buildout",
+            status='active'
+        )
+        
+        self.now = timezone.now()
+        
+        # Create past availability (ended 1 day ago)
+        self.past_avail = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=self.now - timedelta(days=2),
+            end_datetime=self.now - timedelta(days=1),
+            is_active=True,
+            is_archived=False
+        )
+        
+        # Create active availability (started 1 hour ago, ends in 1 hour)
+        self.active_avail = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=self.now - timedelta(hours=1),
+            end_datetime=self.now + timedelta(hours=1),
+            is_active=True,
+            is_archived=False
+        )
+        
+        # Create future availability (starts in 1 day)
+        self.future_avail = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=self.now + timedelta(days=1),
+            end_datetime=self.now + timedelta(days=1, hours=2),
+            is_active=True,
+            is_archived=False
+        )
+    
+    def test_auto_inactivation(self):
+        """Test that past availability is auto-inactivated."""
+        from django.utils import timezone
+        from .models import ContractorAvailability
+        
+        # Simulate the auto-inactivation query
+        ContractorAvailability.objects.filter(
+            end_datetime__lt=timezone.now(),
+            is_active=True
+        ).update(is_active=False)
+        
+        # Refresh from database
+        self.past_avail.refresh_from_db()
+        self.active_avail.refresh_from_db()
+        self.future_avail.refresh_from_db()
+        
+        # Past should be inactive
+        self.assertFalse(self.past_avail.is_active)
+        # Active and future should still be active
+        self.assertTrue(self.active_avail.is_active)
+        self.assertTrue(self.future_avail.is_active)
+    
+    def test_archive_single_entry(self):
+        """Test archiving a single availability entry."""
+        self.past_avail.is_archived = True
+        self.past_avail.save()
+        
+        self.past_avail.refresh_from_db()
+        self.assertTrue(self.past_avail.is_archived)
+    
+    def test_bulk_archive_past(self):
+        """Test bulk archiving of past entries."""
+        from django.utils import timezone
+        from .models import ContractorAvailability
+        
+        count = ContractorAvailability.objects.filter(
+            contractor=self.contractor,
+            end_datetime__lt=timezone.now(),
+            is_archived=False
+        ).update(is_archived=True)
+        
+        self.assertEqual(count, 1)  # Only past_avail should be archived
+        
+        self.past_avail.refresh_from_db()
+        self.assertTrue(self.past_avail.is_archived)
+
+
+class ContractorAvailabilityStatusBucketingTest(TestCase):
+    """Tests for status bucketing (future/active/past)."""
+    
+    def setUp(self):
+        from django.contrib.auth.models import Group
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import ContractorAvailability
+        
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        self.contractor = User.objects.create_user(
+            username='contractor2',
+            email='contractor2@test.com',
+            password='testpass123'
+        )
+        self.contractor.groups.add(contractor_group)
+        
+        self.now = timezone.now()
+        
+        # Create availability entries at boundary times
+        # Past: ended 1 minute ago
+        self.past_boundary = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=self.now - timedelta(hours=2),
+            end_datetime=self.now - timedelta(minutes=1),
+            is_archived=False
+        )
+        
+        # Active: started 1 minute ago, ends in 1 minute
+        self.active_boundary = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=self.now - timedelta(minutes=1),
+            end_datetime=self.now + timedelta(minutes=1),
+            is_archived=False
+        )
+        
+        # Future: starts in 1 minute
+        self.future_boundary = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=self.now + timedelta(minutes=1),
+            end_datetime=self.now + timedelta(hours=2),
+            is_archived=False
+        )
+    
+    def test_status_bucketing(self):
+        """Test that availability is correctly bucketed by status."""
+        from .models import ContractorAvailability
+        from django.utils import timezone
+        
+        now = timezone.now()
+        
+        # Get all non-archived availability
+        base_qs = ContractorAvailability.objects.filter(
+            contractor=self.contractor,
+            is_archived=False
+        )
+        
+        # Active: overlaps with now
+        active_qs = base_qs.filter(
+            start_datetime__lte=now,
+            end_datetime__gte=now
+        )
+        
+        # Future: starts after now
+        future_qs = base_qs.filter(
+            start_datetime__gt=now
+        )
+        
+        # Past: ended before now
+        past_qs = base_qs.filter(
+            end_datetime__lt=now
+        )
+        
+        # Verify counts
+        self.assertEqual(active_qs.count(), 1)
+        self.assertEqual(future_qs.count(), 1)
+        self.assertEqual(past_qs.count(), 1)
+        
+        # Verify correct items in each bucket
+        self.assertIn(self.active_boundary, active_qs)
+        self.assertIn(self.future_boundary, future_qs)
+        self.assertIn(self.past_boundary, past_qs)
+
+
+class ContractorAvailabilityFilteringTest(TestCase):
+    """Tests for program buildout filtering."""
+    
+    def setUp(self):
+        from django.contrib.auth.models import Group
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import ContractorAvailability, AvailabilityProgram, ProgramBuildout
+        
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        self.contractor = User.objects.create_user(
+            username='contractor3',
+            email='contractor3@test.com',
+            password='testpass123'
+        )
+        self.contractor.groups.add(contractor_group)
+        
+        # Create program types and buildouts
+        program_type1 = ProgramType.objects.create(name="Math")
+        program_type2 = ProgramType.objects.create(name="Science")
+        
+        self.buildout1 = ProgramBuildout.objects.create(
+            program_type=program_type1,
+            title="Math 101",
+            status='active'
+        )
+        
+        self.buildout2 = ProgramBuildout.objects.create(
+            program_type=program_type2,
+            title="Science 101",
+            status='active'
+        )
+        
+        self.now = timezone.now()
+        
+        # Create availability with Math program
+        self.avail_math = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=self.now + timedelta(days=1),
+            end_datetime=self.now + timedelta(days=1, hours=2),
+            is_archived=False
+        )
+        AvailabilityProgram.objects.create(
+            availability=self.avail_math,
+            program_buildout=self.buildout1,
+            session_duration_hours=Decimal('1.0'),
+            max_sessions=1
+        )
+        
+        # Create availability with Science program
+        self.avail_science = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=self.now + timedelta(days=2),
+            end_datetime=self.now + timedelta(days=2, hours=2),
+            is_archived=False
+        )
+        AvailabilityProgram.objects.create(
+            availability=self.avail_science,
+            program_buildout=self.buildout2,
+            session_duration_hours=Decimal('1.0'),
+            max_sessions=1
+        )
+    
+    def test_filter_by_program_buildout(self):
+        """Test filtering availability by program buildout."""
+        from .models import ContractorAvailability
+        
+        # Filter by Math buildout
+        math_qs = ContractorAvailability.objects.filter(
+            contractor=self.contractor,
+            is_archived=False,
+            program_offerings__program_buildout=self.buildout1
+        ).distinct()
+        
+        self.assertEqual(math_qs.count(), 1)
+        self.assertIn(self.avail_math, math_qs)
+        
+        # Filter by Science buildout
+        science_qs = ContractorAvailability.objects.filter(
+            contractor=self.contractor,
+            is_archived=False,
+            program_offerings__program_buildout=self.buildout2
+        ).distinct()
+        
+        self.assertEqual(science_qs.count(), 1)
+        self.assertIn(self.avail_science, science_qs)
+
+
+class CalendarUtilsTest(TestCase):
+    """Tests for calendar utility functions."""
+    
+    def test_month_calendar_grid(self):
+        """Test month calendar grid generation."""
+        from programs.utils.calendar_utils import get_month_calendar_grid
+        
+        # January 2025 starts on Wednesday
+        grid = get_month_calendar_grid(2025, 1)
+        
+        # Should have 5 weeks
+        self.assertIsInstance(grid, list)
+        self.assertTrue(len(grid) >= 4)  # At least 4 weeks
+        
+        # First week should have days before Jan 1
+        first_week = grid[0]
+        self.assertIsInstance(first_week, list)
+        self.assertEqual(len(first_week), 7)  # 7 days per week
+    
+    def test_month_bounds(self):
+        """Test month bounds calculation."""
+        from programs.utils.calendar_utils import get_month_bounds
+        from datetime import date
+        
+        start_dt, end_dt = get_month_bounds(2025, 1)
+        
+        # Start should be before Jan 1 (includes buffer)
+        self.assertLess(start_dt.date(), date(2025, 1, 1))
+        
+        # End should be after Jan 31 (includes buffer)
+        self.assertGreater(end_dt.date(), date(2025, 1, 31))
+    
+    def test_get_availability_for_day(self):
+        """Test filtering availability for a specific day."""
+        from programs.utils.calendar_utils import get_availability_for_day
+        from django.utils import timezone
+        from django.contrib.auth.models import Group
+        from datetime import timedelta, date
+        from .models import ContractorAvailability
+        
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        contractor = User.objects.create_user(
+            username='contractor4',
+            email='contractor4@test.com',
+            password='testpass123'
+        )
+        contractor.groups.add(contractor_group)
+        
+        now = timezone.now()
+        target_date = (now + timedelta(days=1)).date()
+        
+        # Create availability that overlaps with target date
+        avail1 = ContractorAvailability.objects.create(
+            contractor=contractor,
+            start_datetime=timezone.make_aware(timezone.datetime.combine(target_date, timezone.datetime.min.time())),
+            end_datetime=timezone.make_aware(timezone.datetime.combine(target_date, timezone.datetime.max.time())),
+            is_archived=False
+        )
+        
+        # Create availability that doesn't overlap
+        avail2 = ContractorAvailability.objects.create(
+            contractor=contractor,
+            start_datetime=now + timedelta(days=5),
+            end_datetime=now + timedelta(days=5, hours=2),
+            is_archived=False
+        )
+        
+        all_availability = [avail1, avail2]
+        day_availability = get_availability_for_day(all_availability, target_date)
+        
+        self.assertEqual(len(day_availability), 1)
+        self.assertIn(avail1, day_availability)
+        self.assertNotIn(avail2, day_availability)
+
+
+class ParentDashboardCalendarTest(TestCase):
+    """Tests for parent dashboard calendar filtering."""
+    
+    def setUp(self):
+        from django.contrib.auth.models import Group
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import ContractorAvailability, AvailabilityProgram, ProgramBuildout
+        
+        # Create groups
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        
+        # Create contractors
+        self.contractor1 = User.objects.create_user(
+            username='contractor_a',
+            email='contractor_a@test.com',
+            password='testpass123',
+            first_name='Alice',
+            last_name='Smith'
+        )
+        self.contractor1.groups.add(contractor_group)
+        
+        self.contractor2 = User.objects.create_user(
+            username='contractor_b',
+            email='contractor_b@test.com',
+            password='testpass123',
+            first_name='Bob',
+            last_name='Jones'
+        )
+        self.contractor2.groups.add(contractor_group)
+        
+        # Create program types and buildouts
+        program_type1 = ProgramType.objects.create(name="Math")
+        program_type2 = ProgramType.objects.create(name="Science")
+        
+        self.buildout1 = ProgramBuildout.objects.create(
+            program_type=program_type1,
+            title="Math 101",
+            status='active'
+        )
+        
+        self.buildout2 = ProgramBuildout.objects.create(
+            program_type=program_type2,
+            title="Science 101",
+            status='active'
+        )
+        
+        self.now = timezone.now()
+        
+        # Create availability for contractor1 with Math
+        self.avail1 = ContractorAvailability.objects.create(
+            contractor=self.contractor1,
+            start_datetime=self.now + timedelta(days=1),
+            end_datetime=self.now + timedelta(days=1, hours=2),
+            is_archived=False
+        )
+        AvailabilityProgram.objects.create(
+            availability=self.avail1,
+            program_buildout=self.buildout1,
+            session_duration_hours=Decimal('1.0'),
+            max_sessions=1
+        )
+        
+        # Create availability for contractor2 with Science
+        self.avail2 = ContractorAvailability.objects.create(
+            contractor=self.contractor2,
+            start_datetime=self.now + timedelta(days=2),
+            end_datetime=self.now + timedelta(days=2, hours=2),
+            is_archived=False
+        )
+        AvailabilityProgram.objects.create(
+            availability=self.avail2,
+            program_buildout=self.buildout2,
+            session_duration_hours=Decimal('1.0'),
+            max_sessions=1
+        )
+    
+    def test_filter_by_facilitator(self):
+        """Test filtering by facilitator (contractor)."""
+        from .models import ContractorAvailability
+        from django.utils import timezone
+        
+        now = timezone.now()
+        
+        # Filter by contractor1
+        qs = ContractorAvailability.objects.filter(
+            is_archived=False,
+            end_datetime__gte=now,
+            contractor=self.contractor1
+        )
+        
+        self.assertEqual(qs.count(), 1)
+        self.assertIn(self.avail1, qs)
+    
+    def test_filter_by_program_type(self):
+        """Test filtering by program type."""
+        from .models import ContractorAvailability
+        from django.utils import timezone
+        
+        now = timezone.now()
+        
+        # Filter by Math program type
+        qs = ContractorAvailability.objects.filter(
+            is_archived=False,
+            end_datetime__gte=now,
+            program_offerings__program_buildout__program_type__name="Math"
+        ).distinct()
+        
+        self.assertEqual(qs.count(), 1)
+        self.assertIn(self.avail1, qs)
+    
+    def test_hide_past_entries(self):
+        """Test that past entries are hidden from parent calendar."""
+        from .models import ContractorAvailability
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Create past availability
+        past_avail = ContractorAvailability.objects.create(
+            contractor=self.contractor1,
+            start_datetime=self.now - timedelta(days=2),
+            end_datetime=self.now - timedelta(days=1),
+            is_archived=False
+        )
+        
+        now = timezone.now()
+        
+        # Parent query should exclude past entries
+        parent_qs = ContractorAvailability.objects.filter(
+            is_archived=False,
+            end_datetime__gte=now
+        )
+        
+        # Should not include past_avail
+        self.assertNotIn(past_avail, parent_qs)
+        # Should include future availability
+        self.assertIn(self.avail1, parent_qs)
+        self.assertIn(self.avail2, parent_qs)

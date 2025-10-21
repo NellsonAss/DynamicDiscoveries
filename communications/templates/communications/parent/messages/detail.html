@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ conversation.subject }} - Messages - Dynamic Discoveries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'communications:parent_messages_list' %}" class="text-decoration-none">
+                                    <i class="fas fa-comments"></i> Messages
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active">{{ conversation.subject }}</li>
+                        </ol>
+                    </nav>
+                    <h1 class="mb-0">{{ conversation.subject }}</h1>
+                </div>
+                <div>
+                    {% if conversation.status == 'open' %}
+                        <span class="badge bg-success fs-6">Open</span>
+                    {% elif conversation.status == 'pending' %}
+                        <span class="badge bg-warning fs-6">Pending</span>
+                    {% else %}
+                        <span class="badge bg-secondary fs-6">Closed</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <!-- Message Thread -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <div class="message-thread">
+                        {% for msg in messages %}
+                            <div class="message-bubble mb-4 {% if msg.role == 'parent' %}message-parent{% else %}message-staff{% endif %}">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="message-header">
+                                        {% if msg.role == 'parent' %}
+                                            <i class="fas fa-user text-primary"></i>
+                                            <strong class="text-primary">You</strong>
+                                        {% else %}
+                                            <i class="fas fa-user-tie text-success"></i>
+                                            <strong class="text-success">Dynamic Discoveries Staff</strong>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ msg.created_at|date:"M j, Y g:i A" }}
+                                    </small>
+                                </div>
+                                <div class="message-body p-3 rounded {% if msg.role == 'parent' %}bg-light{% else %}bg-success-light{% endif %}">
+                                    {{ msg.body|linebreaks }}
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-comment-slash fa-2x mb-2"></i>
+                                <p>No messages in this conversation yet.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Reply Form -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-reply"></i>
+                        Reply to this conversation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" 
+                          action="{% url 'communications:parent_messages_reply' conversation.pk %}"
+                          hx-post="{% url 'communications:parent_messages_reply' conversation.pk %}"
+                          hx-target="body"
+                          hx-swap="outerHTML">
+                        
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ reply_form.body.id_for_label }}" class="form-label">
+                                Your Reply <span class="text-danger">*</span>
+                            </label>
+                            {{ reply_form.body }}
+                            {% if reply_form.body.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in reply_form.body.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {{ reply_form.honeypot }}
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                {% if conversation.status == 'closed' %}
+                                    <i class="fas fa-info-circle text-info"></i>
+                                    This conversation is closed. Your reply will reopen it.
+                                {% endif %}
+                            </small>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                                Send Reply
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.message-parent {
+    margin-left: 2rem;
+}
+
+.message-staff {
+    margin-right: 2rem;
+}
+
+.bg-success-light {
+    background-color: #d1e7dd !important;
+}
+
+.message-thread {
+    max-height: 600px;
+    overflow-y: auto;
+}
+</style>
+{% endblock %}

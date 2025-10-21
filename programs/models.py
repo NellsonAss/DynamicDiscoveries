@@ -1301,6 +1301,16 @@ class ContractorAvailability(models.Model):
         help_text="Internal notes about this availability (e.g., 'Prefer morning sessions')"
     )
     
+    # Archive and active status
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Auto-set to False when end_datetime is in the past"
+    )
+    is_archived = models.BooleanField(
+        default=False,
+        help_text="Set to True when contractor archives this availability"
+    )
+    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
