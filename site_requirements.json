@@ -199,39 +199,9 @@
       "status": "implemented"
     },
     {
-      "id": "REQ-019",
-      "title": "Buildout Form Field Validation",
-      "description": "Fixed buildout creation form to include all required fields (program_type, title, num_facilitators, num_new_facilitators, workshops_per_facilitator_per_year, students_per_workshop, sessions_per_workshop, new_workshop_concepts_per_year) with proper validation and styling",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-999",
-      "title": "Test",
-      "description": "Test",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-998",
-      "title": "Test2",
-      "description": "Test2",
-      "status": "implemented"
-    },
-    {
       "id": "REQ-034",
       "title": "Program Type Instance Relationship Fix",
       "description": "Fixed AttributeError in admin interface where ProgramType.instances was being accessed incorrectly. Updated views and templates to use the correct relationship path: ProgramType → ProgramBuildout → ProgramInstance. Added instance_count attributes to program types in views for template display",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-017",
-      "title": "Registration Management System",
-      "description": "Child registration system with form responses, status tracking, and parent dashboard",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-018",
-      "title": "Program Management Data Model Refactoring",
-      "description": "Refactored program management data model to implement clean architecture with ProgramType (name/description only), Role (reusable with default responsibilities), Responsibility (frequency-based with hours), ProgramBuildout (versioning with computed properties), BaseCost (frequency-based costs), and ProgramInstance (contractor assignments with actual enrollment calculations). Replaced old ProgramRole system with new Responsibility structure.",
       "status": "implemented"
     },
     {
@@ -316,12 +286,6 @@
       "id": "REQ-048",
       "title": "Database Relationship Error Fixes",
       "description": "Fixed critical Django errors caused by outdated relationship references in admin interface views. Updated program_type_management and role_detail views to use correct relationship names (role_lines instead of role_assignments). Fixed missing buildout variable reference in BuildoutRoleLine.calculate_payout method. Verified all new model relationships work correctly with proper prefetch_related queries and database operations.",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-036",
-      "title": "Responsibility Edit and Delete Functionality",
-      "description": "Admin interface for editing and deleting responsibilities within roles. Includes edit form with pre-populated data, delete confirmation page, and proper navigation back to responsibility management. Edit functionality allows updating responsibility name, description, frequency type, and default hours. Delete functionality includes confirmation dialog and proper cleanup.",
       "status": "implemented"
     },
     {
@@ -499,78 +463,6 @@
       "status": "implemented"
     },
     {
-      "id": "REQ-997",
-      "title": "Test",
-      "description": "Test",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-995",
-      "title": "Test2",
-      "description": "Test2",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-996",
-      "title": "Test",
-      "description": "Test",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-994",
-      "title": "Test2",
-      "description": "Test2",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-993",
-      "title": "Test2",
-      "description": "Test2",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-992",
-      "title": "Test2",
-      "description": "Test2",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-991",
-      "title": "Test2",
-      "description": "Test2",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-990",
-      "title": "Test",
-      "description": "Test",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-989",
-      "title": "Test2",
-      "description": "Test2",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-988",
-      "title": "Test",
-      "description": "Test",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-987",
-      "title": "Test2",
-      "description": "Test2",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-077",
-      "title": "Day Off Request Date Range Support",
-      "description": "Enhanced ContractorDayOffRequest system to support date ranges instead of single dates. Updated model to use start_date and end_date fields, modified forms to show date range selection, updated templates to display date ranges, and created database migrations to preserve existing data. Contractors can now request time off for multiple consecutive days in a single request, improving efficiency for vacation and extended leave requests.",
-      "status": "implemented"
-    },
-    {
       "id": "REQ-078",
       "title": "Role Detail Responsibility Edit Fix",
       "description": "Fixed non-functional edit icon in role detail responsibilities table by linking the pencil action to the responsibility_edit route so responsibilities can be edited directly from the role detail page.",
@@ -580,18 +472,6 @@
       "id": "REQ-079",
       "title": "Remove Role-Level Default Hourly Rate UI",
       "description": "Removed default hourly rate column and related statistics from role management UI to avoid implying role-wide rates. System relies on contractor-specific rates via ContractorRoleRate; Role model has no hourly_rate field.",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-986",
-      "title": "Test",
-      "description": "Test",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-985",
-      "title": "Test2",
-      "description": "Test2",
       "status": "implemented"
     },
     {
@@ -664,18 +544,6 @@
       "id": "REQ-091",
       "title": "Admin Document Approval System",
       "description": "Comprehensive admin approval system for contractor NDA and W-9 documents with full management interface. Features include: admin approval fields for NDA and W-9 with approval tracking (who approved, when approved), contractor document management interface with search and filtering capabilities, individual document detail views with signature display and file download, admin approval/reset functionality with confirmation dialogs, updated onboarding logic requiring both document completion AND admin approval, enhanced user management interface showing NDA/W-9 status, and complete audit trail for all admin actions.",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-984",
-      "title": "Test",
-      "description": "Test",
-      "status": "implemented"
-    },
-    {
-      "id": "REQ-983",
-      "title": "Test2",
-      "description": "Test2",
       "status": "implemented"
     },
     {
@@ -781,7 +649,7 @@
       "id": "REQ-2025-01-27-002",
       "title": "Contractor Role Assignment Fix",
       "description": "Fixed issue where user jon.nellson@gmail.com was missing the Contractor role, preventing access to contractor dashboard and navigation menu. Added Contractor role to user account to restore full contractor functionality.",
-      "status": "completed",
+      "status": "implemented",
       "priority": "high",
       "category": "bug_fix",
       "created_date": "2025-01-27T23:15:00.000000",
@@ -822,7 +690,10 @@
       "technical_details": {
         "models": {
           "ContractorAvailability": {
-            "new_fields": ["is_active (BooleanField)", "is_archived (BooleanField)"]
+            "new_fields": [
+              "is_active (BooleanField)",
+              "is_archived (BooleanField)"
+            ]
           }
         },
         "views": [
@@ -897,11 +768,47 @@
         "All tests pass with comprehensive coverage",
         "Role switching redirects to appropriate dashboard for that role"
       ]
+    },
+    {
+      "id": "REQ-100",
+      "title": "Mandatory Requirements and Testing Workflow",
+      "description": "Automated workflow enforcement ensuring every code change is tracked in site_requirements.json and validated with corresponding tests in tests/test_requirements.py. Before any feature work or bug fix, a requirement entry must be created or updated. After implementation, tests must be added or updated to validate the requirement. Full regression testing with 'python manage.py test tests.test_requirements' must run before task completion. This workflow is mandatory for all code changes to maintain comprehensive requirements tracking and test coverage.",
+      "status": "implemented",
+      "priority": "critical",
+      "category": "development_workflow",
+      "created_date": "2025-10-21T00:00:00.000000",
+      "updated_date": "2025-10-21T00:00:00.000000",
+      "implementation_notes": "Implemented through .cursorrules configuration file with explicit workflow steps: (1) Update site_requirements.json, (2) Implement feature/fix, (3) Update tests/test_requirements.py, (4) Run test suite, (5) Report results. Skip conditions only for purely informational queries with no code changes.",
+      "acceptance_criteria": [
+        "Every code change has a corresponding requirement entry",
+        "Every requirement has a corresponding test case",
+        "Test suite runs automatically after each implementation",
+        "Test results are reported before task completion",
+        "Workflow is enforced through AI assistant configuration",
+        "No code changes bypass the requirements tracking system"
+      ]
+    },
+    {
+      "id": "REQ-101",
+      "title": "Recurring Weekly Availability Creation Fix",
+      "description": "Fixed bug where recurring weekly availability only created a single calendar entry instead of multiple entries for all selected weekdays until the specified end date. The contractor availability creation view now properly passes the contractor to the form instance before saving, and calls form.save(commit=True) to ensure all recurring instances are created and saved to the database. This fix applies to all availability types: single date, date range, and recurring weekly patterns with optional holiday exclusion.",
+      "status": "implemented",
+      "priority": "high",
+      "category": "bug_fix",
+      "created_date": "2025-10-21T00:00:00.000000",
+      "updated_date": "2025-10-21T00:00:00.000000",
+      "acceptance_criteria": [
+        "Recurring weekly availability creates multiple entries for all selected days",
+        "All entries appear on the calendar between start and end dates",
+        "Holiday exclusion works correctly when enabled",
+        "Single date and date range availability types still work correctly",
+        "Created availability entries have correct contractor assignment"
+      ]
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-10-21T00:00:00.000000",
+    "last_updated": "2025-10-21T23:30:36.238258",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

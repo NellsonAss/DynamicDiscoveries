@@ -1263,12 +1263,15 @@ def contractor_availability_create(request):
     if request.method == 'POST':
         form = ContractorAvailabilityForm(request.POST)
         if form.is_valid():
-            # Set contractor before saving
+            # Set contractor on form instance before saving
             form.instance.contractor = request.user
-            availability = form.save()
             
             # Handle different availability types
             availability_type = form.cleaned_data.get('availability_type')
+            
+            # Save with commit=True to create all instances (single, range, or recurring)
+            availability = form.save(commit=True)
+            
             if availability_type == 'single':
                 messages.success(request, "Availability slot created successfully!")
                 return redirect('programs:contractor_availability_detail', pk=availability.pk)

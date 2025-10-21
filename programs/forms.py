@@ -873,7 +873,7 @@ class ContractorAvailabilityForm(forms.ModelForm):
             
             while current_date <= end_date:
                 instance = ContractorAvailability()
-                instance.contractor = self.instance.contractor if self.instance.pk else None
+                instance.contractor = self.instance.contractor
                 instance.notes = self.cleaned_data.get('notes', '')
                 instance.exclude_holidays = self.cleaned_data.get('exclude_holidays', False)
                 
@@ -918,7 +918,7 @@ class ContractorAvailabilityForm(forms.ModelForm):
                     temp_start = timezone.make_aware(datetime.combine(current_date, start_time))
                     if temp_start >= timezone.now():
                         instance = ContractorAvailability()
-                        instance.contractor = self.instance.contractor if self.instance.pk else None
+                        instance.contractor = self.instance.contractor
                         instance.notes = self.cleaned_data.get('notes', '')
                         instance.exclude_holidays = exclude_holidays
                         
