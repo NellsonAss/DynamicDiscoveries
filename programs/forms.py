@@ -7,7 +7,8 @@ from .models import (
     ProgramType, Role, Responsibility, ProgramBuildout, BuildoutResponsibilityAssignment, 
     BuildoutRoleAssignment, BaseCost, BuildoutBaseCostAssignment, Location, BuildoutLocationAssignment,
     ContractorAvailability, AvailabilityProgram, ProgramSession, SessionBooking,
-    ProgramBuildoutScheduling, ContractorDayOffRequest, ProgramRequest
+    ProgramBuildoutScheduling, ContractorDayOffRequest, ProgramRequest,
+    AvailabilityRule, AvailabilityException
 )
 from django.db import models
 
@@ -1281,6 +1282,211 @@ AvailabilityProgramFormSet = forms.inlineformset_factory(
     ContractorAvailability,
     AvailabilityProgram,
     form=AvailabilityProgramForm,
+    extra=1,
+    can_delete=True
+)
+
+
+# ============================================================================
+# AVAILABILITY RULES FORMS
+# ============================================================================
+
+class AvailabilityRuleForm(forms.ModelForm):
+    """Form for creating and editing availability rules."""
+    
+    class Meta:
+        model = AvailabilityRule
+        fields = [
+            'title', 'kind', 'start_time', 'end_time',
+            'date_start', 'date_end',
+            'weekdays_monday', 'weekdays_tuesday', 'weekdays_wednesday',
+            'weekdays_thursday', 'weekdays_friday', 'weekdays_saturday', 'weekdays_sunday',
+            'timezone', 'notes', 'programs_offered', 'is_active'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., Monday afternoons, Summer intensive'
+            }),
+            'kind': forms.Select(attrs={'class': 'form-control'}),
+            'start_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time',
+                'step': '900'  # 15-minute intervals
+            }),
+            'end_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time',
+                'step': '900'
+            }),
+            'date_start': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'date_end': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'timezone': forms.Select(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Optional notes about this availability...'
+            }),
+            'programs_offered': forms.CheckboxSelectMultiple(),
+        }
+        help_texts = {
+            'title': 'Short label displayed on calendar (optional)',
+            'kind': 'Choose between weekly recurring or date range',
+            'start_time': 'When availability starts each day',
+            'end_time': 'When availability ends each day',
+            'date_start': 'First date this rule applies',
+            'date_end': 'Last date this rule applies (inclusive)',
+            'timezone': 'Timezone for this availability',
+            'programs_offered': 'Select which programs you can teach during this time',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        contractor = kwargs.pop('contractor', None)
+        super().__init__(*args, **kwargs)
+        
+        # Add Bootstrap classes to checkboxes
+        for day_field in ['weekdays_monday', 'weekdays_tuesday', 'weekdays_wednesday',
+                          'weekdays_thursday', 'weekdays_friday', 'weekdays_saturday', 'weekdays_sunday']:
+            self.fields[day_field].widget.attrs.update({'class': 'form-check-input'})
+        
+        self.fields['is_active'].widget.attrs.update({'class': 'form-check-input'})
+        
+        # Filter programs_offered to only show active program instances
+        # If contractor is provided, only show instances they're assigned to
+        if contractor:
+            from .models import InstanceRoleAssignment
+            assigned_instance_ids = InstanceRoleAssignment.objects.filter(
+                contractor=contractor
+            ).values_list('instance_id', flat=True)
+            self.fields['programs_offered'].queryset = ProgramInstance.objects.filter(
+                id__in=assigned_instance_ids,
+                start_date__isnull=False
+            ).select_related('buildout__program_type').order_by('buildout__program_type__name', 'title')
+        else:
+            self.fields['programs_offered'].queryset = ProgramInstance.objects.filter(
+                start_date__isnull=False
+            ).select_related('buildout__program_type').order_by('buildout__program_type__name', 'title')
+        
+        # Update timezone field to use common timezones
+        self.fields['timezone'].widget = forms.Select(
+            attrs={'class': 'form-control'},
+            choices=[
+                ('America/New_York', 'Eastern Time'),
+                ('America/Chicago', 'Central Time'),
+                ('America/Denver', 'Mountain Time'),
+                ('America/Los_Angeles', 'Pacific Time'),
+                ('America/Phoenix', 'Arizona Time'),
+                ('America/Anchorage', 'Alaska Time'),
+                ('Pacific/Honolulu', 'Hawaii Time'),
+            ]
+        )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        kind = cleaned_data.get('kind')
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+        date_start = cleaned_data.get('date_start')
+        date_end = cleaned_data.get('date_end')
+        
+        # Validate time window
+        if start_time and end_time and start_time >= end_time:
+            raise forms.ValidationError("End time must be after start time.")
+        
+        # Validate date bounds
+        if date_start and date_end and date_start > date_end:
+            raise forms.ValidationError("End date must be on or after start date.")
+        
+        # For WEEKLY_RECURRING, ensure at least one weekday is selected
+        if kind == 'WEEKLY_RECURRING':
+            weekdays_selected = any([
+                cleaned_data.get('weekdays_monday'),
+                cleaned_data.get('weekdays_tuesday'),
+                cleaned_data.get('weekdays_wednesday'),
+                cleaned_data.get('weekdays_thursday'),
+                cleaned_data.get('weekdays_friday'),
+                cleaned_data.get('weekdays_saturday'),
+                cleaned_data.get('weekdays_sunday'),
+            ])
+            if not weekdays_selected:
+                raise forms.ValidationError(
+                    "For Weekly Recurring, please select at least one day of the week."
+                )
+        
+        return cleaned_data
+
+
+class AvailabilityExceptionForm(forms.ModelForm):
+    """Form for creating and editing availability exceptions."""
+    
+    class Meta:
+        model = AvailabilityException
+        fields = ['date', 'type', 'override_start_time', 'override_end_time', 'note']
+        widgets = {
+            'date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'type': forms.Select(attrs={'class': 'form-control'}),
+            'override_start_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time',
+                'step': '900'
+            }),
+            'override_end_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time',
+                'step': '900'
+            }),
+            'note': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Optional note about this exception...'
+            }),
+        }
+        help_texts = {
+            'date': 'Date this exception applies to',
+            'type': 'Skip: no availability on this date. Time Override: change times for this date only.',
+            'override_start_time': 'New start time for this date (TIME_OVERRIDE only)',
+            'override_end_time': 'New end time for this date (TIME_OVERRIDE only)',
+        }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        exception_type = cleaned_data.get('type')
+        override_start = cleaned_data.get('override_start_time')
+        override_end = cleaned_data.get('override_end_time')
+        
+        # For TIME_OVERRIDE, both times are required
+        if exception_type == 'TIME_OVERRIDE':
+            if not override_start:
+                raise forms.ValidationError("Override start time is required for TIME_OVERRIDE.")
+            if not override_end:
+                raise forms.ValidationError("Override end time is required for TIME_OVERRIDE.")
+            if override_start and override_end and override_start >= override_end:
+                raise forms.ValidationError("Override end time must be after start time.")
+        
+        # For SKIP, override times should not be set
+        if exception_type == 'SKIP':
+            if override_start or override_end:
+                # Clear them out
+                cleaned_data['override_start_time'] = None
+                cleaned_data['override_end_time'] = None
+        
+        return cleaned_data
+
+
+# Formset for managing exceptions within a rule
+AvailabilityExceptionFormSet = forms.inlineformset_factory(
+    AvailabilityRule,
+    AvailabilityException,
+    form=AvailabilityExceptionForm,
     extra=1,
     can_delete=True
 ) 

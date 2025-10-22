@@ -7,7 +7,7 @@
     <div class="list-group list-group-flush">
         {% for availability in active_availability %}
         <div class="list-group-item">
-            <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex justify-content-between align-items-center">
                 <div class="flex-grow-1">
                     <h6 class="mb-1">
                         {{ availability.start_datetime|date:"M d, Y" }}
@@ -52,7 +52,7 @@
     <div class="list-group list-group-flush">
         {% for availability in future_availability %}
         <div class="list-group-item">
-            <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex justify-content-between align-items-center">
                 <div class="flex-grow-1">
                     <h6 class="mb-1">
                         {{ availability.start_datetime|date:"M d, Y" }}
@@ -75,11 +75,18 @@
                         <p class="mb-1"><small class="text-muted">{{ availability.notes|truncatechars:100 }}</small></p>
                     {% endif %}
                 </div>
-                <div class="ms-2">
+                <div class="ms-2" style="white-space: nowrap;">
                     <a href="{% url 'programs:contractor_availability_detail' availability.pk %}" 
-                       class="btn btn-sm btn-outline-primary">
+                       class="btn btn-sm btn-outline-primary" style="display: inline-block; margin-right: 4px;">
                         View
                     </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            style="display: inline-block;"
+                            hx-post="{% url 'programs:contractor_availability_delete' availability.pk %}"
+                            hx-target="#availability-list-container"
+                            hx-confirm="Are you sure you want to delete this availability?">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
                 </div>
             </div>
         </div>
@@ -106,7 +113,7 @@
     <div class="list-group list-group-flush">
         {% for availability in past_availability %}
         <div class="list-group-item">
-            <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex justify-content-between align-items-center">
                 <div class="flex-grow-1">
                     <h6 class="mb-1">
                         {{ availability.start_datetime|date:"M d, Y" }}
@@ -126,13 +133,21 @@
                         </div>
                     {% endif %}
                 </div>
-                <div class="ms-2">
+                <div class="ms-2" style="white-space: nowrap;">
                     <button class="btn btn-sm btn-outline-warning"
+                            style="display: inline-block; margin-right: 4px;"
                             hx-post="{% url 'programs:contractor_availability_archive' %}"
                             hx-vals='{"availability_id": "{{ availability.pk }}"}'
                             hx-target="#availability-list-container"
                             hx-confirm="Archive this availability entry?">
                         <i class="fas fa-archive"></i> Archive
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            style="display: inline-block;"
+                            hx-post="{% url 'programs:contractor_availability_delete' availability.pk %}"
+                            hx-target="#availability-list-container"
+                            hx-confirm="Are you sure you want to delete this availability?">
+                        <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
             </div>

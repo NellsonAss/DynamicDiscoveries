@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ rule.title|default:"Availability Rule" }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">{{ rule.title|default:"Untitled Rule" }}</h3>
+                    <div>
+                        {% if rule.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Basic Information -->
+                        <div class="mb-4">
+                            <h5>Basic Information</h5>
+                            <div class="mb-3">
+                                <label for="id_title" class="form-label">Title</label>
+                                {{ form.title }}
+                                {% if form.title.errors %}
+                                <div class="invalid-feedback d-block">{{ form.title.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label for="id_kind" class="form-label">Type *</label>
+                                {{ form.kind }}
+                                {% if form.kind.errors %}
+                                <div class="invalid-feedback d-block">{{ form.kind.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Time and Date (simplified) -->
+                        <div class="mb-4">
+                            <h5>Time & Dates</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_start_time" class="form-label">Start Time *</label>
+                                    {{ form.start_time }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_end_time" class="form-label">End Time *</label>
+                                    {{ form.end_time }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_date_start" class="form-label">Start Date *</label>
+                                    {{ form.date_start }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_date_end" class="form-label">End Date *</label>
+                                    {{ form.date_end }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Weekdays (if applicable) -->
+                        {% if rule.kind == 'WEEKLY_RECURRING' %}
+                        <div class="mb-4">
+                            <h5>Weekdays</h5>
+                            <div class="row">
+                                <div class="col-md-3"><div class="form-check">{{ form.weekdays_monday }} <label class="form-check-label">Mon</label></div></div>
+                                <div class="col-md-3"><div class="form-check">{{ form.weekdays_tuesday }} <label class="form-check-label">Tue</label></div></div>
+                                <div class="col-md-3"><div class="form-check">{{ form.weekdays_wednesday }} <label class="form-check-label">Wed</label></div></div>
+                                <div class="col-md-3"><div class="form-check">{{ form.weekdays_thursday }} <label class="form-check-label">Thu</label></div></div>
+                                <div class="col-md-3"><div class="form-check">{{ form.weekdays_friday }} <label class="form-check-label">Fri</label></div></div>
+                                <div class="col-md-3"><div class="form-check">{{ form.weekdays_saturday }} <label class="form-check-label">Sat</label></div></div>
+                                <div class="col-md-3"><div class="form-check">{{ form.weekdays_sunday }} <label class="form-check-label">Sun</label></div></div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Programs -->
+                        <div class="mb-4">
+                            <h5>Programs Offered</h5>
+                            {{ form.programs_offered }}
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <h5>Notes</h5>
+                            {{ form.notes }}
+                        </div>
+                        
+                        <div class="form-check mb-4">
+                            {{ form.is_active }}
+                            <label class="form-check-label">Active</label>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'programs:availability_rules_index' %}" class="btn btn-secondary">Back to List</a>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Exceptions Section -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Exceptions</h5>
+                    <p class="small text-muted mb-0">Skip specific dates or override times</p>
+                </div>
+                <div class="card-body">
+                    {{ exception_formset.management_form }}
+                    {% for form in exception_formset %}
+                    <div class="row mb-3 border-bottom pb-2">
+                        <div class="col-md-3">{{ form.date }}</div>
+                        <div class="col-md-2">{{ form.type }}</div>
+                        <div class="col-md-2">{{ form.override_start_time }}</div>
+                        <div class="col-md-2">{{ form.override_end_time }}</div>
+                        <div class="col-md-2">{{ form.note }}</div>
+                        <div class="col-md-1">{{ form.DELETE }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Occurrence Preview -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Upcoming Occurrences</h5>
+                    <p class="small text-muted mb-0">Next 10 occurrences</p>
+                </div>
+                <div class="card-body">
+                    {% if occurrences_preview %}
+                    <ul class="list-group list-group-flush">
+                        {% for occ in occurrences_preview %}
+                        <li class="list-group-item">
+                            <strong>{{ occ.date|date:"M d, Y" }}</strong><br>
+                            <small class="text-muted">
+                                {{ occ.start_time|time:"g:i A" }} - {{ occ.end_time|time:"g:i A" }}
+                            </small>
+                            {% if occ.is_exception %}
+                            <span class="badge bg-warning text-dark">Exception</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">No upcoming occurrences in the next 30 days.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

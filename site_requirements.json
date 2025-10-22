@@ -804,11 +804,157 @@
         "Single date and date range availability types still work correctly",
         "Created availability entries have correct contractor assignment"
       ]
+    },
+    {
+      "id": "REQ-102",
+      "title": "Contractor Availability Rules with Dynamic Occurrences",
+      "description": "Replace one-row-per-day availability model with rule-based system that generates occurrences dynamically for calendar views. Support two input modes: recurring rules (e.g., 'Every Mon/Wed, 2:30-5:00 PM from Sep 1 to Dec 20') and date range rules (e.g., 'Daily from Jun 10-Jun 14, 9:00-12:00'). Calendar renders occurrences on-the-fly for visible date range without persisting daily instances. Contractors can attach offered programs (one or many) during create/edit. System normalizes existing data by keeping legacy rows but migrating/backfilling into rules where safe to avoid data loss. Includes AvailabilityRule model with fields for contractor, title, kind (WEEKLY_RECURRING/DATE_RANGE), time window (start_time/end_time), date bounds (date_start/date_end inclusive), weekly pattern (booleans/bitmask for mon-sun), timezone (IANA string), is_active flag, notes, and M2M relation to programs_offered. AvailabilityException model supports SKIP and TIME_OVERRIDE for exclusions. Occurrence generator utility computes occurrences for visible date range by expanding WEEKLY_RECURRING dates within bounds matching checked weekdays, generating DATE_RANGE occurrences for every day in span, and applying exceptions (SKIP drops day, TIME_OVERRIDE swaps times). Views include GET/POST endpoints for availability index/dashboard showing compact rules list with controls (View/Edit, Toggle Active, Archive, Delete) and calendar (month/week toggle) with dynamic occurrences from rules, create/edit forms for rules with kind selection, program assignment multi-select, validation, and exception management via HTMX partials. Templates use Django templates + Bootstrap with server-rendered calendar grid (7 columns Mon-Sun, 5-6 rows) navigated with HTMX, rules list ordered by is_active then date_start, and HTMX partials for calendar month/week, rules list, and exceptions. Program assignment allows selecting zero or more ProgramInstances to mark as offered during availability window at create-time or via View/Edit. Legacy data migration via management command analyzes per-day rows, groups by contractor/time/day-of-week patterns, creates WEEKLY_RECURRING rules for consistent patterns, DATE_RANGE rules for consecutive days, and preserves audit trail with dry-run mode. System respects existing time-off objects, detects/warns about overlapping rules, supports archiving (is_active=False), and enforces onboarding gates (NDA/W-9) before scheduling. Testing covers rule validation, occurrence generation across month boundaries and DST, exceptions, time-off suppression, overlap detection, program assignment, legacy migration, permissions, and HTMX endpoints. Architecture adheres to Django + HTMX + Bootstrap constraints with function-based views, minimal dependencies, and stdlib recurrence implementation.",
+      "status": "implemented",
+      "priority": "high",
+      "category": "feature",
+      "created_date": "2025-10-21T00:00:00.000000",
+      "updated_date": "2025-10-21T00:00:00.000000",
+      "acceptance_criteria": [
+        "Creating 'Every Tue/Thu 3-6 PM from Oct 1-Nov 30' saves ONE rule and displays occurrences on all matching days; no per-day rows created",
+        "Creating 'Daily from Jun 10-Jun 14, 9-12' saves ONE rule and displays five occurrences",
+        "Can select programs at create time and see them attached on rule and in each rendered occurrence",
+        "Month/week navigation is instant via HTMX without full-page reloads",
+        "Archiving moves rule to inactive/archived list and removes future occurrences from calendar",
+        "Legacy daily entries no longer clutter UI; data remains accessible to admins",
+        "Calendar cells use semantic headings for dates; occurrences presented as list items with aria-labels",
+        "Forms have clear helper text; disabled weekday checkboxes when Date Range selected via HTMX swap",
+        "Occurrence generator only computes for visible range (current month/week); no precomputation",
+        "Rules list shows title, date bounds, weekdays (if recurring), time window, active/inactive, program count",
+        "View/Edit allows managing linked programs and exceptions (add skip/override rows)",
+        "Migration command has dry-run and commit modes with id mapping and no data loss",
+        "Time-off suppresses occurrences before display; overlaps show visual 'conflict' badge",
+        "Only contractor and admin can create/edit their rules; onboarding gates enforced",
+        "Tests validate rule creation, occurrence generation, exceptions, time-off, overlaps, program assignment, migration, permissions, HTMX"
+      ],
+      "implementation_notes": "Implemented using Django 5.x with HTMX and Bootstrap CSS-only. Function-based views throughout. Occurrence generator uses stdlib datetime/calendar only. No external recurrence libraries. Server-side calendar rendering. HTMX partials for dynamic calendar navigation and form updates. Legacy ContractorAvailability entries marked with legacy=True field and hidden from contractor UI after migration. Timezone handling with IANA strings stored per rule. Validation ensures start_time < end_time, date_start <= date_end, and weekly recurring has at least one weekday. Exception model supports both SKIP and TIME_OVERRIDE types with optional override times. Program assignment via M2M to ProgramInstance. Migration command uses pattern detection to consolidate rows into rules with full audit trail.",
+      "technical_details": {
+        "models": {
+          "AvailabilityRule": {
+            "fields": [
+              "contractor (FK to User)",
+              "title (CharField)",
+              "kind (choices: WEEKLY_RECURRING, DATE_RANGE)",
+              "start_time (TimeField)",
+              "end_time (TimeField)",
+              "date_start (DateField)",
+              "date_end (DateField, inclusive)",
+              "weekdays_monday through weekdays_sunday (BooleanField for weekly pattern)",
+              "timezone (CharField, IANA string)",
+              "is_active (BooleanField)",
+              "notes (TextField, optional)",
+              "programs_offered (M2M to ProgramInstance)"
+            ],
+            "constraints": [
+              "start_time < end_time",
+              "date_start <= date_end",
+              "For WEEKLY_RECURRING: at least one weekday selected"
+            ]
+          },
+          "AvailabilityException": {
+            "fields": [
+              "rule (FK to AvailabilityRule)",
+              "date (DateField)",
+              "type (choices: SKIP, TIME_OVERRIDE)",
+              "override_start_time (TimeField, optional for TIME_OVERRIDE)",
+              "override_end_time (TimeField, optional for TIME_OVERRIDE)",
+              "note (TextField, optional)"
+            ]
+          },
+          "ContractorAvailability": {
+            "new_fields": [
+              "legacy (BooleanField, default=False, marks old per-day entries)"
+            ]
+          }
+        },
+        "utilities": [
+          "programs/availability/utils.py - occurrence_generator(rules, date_range, exceptions) returns list of computed occurrences"
+        ],
+        "views": [
+          "availability_index - GET list/dashboard with rules and calendar",
+          "availability_create - GET/POST rule creation form",
+          "availability_edit - GET/POST rule edit form with exceptions",
+          "availability_toggle - POST toggle is_active",
+          "availability_archive - POST set is_active=False",
+          "availability_delete - POST delete rule",
+          "availability_calendar_partial - HTMX endpoint for calendar navigation",
+          "availability_exceptions_partial - HTMX endpoint for exception management"
+        ],
+        "templates": [
+          "programs/availability/index.html - Main page",
+          "programs/availability/_calendar_month.html - Month calendar partial",
+          "programs/availability/_calendar_week.html - Week calendar partial (optional)",
+          "programs/availability/_rules_list.html - Rules list partial",
+          "programs/availability/_exceptions_list.html - Exceptions list partial",
+          "programs/availability/form.html - Create/edit form"
+        ],
+        "management_commands": [
+          "migrate_legacy_availability - Analyze and consolidate per-day entries into rules"
+        ]
+      }
+    },
+    {
+      "id": "REQ-997",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-995",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-996",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-994",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-103",
+      "title": "Contractor Availability Filter Clearing and Delete Functionality",
+      "description": "Enhanced contractor availability management with ability to clear applied filters and delete availability entries. Includes 'Clear Filters' button to reset program buildout filters and show all availability, and delete functionality for availability entries with proper confirmation dialogs. Delete is available for future and past entries via detail page, while archive remains for bulk past entry management.",
+      "status": "implemented",
+      "priority": "high",
+      "category": "feature",
+      "created_date": "2025-10-22T00:00:00.000000",
+      "updated_date": "2025-10-22T00:00:00.000000",
+      "acceptance_criteria": [
+        "Clear Filters button resets program buildout filter and shows all availability",
+        "Delete button available on availability detail pages for future and past entries",
+        "Delete confirmation dialog prevents accidental deletion",
+        "Active availability cannot be deleted (must wait until past or manually archive)",
+        "Archive functionality remains for bulk management of past entries",
+        "HTMX updates work correctly for filter clearing and deletion"
+      ]
+    },
+    {
+      "id": "REQ-993",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-992",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-10-21T23:30:36.238258",
+    "last_updated": "2025-10-22T00:14:10.357121",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

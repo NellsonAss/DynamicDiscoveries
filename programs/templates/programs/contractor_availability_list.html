@@ -19,7 +19,7 @@
                     <form id="filter-form" hx-get="{% url 'programs:contractor_availability_list_partial' %}" 
                           hx-target="#availability-list-container" hx-push-url="true">
                         <div class="row align-items-end">
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label for="program-buildout-filter" class="form-label">Filter by Program</label>
                                 <select name="program_buildout_id" id="program-buildout-filter" class="form-select" multiple size="3">
                                     {% for buildout in contractor_buildouts %}
@@ -31,7 +31,7 @@
                                 <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
                             </div>
                             
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-5 mb-3">
                                 <label class="form-label">Month Navigation</label>
                                 <div class="btn-group w-100" role="group">
                                     <button type="button" class="btn btn-outline-secondary"
@@ -66,6 +66,11 @@
                                         hx-trigger="click, change from:#program-buildout-filter">
                                     Apply Filters
                                 </button>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <a href="{% url 'programs:contractor_availability_list' %}" class="btn btn-outline-secondary w-100">
+                                    <i class="fas fa-times"></i> Clear Filters
+                                </a>
                             </div>
                         </div>
                     </form>

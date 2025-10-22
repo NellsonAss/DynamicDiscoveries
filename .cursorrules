@@ -1,0 +1,83 @@
+{
+  "technical_constraints": {
+    "language": "Python",
+    "framework": "Django",
+    "frontend": "HTMX + Bootstrap (no JS frameworks)",
+    "dependencies": {
+      "allowed": [
+        "Django",
+        "HTMX",
+        "Bootstrap (CSS only, no JS bundle)",
+        "Black (formatting)",
+        "Pylint (linting)",
+        "python-dotenv (env loading)",
+        "dj-database-url (optional for env DB parsing)"
+      ],
+      "restricted": [
+        "React", "Vue", "Angular",
+        "Tailwind (unless minimal & justified)",
+        "DRF", "Celery", "GraphQL",
+        "Custom middleware unless critically needed",
+        "Third-party auth systems"
+      ]
+    },
+    "project_structure": {
+      "pattern": "stdlib-aligned",
+      "apps": "Split by domain. No monolithic core app.",
+      "templating": "Django templates with HTMX partials",
+      "views": "Function-based views unless CBVs offer clear benefit"
+    },
+    "testing": {
+      "framework": "Django TestCase",
+      "tools": ["unittest"],
+      "coverage": "Required for all apps",
+      "requirements_validation": {
+        "enabled": true,
+        "source_file": "site_requirements.json",
+        "test_module": "tests/test_requirements.py"
+      }
+    },
+    "environment": {
+      "devcontainer": true,
+      "local-first": true,
+      "docker": "only for .devcontainer",
+      "CI/CD": "optional"
+    }
+  },
+  "prompt_style": {
+    "focus": "clear, simple, predictable code",
+    "avoid": "cleverness, overengineering, unnecessary abstraction",
+    "tone": "concise, professional, document-as-you-code"
+  },
+  "custom_rules": [
+    {
+      "description": "Each time a new feature is added or an existing feature is modified via a prompt, it must be recorded in `site_requirements.json`. This file acts as the canonical source of all system behavior and must be kept current.",
+      "enforcement": "Every new feature prompt must include a brief requirement description to be appended to the file. Each requirement must have a unique ID, title, and description."
+    },
+    {
+      "description": "Acceptance tests must be written to validate every requirement listed in `site_requirements.json`. These tests are placed in `tests/test_requirements.py` and should check for implementation coverage.",
+      "enforcement": "Test file should fail if any listed requirement is not referenced or is marked unimplemented."
+    },
+    {
+      "description": "Whenever a new HTML template or page is created or modified, automatically check for `<a>` or `hx-get` links that point to undefined or non-functional routes.",
+      "enforcement": "If such links are found, prompt the user to confirm if you'd like to define those views, URLs, and templates next."
+    },
+    {
+      "description": "When a method or approach is found to be ineffective and a new solution is needed, first scan the codebase for other instances of similar functionality or alternate methods in use.",
+      "enforcement": "If another method is found solving the same or similar problem, evaluate whether that method is best-in-class. If it is not, consider replacing the previous method with the new one globally — or updating both to a better unified pattern. Log your reasoning and prompt the user before making changes."
+    },
+    {
+      "description": "Automated Requirements and Test Workflow - MANDATORY FOR EVERY CHANGE",
+      "enforcement": "Before starting ANY feature work or bug fix, the AI assistant MUST: (1) Update or create a requirement entry in site_requirements.json with a unique ID, clear title, and description. (2) After implementation, update tests/test_requirements.py with a corresponding test_REQ_XXX method that validates the requirement. (3) Run 'python manage.py test tests.test_requirements' to ensure full regression coverage. (4) Report test results to the user before considering the task complete. This workflow is MANDATORY for every code change, no matter how small.",
+      "workflow_steps": [
+        "1. Update site_requirements.json (add/update requirement)",
+        "2. Implement the feature/fix",
+        "3. Update tests/test_requirements.py (add/update test)",
+        "4. Run: python manage.py test tests.test_requirements",
+        "5. Report results to user"
+      ],
+      "skip_conditions": "Never skip. Only exception: purely informational queries with no code changes."
+    }
+  ]
+}
+

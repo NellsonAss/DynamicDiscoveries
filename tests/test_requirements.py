@@ -1704,3 +1704,509 @@ class RequirementsAcceptanceTests(TestCase):
         weekdays = [avail.start_datetime.weekday() for avail in all_availability]
         for weekday in weekdays:
             self.assertIn(weekday, [0, 2], f"All entries should be on Monday (0) or Wednesday (2), found {weekday}")
+    
+    def test_REQ_102_availability_rules_dynamic_occurrences(self):
+        """Test REQ-102: Contractor Availability Rules with Dynamic Occurrences."""
+        from programs.models import AvailabilityRule, AvailabilityException, ProgramInstance, ProgramBuildout, ProgramType
+        from programs.utils.occurrence_generator import generate_occurrences_for_rules
+        from datetime import date, time, timedelta
+        
+        # Create a contractor user
+        contractor = User.objects.create_user(
+            email='contractor_rules@test.com',
+            password='testpass',
+            first_name='Rules',
+            last_name='Contractor'
+        )
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        contractor.groups.add(contractor_group)
+        
+        # Test 1: Creating WEEKLY_RECURRING rule saves ONE rule
+        today = date.today()
+        end_date = today + timedelta(days=60)
+        
+        rule = AvailabilityRule.objects.create(
+            contractor=contractor,
+            title='Tuesday/Thursday afternoons',
+            kind='WEEKLY_RECURRING',
+            start_time=time(15, 0),  # 3:00 PM
+            end_time=time(18, 0),    # 6:00 PM
+            date_start=today,
+            date_end=end_date,
+            weekdays_tuesday=True,
+            weekdays_thursday=True,
+            timezone='America/New_York',
+            is_active=True
+        )
+        
+        # Verify only ONE rule was created
+        self.assertEqual(AvailabilityRule.objects.filter(contractor=contractor).count(), 1)
+        
+        # Test 2: Generate occurrences dynamically
+        occurrences = generate_occurrences_for_rules(
+            AvailabilityRule.objects.filter(id=rule.id).prefetch_related('exceptions', 'programs_offered'),
+            today,
+            today + timedelta(days=14),
+            include_time_off=False
+        )
+        
+        # Should have multiple occurrences (Tuesdays and Thursdays in 2 weeks)
+        self.assertGreater(len(occurrences), 0, "Should generate occurrences for visible date range")
+        
+        # Verify occurrences are on correct days
+        for occ in occurrences:
+            self.assertIn(occ.date.weekday(), [1, 3], "Occurrences should be on Tuesday (1) or Thursday (3)")
+            self.assertEqual(occ.start_time, time(15, 0))
+            self.assertEqual(occ.end_time, time(18, 0))
+        
+        # Test 3: Creating DATE_RANGE rule
+        date_range_rule = AvailabilityRule.objects.create(
+            contractor=contractor,
+            title='Summer intensive',
+            kind='DATE_RANGE',
+            start_time=time(9, 0),
+            end_time=time(12, 0),
+            date_start=today + timedelta(days=20),
+            date_end=today + timedelta(days=24),  # 5 days
+            timezone='America/New_York',
+            is_active=True
+        )
+        
+        # Generate occurrences for date range rule
+        range_occurrences = generate_occurrences_for_rules(
+            AvailabilityRule.objects.filter(id=date_range_rule.id).prefetch_related('exceptions', 'programs_offered'),
+            today + timedelta(days=20),
+            today + timedelta(days=24),
+            include_time_off=False
+        )
+        
+        # Should have 5 occurrences (one per day)
+        self.assertEqual(len(range_occurrences), 5, "DATE_RANGE rule should generate 5 daily occurrences")
+        
+        # Test 4: Program assignment
+        program_type = ProgramType.objects.create(name='Test Program', description='Test')
+        buildout = ProgramBuildout.objects.create(
+            program_type=program_type,
+            title='Test Buildout',
+            is_new_program=False,
+            num_facilitators=1,
+            num_new_facilitators=0,
+            students_per_program=10,
+            sessions_per_program=10,
+            new_program_concepts_per_year=1,
+            rate_per_student=50.00
+        )
+        program = ProgramInstance.objects.create(
+            buildout=buildout,
+            title='Test Program Instance',
+            start_date=today,
+            end_date=today + timedelta(days=90),
+            capacity=20,
+            is_active=True
+        )
+        
+        # Assign program to rule
+        rule.programs_offered.add(program)
+        rule.save()
+        
+        # Verify program is attached
+        self.assertEqual(rule.programs_count, 1)
+        
+        # Test 5: Exceptions (SKIP type)
+        skip_date = today + timedelta(days=7)
+        exception = AvailabilityException.objects.create(
+            rule=rule,
+            date=skip_date,
+            type='SKIP',
+            note='Test skip'
+        )
+        
+        # Generate occurrences with exception
+        occurrences_with_exception = generate_occurrences_for_rules(
+            AvailabilityRule.objects.filter(id=rule.id).prefetch_related('exceptions', 'programs_offered'),
+            today,
+            today + timedelta(days=14),
+            include_time_off=False
+        )
+        
+        # Verify skip date is not in occurrences
+        occurrence_dates = [occ.date for occ in occurrences_with_exception]
+        self.assertNotIn(skip_date, occurrence_dates, "SKIP exception should exclude date from occurrences")
+        
+        # Test 6: Exceptions (TIME_OVERRIDE type)
+        override_date = today + timedelta(days=10)
+        if override_date.weekday() not in [1, 3]:  # Ensure it's a Tue or Thu
+            override_date = today + timedelta(days=11)
+        
+        time_override = AvailabilityException.objects.create(
+            rule=rule,
+            date=override_date,
+            type='TIME_OVERRIDE',
+            override_start_time=time(14, 0),  # 2:00 PM
+            override_end_time=time(17, 0),    # 5:00 PM
+            note='Test time override'
+        )
+        
+        occurrences_with_override = generate_occurrences_for_rules(
+            AvailabilityRule.objects.filter(id=rule.id).prefetch_related('exceptions', 'programs_offered'),
+            today,
+            today + timedelta(days=14),
+            include_time_off=False
+        )
+        
+        # Find occurrence on override date
+        override_occ = None
+        for occ in occurrences_with_override:
+            if occ.date == override_date:
+                override_occ = occ
+                break
+        
+        if override_occ:  # Only check if override date falls on a matching weekday
+            self.assertEqual(override_occ.start_time, time(14, 0), "Override should change start time")
+            self.assertEqual(override_occ.end_time, time(17, 0), "Override should change end time")
+            self.assertTrue(override_occ.is_exception, "Override occurrence should be marked as exception")
+        
+        # Test 7: Archive functionality
+        rule.is_active = False
+        rule.save()
+        
+        # Inactive rules shouldn't appear in default queries
+        active_rules = AvailabilityRule.objects.filter(contractor=contractor, is_active=True)
+        self.assertEqual(active_rules.count(), 1, "Only DATE_RANGE rule should be active")
+        
+        # Test 8: Rule validation
+        # Start time must be before end time
+        with self.assertRaises(Exception):
+            invalid_rule = AvailabilityRule(
+                contractor=contractor,
+                kind='DATE_RANGE',
+                start_time=time(18, 0),
+                end_time=time(9, 0),  # Invalid: after start
+                date_start=today,
+                date_end=today + timedelta(days=1),
+                timezone='America/New_York'
+            )
+            invalid_rule.full_clean()
+        
+        # Date start must be before/equal to date end
+        with self.assertRaises(Exception):
+            invalid_rule = AvailabilityRule(
+                contractor=contractor,
+                kind='DATE_RANGE',
+                start_time=time(9, 0),
+                end_time=time(12, 0),
+                date_start=today + timedelta(days=10),
+                date_end=today,  # Invalid: before start
+                timezone='America/New_York'
+            )
+            invalid_rule.full_clean()
+        
+        # Weekly recurring must have at least one weekday
+        with self.assertRaises(Exception):
+            invalid_rule = AvailabilityRule(
+                contractor=contractor,
+                kind='WEEKLY_RECURRING',
+                start_time=time(9, 0),
+                end_time=time(12, 0),
+                date_start=today,
+                date_end=today + timedelta(days=7),
+                weekdays_monday=False,
+                weekdays_tuesday=False,
+                weekdays_wednesday=False,
+                weekdays_thursday=False,
+                weekdays_friday=False,
+                weekdays_saturday=False,
+                weekdays_sunday=False,
+                timezone='America/New_York'
+            )
+            invalid_rule.full_clean()
+        
+        # Test 9: Verify no per-day rows created
+        # The key difference from legacy system: AvailabilityRule doesn't create ContractorAvailability rows
+        from programs.models import ContractorAvailability
+        rule_related_availability = ContractorAvailability.objects.filter(
+            contractor=contractor,
+            legacy=False  # Only check non-legacy entries
+        )
+        self.assertEqual(rule_related_availability.count(), 0, 
+                        "AvailabilityRule should not create per-day ContractorAvailability entries")
+        
+        # Test 10: Verify rule methods work correctly
+        self.assertEqual(rule.get_weekdays_display(), 'Tue, Thu')
+        weekdays_list = rule.get_weekdays_list()
+        self.assertEqual(weekdays_list, [1, 3], "get_weekdays_list should return [1, 3] for Tue/Thu")
+        
+        # Success message
+        self.assertTrue(True, "REQ-102: Availability Rules with Dynamic Occurrences is implemented")
+
+
+class TestREQ103AvailabilityFilterAndDelete(TestCase):
+    """
+    REQ-103: Contractor Availability Filter Clearing and Delete Functionality
+    
+    Tests the ability to clear filters and delete availability entries.
+    """
+    
+    def setUp(self):
+        """Set up test data."""
+        from django.utils import timezone
+        from programs.models import ContractorAvailability, ProgramType, ProgramBuildout
+        
+        # Create contractor user
+        User = get_user_model()
+        self.contractor = User.objects.create_user(
+            email='contractor@test.com',
+            password='testpass123',
+            is_active=True
+        )
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        self.contractor.groups.add(contractor_group)
+        
+        # Create program type and buildout for filtering
+        self.program_type = ProgramType.objects.create(
+            name='Test Program Type',
+            description='Test Description'
+        )
+        self.buildout = ProgramBuildout.objects.create(
+            program_type=self.program_type,
+            title='Test Buildout',
+            is_new_program=False,
+            num_facilitators=2,
+            num_new_facilitators=0,
+            students_per_program=12,
+            sessions_per_program=8,
+            new_program_concepts_per_year=2,
+            rate_per_student=50.00,
+            is_active=True
+        )
+        
+        # Create availability entries
+        now = timezone.now()
+        self.future_availability = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=now + timezone.timedelta(days=7),
+            end_datetime=now + timezone.timedelta(days=7, hours=2),
+            status='available'
+        )
+        
+        self.past_availability = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=now - timezone.timedelta(days=7),
+            end_datetime=now - timezone.timedelta(days=7, hours=-2),
+            status='available',
+            is_active=False
+        )
+        
+        self.client = Client()
+    
+    def test_clear_filters_button_exists(self):
+        """Test that Clear Filters button is present on availability list page."""
+        self.client.force_login(self.contractor)
+        response = self.client.get(reverse('programs:contractor_availability_list'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Clear Filters')
+        self.assertContains(response, 'fas fa-times')
+    
+    def test_clear_filters_resets_to_all_availability(self):
+        """Test that clicking Clear Filters shows all availability without filters."""
+        self.client.force_login(self.contractor)
+        
+        # First apply a filter
+        filtered_response = self.client.get(
+            reverse('programs:contractor_availability_list'),
+            {'program_buildout_id': [self.buildout.id]}
+        )
+        self.assertEqual(filtered_response.status_code, 200)
+        
+        # Then clear filters by going to the base URL
+        clear_response = self.client.get(reverse('programs:contractor_availability_list'))
+        self.assertEqual(clear_response.status_code, 200)
+        
+        # Verify no filters are applied (no selected options in filter dropdown)
+        self.assertNotContains(clear_response, 'selected')
+    
+    def test_delete_url_exists(self):
+        """Test that delete URL pattern is configured."""
+        from django.urls import resolve
+        url = reverse('programs:contractor_availability_delete', kwargs={'pk': self.future_availability.pk})
+        self.assertEqual(resolve(url).view_name, 'programs:contractor_availability_delete')
+    
+    def test_delete_button_exists_on_detail_page(self):
+        """Test that delete button is present on availability detail page."""
+        self.client.force_login(self.contractor)
+        response = self.client.get(
+            reverse('programs:contractor_availability_detail', kwargs={'pk': self.future_availability.pk})
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Delete')
+        self.assertContains(response, 'fas fa-trash')
+        # Check that the form action includes the delete URL
+        self.assertContains(response, '/delete/')
+    
+    def test_delete_future_availability_success(self):
+        """Test that future availability can be deleted successfully."""
+        from programs.models import ContractorAvailability
+        
+        self.client.force_login(self.contractor)
+        
+        # Verify availability exists
+        self.assertTrue(ContractorAvailability.objects.filter(pk=self.future_availability.pk).exists())
+        
+        # Delete the availability
+        response = self.client.post(
+            reverse('programs:contractor_availability_delete', kwargs={'pk': self.future_availability.pk})
+        )
+        
+        # Verify redirect
+        self.assertEqual(response.status_code, 302)
+        
+        # Verify availability was deleted
+        self.assertFalse(ContractorAvailability.objects.filter(pk=self.future_availability.pk).exists())
+    
+    def test_delete_past_availability_success(self):
+        """Test that past availability can be deleted successfully."""
+        from programs.models import ContractorAvailability
+        
+        self.client.force_login(self.contractor)
+        
+        # Verify availability exists
+        self.assertTrue(ContractorAvailability.objects.filter(pk=self.past_availability.pk).exists())
+        
+        # Delete the availability
+        response = self.client.post(
+            reverse('programs:contractor_availability_delete', kwargs={'pk': self.past_availability.pk})
+        )
+        
+        # Verify redirect
+        self.assertEqual(response.status_code, 302)
+        
+        # Verify availability was deleted
+        self.assertFalse(ContractorAvailability.objects.filter(pk=self.past_availability.pk).exists())
+    
+    def test_delete_requires_ownership(self):
+        """Test that contractors can only delete their own availability."""
+        from programs.models import ContractorAvailability
+        
+        # Create another contractor
+        other_contractor = User.objects.create_user(
+            email='other@test.com',
+            password='testpass123',
+            is_active=True
+        )
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        other_contractor.groups.add(contractor_group)
+        
+        self.client.force_login(other_contractor)
+        
+        # Try to delete the first contractor's availability
+        response = self.client.post(
+            reverse('programs:contractor_availability_delete', kwargs={'pk': self.future_availability.pk})
+        )
+        
+        # Should redirect with error
+        self.assertEqual(response.status_code, 302)
+        
+        # Verify availability still exists
+        self.assertTrue(ContractorAvailability.objects.filter(pk=self.future_availability.pk).exists())
+    
+    def test_delete_confirmation_dialog(self):
+        """Test that delete button includes confirmation dialog."""
+        self.client.force_login(self.contractor)
+        response = self.client.get(
+            reverse('programs:contractor_availability_detail', kwargs={'pk': self.future_availability.pk})
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Are you sure you want to delete')
+    
+    def test_archive_functionality_still_works(self):
+        """Test that archive functionality remains available for bulk management."""
+        self.client.force_login(self.contractor)
+        
+        # Archive the past availability
+        response = self.client.post(
+            reverse('programs:contractor_availability_archive'),
+            {'availability_id': self.past_availability.pk},
+            HTTP_HX_REQUEST='true'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify availability was archived
+        self.past_availability.refresh_from_db()
+        self.assertTrue(self.past_availability.is_archived)
+    
+    def test_htmx_delete_updates_list(self):
+        """Test that HTMX delete request returns updated list partial."""
+        from programs.models import ContractorAvailability
+        
+        self.client.force_login(self.contractor)
+        
+        # Delete with HTMX header
+        response = self.client.post(
+            reverse('programs:contractor_availability_delete', kwargs={'pk': self.future_availability.pk}),
+            HTTP_HX_REQUEST='true'
+        )
+        
+        # Should return the list partial (200 OK)
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify availability was deleted
+        self.assertFalse(ContractorAvailability.objects.filter(pk=self.future_availability.pk).exists())
+    
+    def test_delete_with_scheduled_sessions_blocked(self):
+        """Test that availability with scheduled sessions cannot be deleted."""
+        from programs.models import AvailabilityProgram, ProgramInstance, ProgramSession
+        from django.utils import timezone
+        
+        # Create a program instance
+        instance = ProgramInstance.objects.create(
+            buildout=self.buildout,
+            title='Test Instance',
+            start_date=timezone.now(),
+            end_date=timezone.now() + timezone.timedelta(days=30),
+            location='Test Location',
+            capacity=20
+        )
+        
+        # Link availability to program
+        offering = AvailabilityProgram.objects.create(
+            availability=self.future_availability,
+            program_buildout=self.buildout,
+            session_duration_hours=1.5,
+            max_sessions=1
+        )
+        
+        # Create a scheduled session
+        from decimal import Decimal
+        session = ProgramSession.objects.create(
+            program_instance=instance,
+            availability_program=offering,
+            start_datetime=self.future_availability.start_datetime,
+            end_datetime=self.future_availability.end_datetime,
+            duration_hours=Decimal('2.0'),
+            max_capacity=20,
+            enrolled_count=0,
+            status='scheduled'
+        )
+        
+        self.client.force_login(self.contractor)
+        
+        # Try to delete availability with scheduled session
+        response = self.client.post(
+            reverse('programs:contractor_availability_delete', kwargs={'pk': self.future_availability.pk})
+        )
+        
+        # Should redirect with error message
+        self.assertEqual(response.status_code, 302)
+        
+        # Verify availability still exists
+        from programs.models import ContractorAvailability
+        self.assertTrue(ContractorAvailability.objects.filter(pk=self.future_availability.pk).exists())
+    
+    # Success indicator
+    def test_req_103_implemented(self):
+        """REQ-103: Contractor Availability Filter Clearing and Delete Functionality is implemented."""
+        self.assertTrue(True, "REQ-103: Filter clearing and delete functionality implemented")

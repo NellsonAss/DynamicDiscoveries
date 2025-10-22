@@ -11,7 +11,8 @@ from .models import (
     BuildoutBaseCostAssignment, Location, BuildoutLocationAssignment,
     InstanceRoleAssignment, ContractorRoleRate,
     ContractorAvailability, AvailabilityProgram, ProgramSession, SessionBooking,
-    ProgramBuildoutScheduling, Holiday, ContractorDayOffRequest, ProgramRequest
+    ProgramBuildoutScheduling, Holiday, ContractorDayOffRequest, ProgramRequest,
+    AvailabilityRule, AvailabilityException, RuleBooking
 )
 from contracts.services.assignment import assign_contractor_to_buildout
 
@@ -973,3 +974,39 @@ class ProgramRequestAdmin(admin.ModelAdmin):
                 obj.reviewed_by = request.user
                 obj.reviewed_at = timezone.now()
         super().save_model(request, obj, form, change)
+
+
+@admin.register(RuleBooking)
+class RuleBookingAdmin(admin.ModelAdmin):
+    """Admin interface for rule-based bookings."""
+    list_display = [
+        'id', 'rule', 'program', 'booking_date', 'time_range', 
+        'child', 'booked_by', 'status', 'created_at'
+    ]
+    list_filter = ['status', 'booking_date', 'rule__contractor']
+    search_fields = [
+        'program__title', 'child__first_name', 'child__last_name',
+        'booked_by__email', 'rule__title'
+    ]
+    readonly_fields = ['duration_minutes', 'created_at', 'updated_at']
+    date_hierarchy = 'booking_date'
+    
+    def time_range(self, obj):
+        return f"{obj.start_time.strftime('%H:%M')} - {obj.end_time.strftime('%H:%M')}"
+    time_range.short_description = 'Time'
+    
+    fieldsets = (
+        ('Booking Details', {
+            'fields': ('rule', 'program', 'booking_date', 'start_time', 'end_time')
+        }),
+        ('Participant', {
+            'fields': ('booked_by', 'child', 'status')
+        }),
+        ('Additional Info', {
+            'fields': ('notes', 'duration_minutes')
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )

@@ -59,6 +59,7 @@ urlpatterns = [
     path('contractor/availability/new/', views.contractor_availability_create, name='contractor_availability_create'),
     path('contractor/availability/<int:pk>/', views.contractor_availability_detail, name='contractor_availability_detail'),
     path('contractor/availability/<int:pk>/edit/', views.contractor_availability_edit, name='contractor_availability_edit'),
+    path('contractor/availability/<int:pk>/delete/', views.contractor_availability_delete, name='contractor_availability_delete'),
     path('contractor/availability/<int:availability_pk>/add-program/', views.add_program_to_availability, name='add_program_to_availability'),
     # HTMX partials for contractor availability
     path('contractor/availability/list-partial/', views.contractor_availability_list_partial, name='contractor_availability_list_partial'),
@@ -81,4 +82,18 @@ urlpatterns = [
     path('contractor/day-off-requests/<int:pk>/', views.contractor_day_off_request_detail, name='contractor_day_off_request_detail'),
     path('contractor/day-off-requests/<int:pk>/approve/', views.contractor_day_off_request_approve, name='contractor_day_off_request_approve'),
     path('contractor/day-off-requests/<int:pk>/deny/', views.contractor_day_off_request_deny, name='contractor_day_off_request_deny'),
+    
+    # Availability Rules System (Dynamic Occurrences)
+    path('contractor/availability-rules/', views.availability_rules_index, name='availability_rules_index'),
+    path('contractor/availability-rules/new/', views.availability_rule_create, name='availability_rule_create'),
+    path('contractor/availability-rules/<int:pk>/', views.availability_rule_detail, name='availability_rule_detail'),
+    path('contractor/availability-rules/<int:pk>/toggle/', views.availability_rule_toggle, name='availability_rule_toggle'),
+    path('contractor/availability-rules/<int:pk>/archive/', views.availability_rule_archive, name='availability_rule_archive'),
+    path('contractor/availability-rules/<int:pk>/delete/', views.availability_rule_delete, name='availability_rule_delete'),
+    # HTMX partials for availability rules
+    path('contractor/availability-rules/calendar-partial/', views.availability_rules_calendar_partial, name='availability_rules_calendar_partial'),
+    path('contractor/availability-rules/list-partial/', views.availability_rules_list_partial, name='availability_rules_list_partial'),
+    # Exception management
+    path('contractor/availability-rules/<int:rule_pk>/exceptions/new/', views.availability_exception_create, name='availability_exception_create'),
+    path('contractor/availability-exceptions/<int:pk>/delete/', views.availability_exception_delete, name='availability_exception_delete'),
 ] 

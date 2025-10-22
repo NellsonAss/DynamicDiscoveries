@@ -1,0 +1,72 @@
+{% if rules %}
+    {% for rule in rules %}
+    <div class="card mb-2 {% if not rule.is_active %}border-secondary{% endif %}">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h6 class="card-title mb-1">
+                        {{ rule.title|default:"Untitled Rule" }}
+                        {% if not rule.is_active %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% else %}
+                        <span class="badge bg-success">Active</span>
+                        {% endif %}
+                    </h6>
+                    <p class="card-text small text-muted mb-2">
+                        <strong>Type:</strong> {{ rule.get_kind_display }}<br>
+                        <strong>Dates:</strong> {{ rule.date_start }} to {{ rule.date_end }}<br>
+                        <strong>Time:</strong> {{ rule.start_time|time:"g:i A" }} - {{ rule.end_time|time:"g:i A" }}<br>
+                        {% if rule.kind == 'WEEKLY_RECURRING' %}
+                        <strong>Days:</strong> {{ rule.get_weekdays_display }}<br>
+                        {% endif %}
+                        <strong>Programs:</strong> {{ rule.programs_count }}
+                    </p>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        Actions
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'programs:availability_rule_detail' rule.pk %}">
+                            <i class="bi bi-eye"></i> View/Edit
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" action="{% url 'programs:availability_rule_toggle' rule.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bi bi-{% if rule.is_active %}pause{% else %}play{% endif %}-circle"></i>
+                                    {% if rule.is_active %}Deactivate{% else %}Activate{% endif %}
+                                </button>
+                            </form>
+                        </li>
+                        {% if rule.is_active %}
+                        <li>
+                            <form method="post" action="{% url 'programs:availability_rule_archive' rule.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bi bi-archive"></i> Archive
+                                </button>
+                            </form>
+                        </li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'programs:availability_rule_delete' rule.pk %}">
+                            <i class="bi bi-trash"></i> Delete
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="text-center py-4">
+        <i class="bi bi-calendar-x display-4 text-muted"></i>
+        <p class="text-muted mt-2">No availability rules found.</p>
+        <a href="{% url 'programs:availability_rule_create' %}" class="btn btn-primary btn-sm">
+            Create Your First Rule
+        </a>
+    </div>
+{% endif %}
+

@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, F
@@ -24,7 +24,8 @@ from .models import (
     BuildoutResponsibilityAssignment, BuildoutRoleAssignment, BaseCost, 
     BuildoutBaseCostAssignment, InstanceRoleAssignment,
     ContractorAvailability, AvailabilityProgram, ProgramSession, SessionBooking,
-    ProgramBuildoutScheduling, ContractorDayOffRequest, ProgramRequest
+    ProgramBuildoutScheduling, ContractorDayOffRequest, ProgramRequest,
+    AvailabilityRule, AvailabilityException
 )
 from .forms import (
     ChildForm, RegistrationFormForm,
@@ -1363,6 +1364,52 @@ def contractor_availability_edit(request, pk):
 
 
 @login_required
+@require_http_methods(["POST"])
+def contractor_availability_delete(request, pk):
+    """
+    Delete contractor availability entry.
+    
+    Allows contractors to delete their own availability entries.
+    """
+    availability = get_object_or_404(ContractorAvailability, pk=pk)
+    
+    # Check permissions - contractor must own this availability or be admin
+    if not (user_is_admin(request.user) or availability.contractor == request.user):
+        messages.error(request, "You don't have permission to delete this availability.")
+        return redirect('programs:contractor_availability_list')
+    
+    # Check if there are any confirmed sessions linked to this availability
+    from django.db.models import Q
+    linked_sessions = ProgramSession.objects.filter(
+        availability_program__availability=availability,
+        status__in=['scheduled', 'confirmed']
+    )
+    
+    if linked_sessions.exists():
+        messages.error(
+            request, 
+            "Cannot delete availability with scheduled or confirmed sessions. "
+            "Please cancel the sessions first or archive this availability instead."
+        )
+        # Check if this is an HTMX request
+        if request.headers.get('HX-Request'):
+            # Return the updated list partial
+            return contractor_availability_list_partial(request)
+        return redirect('programs:contractor_availability_detail', pk=pk)
+    
+    # Delete the availability
+    availability.delete()
+    messages.success(request, "Availability deleted successfully.")
+    
+    # Check if this is an HTMX request
+    if request.headers.get('HX-Request'):
+        # Return the updated list partial
+        return contractor_availability_list_partial(request)
+    
+    return redirect('programs:contractor_availability_list')
+
+
+@login_required
 def contractor_availability_list_partial(request):
     """HTMX partial: Return availability list grouped by status."""
     if not user_is_contractor(request.user) and not user_is_admin(request.user):
@@ -2147,3 +2194,383 @@ def contractor_day_off_request_deny(request, pk):
         return redirect('programs:contractor_day_off_request_detail', pk=pk)
     
     return redirect('programs:contractor_day_off_request_detail', pk=pk)
+
+
+# ============================================================================
+# AVAILABILITY RULES VIEWS
+# ============================================================================
+
+@login_required
+def availability_rules_index(request):
+    """
+    Main page showing contractor's availability rules and calendar.
+    
+    Shows:
+    - Compact rules list (not daily instances)
+    - Calendar (month or week toggle) with dynamic occurrences from rules
+    - Filters by program instance and active/inactive
+    """
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('dashboard')
+    
+    # Enforce onboarding gate for contractors
+    if user_is_contractor(request.user) and not user_is_admin(request.user):
+        try:
+            from people.models import Contractor
+            contractor = Contractor.objects.filter(user=request.user).first()
+            if not contractor or contractor.needs_onboarding:
+                messages.warning(request, "Please complete onboarding (NDA and W-9) before managing availability.")
+                return redirect('people:contractor_onboarding')
+        except Exception:
+            messages.error(request, "Unable to verify onboarding status.")
+            return redirect('dashboard')
+    
+    # Get query parameters
+    from datetime import date
+    from dateutil.relativedelta import relativedelta
+    
+    today = date.today()
+    year = int(request.GET.get('year', today.year))
+    month = int(request.GET.get('month', today.month))
+    view_mode = request.GET.get('view', 'month')  # 'month' or 'week'
+    show_inactive = request.GET.get('show_inactive', 'false') == 'true'
+    program_instance_ids = request.GET.getlist('program_instance')
+    
+    # Base queryset: rules for this contractor
+    rules_qs = AvailabilityRule.objects.filter(
+        contractor=request.user
+    ).prefetch_related(
+        'exceptions',
+        'programs_offered__buildout__program_type'
+    )
+    
+    # Filter by active/inactive
+    if not show_inactive:
+        rules_qs = rules_qs.filter(is_active=True)
+    
+    # Filter by program instance
+    if program_instance_ids:
+        rules_qs = rules_qs.filter(programs_offered__id__in=program_instance_ids).distinct()
+    
+    # Get all program instances the contractor is assigned to (for filter dropdown)
+    from .models import InstanceRoleAssignment
+    assigned_instance_ids = InstanceRoleAssignment.objects.filter(
+        contractor=request.user
+    ).values_list('instance_id', flat=True)
+    program_instances = ProgramInstance.objects.filter(
+        id__in=assigned_instance_ids
+    ).select_related('buildout__program_type').order_by('buildout__program_type__name', 'title')
+    
+    context = {
+        'rules': rules_qs,
+        'year': year,
+        'month': month,
+        'view_mode': view_mode,
+        'show_inactive': show_inactive,
+        'program_instance_ids': program_instance_ids,
+        'program_instances': program_instances,
+        'can_create': True,
+    }
+    
+    return render(request, 'programs/availability_rules/index.html', context)
+
+
+@login_required
+def availability_rules_calendar_partial(request):
+    """HTMX partial: Render calendar grid with dynamic occurrences."""
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    from datetime import date
+    from calendar import monthrange
+    from .utils.occurrence_generator import generate_occurrences_for_rules
+    from .models import ContractorDayOffRequest
+    
+    year = int(request.GET.get('year', date.today().year))
+    month = int(request.GET.get('month', date.today().month))
+    show_inactive = request.GET.get('show_inactive', 'false') == 'true'
+    program_instance_ids = request.GET.getlist('program_instance')
+    
+    # Get rules
+    rules_qs = AvailabilityRule.objects.filter(
+        contractor=request.user
+    ).prefetch_related(
+        'exceptions',
+        'programs_offered__buildout__program_type'
+    )
+    
+    if not show_inactive:
+        rules_qs = rules_qs.filter(is_active=True)
+    
+    if program_instance_ids:
+        rules_qs = rules_qs.filter(programs_offered__id__in=program_instance_ids).distinct()
+    
+    # Calculate date range for the month
+    first_day = date(year, month, 1)
+    last_day_num = monthrange(year, month)[1]
+    last_day = date(year, month, last_day_num)
+    
+    # Generate occurrences
+    time_off_qs = ContractorDayOffRequest.objects.filter(contractor=request.user)
+    occurrences = generate_occurrences_for_rules(
+        rules_qs,
+        first_day,
+        last_day,
+        include_time_off=True,
+        time_off_queryset=time_off_qs
+    )
+    
+    # Build calendar grid (using calendar_utils if available, or custom)
+    import calendar as cal
+    month_calendar = cal.monthcalendar(year, month)
+    
+    # Group occurrences by date
+    occurrences_by_date = {}
+    for occ in occurrences:
+        if occ.date not in occurrences_by_date:
+            occurrences_by_date[occ.date] = []
+        occurrences_by_date[occ.date].append(occ)
+    
+    context = {
+        'year': year,
+        'month': month,
+        'month_name': cal.month_name[month],
+        'month_calendar': month_calendar,
+        'occurrences_by_date': occurrences_by_date,
+        'show_inactive': show_inactive,
+        'program_instance_ids': program_instance_ids,
+    }
+    
+    return render(request, 'programs/availability_rules/_calendar_month.html', context)
+
+
+@login_required
+def availability_rules_list_partial(request):
+    """HTMX partial: Render rules list."""
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    show_inactive = request.GET.get('show_inactive', 'false') == 'true'
+    program_instance_ids = request.GET.getlist('program_instance')
+    
+    rules_qs = AvailabilityRule.objects.filter(
+        contractor=request.user
+    ).prefetch_related('exceptions', 'programs_offered')
+    
+    if not show_inactive:
+        rules_qs = rules_qs.filter(is_active=True)
+    
+    if program_instance_ids:
+        rules_qs = rules_qs.filter(programs_offered__id__in=program_instance_ids).distinct()
+    
+    context = {
+        'rules': rules_qs,
+        'show_inactive': show_inactive,
+    }
+    
+    return render(request, 'programs/availability_rules/_rules_list.html', context)
+
+
+@login_required
+def availability_rule_create(request):
+    """Create new availability rule."""
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('dashboard')
+    
+    # Enforce onboarding gate
+    if user_is_contractor(request.user) and not user_is_admin(request.user):
+        try:
+            from people.models import Contractor
+            contractor = Contractor.objects.filter(user=request.user).first()
+            if not contractor or contractor.needs_onboarding:
+                messages.warning(request, "Please complete onboarding before creating availability rules.")
+                return redirect('people:contractor_onboarding')
+        except Exception:
+            messages.error(request, "Unable to verify onboarding status.")
+            return redirect('dashboard')
+    
+    if request.method == 'POST':
+        from .forms import AvailabilityRuleForm
+        form = AvailabilityRuleForm(request.POST, contractor=request.user)
+        if form.is_valid():
+            rule = form.save(commit=False)
+            rule.contractor = request.user
+            rule.save()
+            form.save_m2m()  # Save programs_offered
+            
+            messages.success(
+                request,
+                f"Availability rule '{rule.title or 'Untitled'}' created successfully!"
+            )
+            return redirect('programs:availability_rule_detail', pk=rule.pk)
+    else:
+        from .forms import AvailabilityRuleForm
+        form = AvailabilityRuleForm(contractor=request.user)
+    
+    context = {
+        'form': form,
+        'action': 'Create',
+    }
+    
+    return render(request, 'programs/availability_rules/form.html', context)
+
+
+@login_required
+def availability_rule_detail(request, pk):
+    """View and edit availability rule with exceptions."""
+    rule = get_object_or_404(AvailabilityRule, pk=pk)
+    
+    # Permission check: only owner or admin
+    if rule.contractor != request.user and not user_is_admin(request.user):
+        messages.error(request, "You don't have permission to view this rule.")
+        return redirect('programs:availability_rules_index')
+    
+    if request.method == 'POST':
+        from .forms import AvailabilityRuleForm, AvailabilityExceptionFormSet
+        form = AvailabilityRuleForm(request.POST, instance=rule, contractor=request.user)
+        exception_formset = AvailabilityExceptionFormSet(request.POST, instance=rule)
+        
+        if form.is_valid() and exception_formset.is_valid():
+            rule = form.save()
+            exception_formset.save()
+            messages.success(request, "Availability rule updated successfully!")
+            return redirect('programs:availability_rule_detail', pk=rule.pk)
+    else:
+        from .forms import AvailabilityRuleForm, AvailabilityExceptionFormSet
+        form = AvailabilityRuleForm(instance=rule, contractor=request.user)
+        exception_formset = AvailabilityExceptionFormSet(instance=rule)
+    
+    # Generate sample occurrences for preview (next 30 days)
+    from datetime import date, timedelta
+    from .utils.occurrence_generator import generate_occurrences_for_rules
+    from .models import ContractorDayOffRequest
+    
+    today = date.today()
+    end_date = today + timedelta(days=30)
+    time_off_qs = ContractorDayOffRequest.objects.filter(contractor=request.user)
+    occurrences = generate_occurrences_for_rules(
+        AvailabilityRule.objects.filter(pk=rule.pk).prefetch_related('exceptions', 'programs_offered'),
+        today,
+        end_date,
+        include_time_off=True,
+        time_off_queryset=time_off_qs
+    )
+    
+    context = {
+        'rule': rule,
+        'form': form,
+        'exception_formset': exception_formset,
+        'action': 'Edit',
+        'occurrences_preview': occurrences[:10],  # Show first 10
+    }
+    
+    return render(request, 'programs/availability_rules/detail.html', context)
+
+
+@login_required
+@require_POST
+def availability_rule_toggle(request, pk):
+    """Toggle is_active status of a rule."""
+    rule = get_object_or_404(AvailabilityRule, pk=pk)
+    
+    # Permission check
+    if rule.contractor != request.user and not user_is_admin(request.user):
+        messages.error(request, "You don't have permission to modify this rule.")
+        return redirect('programs:availability_rules_index')
+    
+    rule.is_active = not rule.is_active
+    rule.save(update_fields=['is_active'])
+    
+    status = "activated" if rule.is_active else "deactivated"
+    messages.success(request, f"Availability rule '{rule.title or 'Untitled'}' {status}.")
+    
+    return redirect('programs:availability_rules_index')
+
+
+@login_required
+@require_POST
+def availability_rule_archive(request, pk):
+    """Archive a rule (set is_active=False)."""
+    rule = get_object_or_404(AvailabilityRule, pk=pk)
+    
+    # Permission check
+    if rule.contractor != request.user and not user_is_admin(request.user):
+        messages.error(request, "You don't have permission to modify this rule.")
+        return redirect('programs:availability_rules_index')
+    
+    rule.is_active = False
+    rule.save(update_fields=['is_active'])
+    
+    messages.success(request, f"Availability rule '{rule.title or 'Untitled'}' archived.")
+    
+    return redirect('programs:availability_rules_index')
+
+
+@login_required
+def availability_rule_delete(request, pk):
+    """Delete a rule (with confirmation)."""
+    rule = get_object_or_404(AvailabilityRule, pk=pk)
+    
+    # Permission check
+    if rule.contractor != request.user and not user_is_admin(request.user):
+        messages.error(request, "You don't have permission to delete this rule.")
+        return redirect('programs:availability_rules_index')
+    
+    if request.method == 'POST':
+        rule_title = rule.title or 'Untitled'
+        rule.delete()
+        messages.success(request, f"Availability rule '{rule_title}' deleted.")
+        return redirect('programs:availability_rules_index')
+    
+    context = {
+        'rule': rule,
+    }
+    
+    return render(request, 'programs/availability_rules/confirm_delete.html', context)
+
+
+@login_required
+@require_POST
+def availability_exception_create(request, rule_pk):
+    """Create an exception for a rule (HTMX endpoint)."""
+    rule = get_object_or_404(AvailabilityRule, pk=rule_pk)
+    
+    # Permission check
+    if rule.contractor != request.user and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    from .forms import AvailabilityExceptionForm
+    form = AvailabilityExceptionForm(request.POST)
+    
+    if form.is_valid():
+        exception = form.save(commit=False)
+        exception.rule = rule
+        exception.save()
+        
+        # Return updated exceptions list partial
+        context = {'rule': rule}
+        return render(request, 'programs/availability_rules/_exceptions_list.html', context)
+    
+    # Return form with errors
+    context = {'form': form, 'rule': rule}
+    return render(request, 'programs/availability_rules/_exception_form.html', context)
+
+
+@login_required
+@require_POST
+def availability_exception_delete(request, pk):
+    """Delete an exception (HTMX endpoint)."""
+    exception = get_object_or_404(AvailabilityException, pk=pk)
+    rule = exception.rule
+    
+    # Permission check
+    if rule.contractor != request.user and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    exception.delete()
+    
+    # Return updated exceptions list partial
+    context = {'rule': rule}
+    return render(request, 'programs/availability_rules/_exceptions_list.html', context)

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ action }} Availability Rule{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">{{ action }} Availability Rule</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Basic Information -->
+                        <div class="mb-4">
+                            <h5>Basic Information</h5>
+                            <div class="mb-3">
+                                <label for="id_title" class="form-label">Title (optional)</label>
+                                {{ form.title }}
+                                {% if form.title.errors %}
+                                <div class="invalid-feedback d-block">{{ form.title.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.title.help_text }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="id_kind" class="form-label">Availability Type *</label>
+                                {{ form.kind }}
+                                {% if form.kind.errors %}
+                                <div class="invalid-feedback d-block">{{ form.kind.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">{{ form.kind.help_text }}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Time Window -->
+                        <div class="mb-4">
+                            <h5>Time Window</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_start_time" class="form-label">Start Time *</label>
+                                    {{ form.start_time }}
+                                    {% if form.start_time.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.start_time.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_end_time" class="form-label">End Time *</label>
+                                    {{ form.end_time }}
+                                    {% if form.end_time.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.end_time.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="id_timezone" class="form-label">Timezone *</label>
+                                {{ form.timezone }}
+                                {% if form.timezone.errors %}
+                                <div class="invalid-feedback d-block">{{ form.timezone.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Date Bounds -->
+                        <div class="mb-4">
+                            <h5>Date Range</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_date_start" class="form-label">Start Date *</label>
+                                    {{ form.date_start }}
+                                    {% if form.date_start.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.date_start.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_date_end" class="form-label">End Date *</label>
+                                    {{ form.date_end }}
+                                    {% if form.date_end.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.date_end.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Weekly Pattern -->
+                        <div class="mb-4" id="weekdays-section">
+                            <h5>Weekly Pattern (for Weekly Recurring only)</h5>
+                            <p class="text-muted small">Select which days of the week this availability applies to.</p>
+                            <div class="row">
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.weekdays_monday }}
+                                        <label class="form-check-label" for="id_weekdays_monday">Monday</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.weekdays_tuesday }}
+                                        <label class="form-check-label" for="id_weekdays_tuesday">Tuesday</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.weekdays_wednesday }}
+                                        <label class="form-check-label" for="id_weekdays_wednesday">Wednesday</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.weekdays_thursday }}
+                                        <label class="form-check-label" for="id_weekdays_thursday">Thursday</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.weekdays_friday }}
+                                        <label class="form-check-label" for="id_weekdays_friday">Friday</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.weekdays_saturday }}
+                                        <label class="form-check-label" for="id_weekdays_saturday">Saturday</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.weekdays_sunday }}
+                                        <label class="form-check-label" for="id_weekdays_sunday">Sunday</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Programs Offered -->
+                        <div class="mb-4">
+                            <h5>Programs Offered (optional)</h5>
+                            <p class="text-muted small">Select which programs you can teach during this availability.</p>
+                            {{ form.programs_offered }}
+                            {% if form.programs_offered.errors %}
+                            <div class="invalid-feedback d-block">{{ form.programs_offered.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <h5>Notes (optional)</h5>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Active Status -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="id_is_active">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'programs:availability_rules_index' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">{{ action }} Rule</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle weekdays section visibility based on kind selection
+document.addEventListener('DOMContentLoaded', function() {
+    const kindField = document.getElementById('id_kind');
+    const weekdaysSection = document.getElementById('weekdays-section');
+    
+    function toggleWeekdays() {
+        if (kindField.value === 'WEEKLY_RECURRING') {
+            weekdaysSection.style.display = 'block';
+        } else {
+            weekdaysSection.style.display = 'none';
+        }
+    }
+    
+    kindField.addEventListener('change', toggleWeekdays);
+    toggleWeekdays(); // Initial state
+});
+</script>
+{% endblock %}
+

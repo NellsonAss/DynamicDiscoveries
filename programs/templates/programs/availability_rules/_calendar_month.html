@@ -1,0 +1,84 @@
+<h5 class="text-center mb-3">{{ month_name }} {{ year }}</h5>
+
+<table class="table table-bordered table-sm calendar-table">
+    <thead>
+        <tr>
+            <th scope="col" class="text-center">Mon</th>
+            <th scope="col" class="text-center">Tue</th>
+            <th scope="col" class="text-center">Wed</th>
+            <th scope="col" class="text-center">Thu</th>
+            <th scope="col" class="text-center">Fri</th>
+            <th scope="col" class="text-center">Sat</th>
+            <th scope="col" class="text-center">Sun</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for week in month_calendar %}
+        <tr>
+            {% for day in week %}
+            <td class="calendar-cell {% if day == 0 %}empty{% endif %}" style="min-height: 100px; vertical-align: top;">
+                {% if day != 0 %}
+                    {% with current_date=year|add:"-"|add:month|add:"-"|add:day %}
+                    <div class="calendar-day-header">
+                        <strong>{{ day }}</strong>
+                    </div>
+                    
+                    {% load custom_tags %}
+                    {% with date_obj=year|combine_date:month|combine_date:day %}
+                    {% if date_obj in occurrences_by_date %}
+                        <div class="occurrences-list mt-1">
+                            {% for occ in occurrences_by_date|get_item:date_obj %}
+                            <div class="occurrence-chip mb-1 p-1 bg-light border rounded small" role="listitem"
+                                 aria-label="Availability {{ occ.rule_title }} from {{ occ.start_time|time:'g:i A' }} to {{ occ.end_time|time:'g:i A' }}">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-truncate">
+                                        <i class="bi bi-clock"></i>
+                                        {{ occ.start_time|time:"g:i A" }} - {{ occ.end_time|time:"g:i A" }}
+                                    </span>
+                                    {% if occ.is_exception %}
+                                    <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">!</span>
+                                    {% endif %}
+                                </div>
+                                {% if occ.rule_title %}
+                                <div class="text-muted small text-truncate">{{ occ.rule_title }}</div>
+                                {% endif %}
+                                {% if occ.programs_offered %}
+                                <div class="text-muted small">
+                                    <span class="badge bg-primary" style="font-size: 0.65rem;">
+                                        +{{ occ.programs_offered|length }} program{{ occ.programs_offered|length|pluralize }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% endwith %}
+                    {% endwith %}
+                {% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<style>
+.calendar-cell {
+    min-width: 100px;
+    padding: 5px;
+}
+.calendar-cell.empty {
+    background-color: #f8f9fa;
+}
+.calendar-day-header {
+    padding-bottom: 2px;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 3px;
+}
+.occurrence-chip {
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+</style>
+

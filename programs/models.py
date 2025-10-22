@@ -1311,6 +1311,12 @@ class ContractorAvailability(models.Model):
         help_text="Set to True when contractor archives this availability"
     )
     
+    # Legacy flag to mark old per-day entries after migration to rules
+    legacy = models.BooleanField(
+        default=False,
+        help_text="Marks legacy per-day availability entries; hidden from contractor UI after migration to rules"
+    )
+    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1822,3 +1828,375 @@ class ProgramBuildoutScheduling(models.Model):
     
     def __str__(self):
         return f"Scheduling config for {self.buildout.title}"
+
+
+# ============================================================================
+# AVAILABILITY RULES SYSTEM (Dynamic Occurrence Generation)
+# ============================================================================
+
+class AvailabilityRule(models.Model):
+    """
+    Defines recurring or date-range availability patterns that generate occurrences dynamically.
+    
+    Replaces the one-row-per-day approach with rule-based system. A single rule can represent:
+    - Weekly recurring availability (e.g., "Every Mon/Wed, 2:30-5:00 PM from Sep 1 to Dec 20")
+    - Date range availability (e.g., "Daily from Jun 10-Jun 14, 9:00-12:00")
+    
+    Occurrences are computed on-the-fly for the visible calendar range, not persisted.
+    """
+    
+    KIND_CHOICES = [
+        ('WEEKLY_RECURRING', 'Weekly Recurring'),
+        ('DATE_RANGE', 'Date Range'),
+    ]
+    
+    contractor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='availability_rules',
+        limit_choices_to={'groups__name__in': ['Contractor', 'Admin']},
+        help_text="The contractor this availability rule belongs to"
+    )
+    
+    title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Short label displayed on calendar (e.g., 'Monday afternoons', 'Summer intensive')"
+    )
+    
+    kind = models.CharField(
+        max_length=20,
+        choices=KIND_CHOICES,
+        help_text="Type of recurrence pattern"
+    )
+    
+    # Time window (time-only)
+    start_time = models.TimeField(
+        help_text="Start time for availability (e.g., 14:30)"
+    )
+    end_time = models.TimeField(
+        help_text="End time for availability (e.g., 17:00)"
+    )
+    
+    # Date bounds (inclusive)
+    date_start = models.DateField(
+        help_text="First date this rule applies (inclusive)"
+    )
+    date_end = models.DateField(
+        help_text="Last date this rule applies (inclusive)"
+    )
+    
+    # Weekly pattern (for WEEKLY_RECURRING)
+    weekdays_monday = models.BooleanField(default=False, verbose_name="Monday")
+    weekdays_tuesday = models.BooleanField(default=False, verbose_name="Tuesday")
+    weekdays_wednesday = models.BooleanField(default=False, verbose_name="Wednesday")
+    weekdays_thursday = models.BooleanField(default=False, verbose_name="Thursday")
+    weekdays_friday = models.BooleanField(default=False, verbose_name="Friday")
+    weekdays_saturday = models.BooleanField(default=False, verbose_name="Saturday")
+    weekdays_sunday = models.BooleanField(default=False, verbose_name="Sunday")
+    
+    # Timezone
+    timezone = models.CharField(
+        max_length=50,
+        default='America/New_York',
+        help_text="IANA timezone string (e.g., 'America/New_York', 'America/Los_Angeles')"
+    )
+    
+    # Status
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this rule is currently active"
+    )
+    
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        help_text="Internal notes about this availability rule"
+    )
+    
+    # Programs offered during this availability
+    programs_offered = models.ManyToManyField(
+        ProgramInstance,
+        blank=True,
+        related_name='availability_rules',
+        help_text="Program instances offered during this availability window"
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-is_active', 'date_start', 'start_time']
+        verbose_name = "Availability Rule"
+        verbose_name_plural = "Availability Rules"
+    
+    def __str__(self):
+        if self.title:
+            return f"{self.contractor.get_full_name()} - {self.title}"
+        return f"{self.contractor.get_full_name()} - {self.get_kind_display()} ({self.date_start} to {self.date_end})"
+    
+    def clean(self):
+        """Validate rule constraints."""
+        from django.core.exceptions import ValidationError
+        errors = {}
+        
+        # Validate time window
+        if self.start_time and self.end_time and self.start_time >= self.end_time:
+            errors['end_time'] = "End time must be after start time"
+        
+        # Validate date bounds
+        if self.date_start and self.date_end and self.date_start > self.date_end:
+            errors['date_end'] = "End date must be on or after start date"
+        
+        # For WEEKLY_RECURRING, require at least one weekday
+        if self.kind == 'WEEKLY_RECURRING':
+            weekdays_selected = any([
+                self.weekdays_monday, self.weekdays_tuesday, self.weekdays_wednesday,
+                self.weekdays_thursday, self.weekdays_friday, self.weekdays_saturday,
+                self.weekdays_sunday
+            ])
+            if not weekdays_selected:
+                errors['kind'] = "For Weekly Recurring, at least one weekday must be selected"
+        
+        if errors:
+            raise ValidationError(errors)
+    
+    def get_weekdays_list(self):
+        """Returns list of weekday numbers (0=Monday, 6=Sunday) selected for this rule."""
+        weekdays = []
+        if self.weekdays_monday:
+            weekdays.append(0)
+        if self.weekdays_tuesday:
+            weekdays.append(1)
+        if self.weekdays_wednesday:
+            weekdays.append(2)
+        if self.weekdays_thursday:
+            weekdays.append(3)
+        if self.weekdays_friday:
+            weekdays.append(4)
+        if self.weekdays_saturday:
+            weekdays.append(5)
+        if self.weekdays_sunday:
+            weekdays.append(6)
+        return weekdays
+    
+    def get_weekdays_display(self):
+        """Returns human-readable weekdays string (e.g., 'Mon, Wed, Fri')."""
+        days = []
+        if self.weekdays_monday:
+            days.append('Mon')
+        if self.weekdays_tuesday:
+            days.append('Tue')
+        if self.weekdays_wednesday:
+            days.append('Wed')
+        if self.weekdays_thursday:
+            days.append('Thu')
+        if self.weekdays_friday:
+            days.append('Fri')
+        if self.weekdays_saturday:
+            days.append('Sat')
+        if self.weekdays_sunday:
+            days.append('Sun')
+        return ', '.join(days) if days else 'No days selected'
+    
+    @property
+    def programs_count(self):
+        """Returns count of programs offered during this availability."""
+        return self.programs_offered.count()
+
+
+class AvailabilityException(models.Model):
+    """
+    Represents exclusions or overrides for specific dates within an AvailabilityRule.
+    
+    Types:
+    - SKIP: Exclude this date from the rule (e.g., contractor has a conflict that day)
+    - TIME_OVERRIDE: Change the time window for this specific date
+    """
+    
+    TYPE_CHOICES = [
+        ('SKIP', 'Skip (no availability)'),
+        ('TIME_OVERRIDE', 'Time Override'),
+    ]
+    
+    rule = models.ForeignKey(
+        AvailabilityRule,
+        on_delete=models.CASCADE,
+        related_name='exceptions',
+        help_text="The availability rule this exception applies to"
+    )
+    
+    date = models.DateField(
+        help_text="The specific date this exception applies to"
+    )
+    
+    type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        help_text="Type of exception"
+    )
+    
+    # For TIME_OVERRIDE type
+    override_start_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Override start time (only for TIME_OVERRIDE type)"
+    )
+    override_end_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Override end time (only for TIME_OVERRIDE type)"
+    )
+    
+    # Optional note
+    note = models.TextField(
+        blank=True,
+        help_text="Optional note explaining this exception"
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['date']
+        unique_together = ['rule', 'date']
+        verbose_name = "Availability Exception"
+        verbose_name_plural = "Availability Exceptions"
+    
+    def __str__(self):
+        return f"{self.rule.contractor.get_full_name()} - {self.get_type_display()} on {self.date}"
+    
+    def clean(self):
+        """Validate exception constraints."""
+        from django.core.exceptions import ValidationError
+        errors = {}
+        
+        # For TIME_OVERRIDE, both override times are required
+        if self.type == 'TIME_OVERRIDE':
+            if not self.override_start_time:
+                errors['override_start_time'] = "Override start time is required for TIME_OVERRIDE"
+            if not self.override_end_time:
+                errors['override_end_time'] = "Override end time is required for TIME_OVERRIDE"
+            
+            # Validate override time window
+            if self.override_start_time and self.override_end_time:
+                if self.override_start_time >= self.override_end_time:
+                    errors['override_end_time'] = "Override end time must be after start time"
+        
+        # For SKIP, override times should not be set
+        if self.type == 'SKIP':
+            if self.override_start_time or self.override_end_time:
+                errors['type'] = "Override times should not be set for SKIP type"
+        
+        if errors:
+            raise ValidationError(errors)
+
+
+# ============================================================================
+# BOOKING AND FEASIBILITY SYSTEM
+# ============================================================================
+
+class RuleBooking(models.Model):
+    """
+    Represents a booking that blocks time within an availability rule window.
+    
+    Unlike SessionBooking which is tied to specific program sessions, this is a
+    simpler booking that directly reserves time within a rule's occurrence.
+    """
+    
+    rule = models.ForeignKey(
+        AvailabilityRule,
+        on_delete=models.CASCADE,
+        related_name='bookings',
+        help_text="The availability rule this booking falls under"
+    )
+    
+    program = models.ForeignKey(
+        ProgramInstance,
+        on_delete=models.CASCADE,
+        related_name='rule_bookings',
+        help_text="The program being run during this booking"
+    )
+    
+    # The specific date and time of this booking
+    booking_date = models.DateField(help_text="Date of the booking")
+    start_time = models.TimeField(help_text="Start time of the booking")
+    end_time = models.TimeField(help_text="End time of the booking")
+    
+    # Booking details
+    booked_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='contractor_bookings',
+        help_text="Parent who made the booking"
+    )
+    child = models.ForeignKey(
+        'Child',
+        on_delete=models.CASCADE,
+        related_name='rule_bookings',
+        help_text="Child enrolled in this booking"
+    )
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
+        ('completed', 'Completed'),
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='confirmed'
+    )
+    
+    notes = models.TextField(blank=True, help_text="Booking notes")
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['booking_date', 'start_time']
+        verbose_name = "Rule Booking"
+        verbose_name_plural = "Rule Bookings"
+        indexes = [
+            models.Index(fields=['booking_date', 'start_time']),
+            models.Index(fields=['rule', 'booking_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.program.title} - {self.booking_date} {self.start_time}-{self.end_time}"
+    
+    def clean(self):
+        """Validate booking constraints."""
+        from django.core.exceptions import ValidationError
+        errors = {}
+        
+        # Validate time window
+        if self.start_time and self.end_time and self.start_time >= self.end_time:
+            errors['end_time'] = "End time must be after start time"
+        
+        # Validate booking falls within rule's date bounds
+        if self.rule and self.booking_date:
+            if self.booking_date < self.rule.date_start or self.booking_date > self.rule.date_end:
+                errors['booking_date'] = "Booking date must fall within rule's date range"
+            
+            # For WEEKLY_RECURRING, validate day of week
+            if self.rule.kind == 'WEEKLY_RECURRING':
+                weekday = self.booking_date.weekday()
+                weekdays = self.rule.get_weekdays_list()
+                if weekday not in weekdays:
+                    errors['booking_date'] = f"Booking date must be on one of the rule's weekdays: {self.rule.get_weekdays_display()}"
+        
+        if errors:
+            raise ValidationError(errors)
+    
+    @property
+    def duration_minutes(self):
+        """Calculate booking duration in minutes."""
+        from datetime import datetime, time
+        start = datetime.combine(self.booking_date, self.start_time)
+        end = datetime.combine(self.booking_date, self.end_time)
+        return int((end - start).total_seconds() / 60)
