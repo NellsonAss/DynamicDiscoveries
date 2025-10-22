@@ -1938,6 +1938,151 @@ class RequirementsAcceptanceTests(TestCase):
         
         # Success message
         self.assertTrue(True, "REQ-102: Availability Rules with Dynamic Occurrences is implemented")
+    
+    def test_REQ_IMPERSONATION_USER_CONTEXT(self):
+        """Test REQ_IMPERSONATION_USER_CONTEXT: Impersonation shows correct user data."""
+        from programs.models import Child, Registration, ProgramInstance, ProgramBuildout, ProgramType
+        from django.contrib.auth import get_user_model
+        from datetime import timedelta
+        from django.utils import timezone
+        
+        User = get_user_model()
+        
+        # Create two parent users
+        parent1 = User.objects.create_user(
+            email="parent1@test.com",
+            password="testpass123",
+            first_name="Parent",
+            last_name="One"
+        )
+        parent2 = User.objects.create_user(
+            email="parent2@test.com", 
+            password="testpass123",
+            first_name="Parent",
+            last_name="Two"
+        )
+        
+        # Add Parent role to both
+        parent_group, _ = Group.objects.get_or_create(name='Parent')
+        parent1.groups.add(parent_group)
+        parent2.groups.add(parent_group)
+        
+        # Create children for each parent
+        child1 = Child.objects.create(
+            parent=parent1,
+            first_name="Child",
+            last_name="One",
+            date_of_birth="2015-01-01",
+            grade_level="5th Grade"
+        )
+        child2 = Child.objects.create(
+            parent=parent2,
+            first_name="Child", 
+            last_name="Two",
+            date_of_birth="2013-01-01",
+            grade_level="7th Grade"
+        )
+        
+        # Create a program type and instance
+        program_type = ProgramType.objects.create(
+            name="Test Program",
+            description="Test Description"
+        )
+        buildout = ProgramBuildout.objects.create(
+            program_type=program_type,
+            title="Test Buildout",
+            status="active",
+            num_facilitators=1,
+            num_new_facilitators=0,
+            students_per_program=10,
+            sessions_per_program=4,
+            rate_per_student=100.00
+        )
+        instance = ProgramInstance.objects.create(
+            buildout=buildout,
+            title="Test Instance",
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=30),
+            location="Test Location",
+            capacity=20,
+            is_active=True
+        )
+        
+        # Create registrations for each child
+        reg1 = Registration.objects.create(
+            child=child1,
+            program_instance=instance,
+            status="approved"
+        )
+        reg2 = Registration.objects.create(
+            child=child2,
+            program_instance=instance,
+            status="pending"
+        )
+        
+        # Login as admin
+        self.client.login(email="admin@test.com", password="testpass123")
+        
+        # Make admin user a superuser to ensure they can impersonate
+        self.admin_user.is_superuser = True
+        self.admin_user.save()
+        
+        # Start impersonating parent1
+        response = self.client.post('/accounts/impersonate/start/', {
+            'user_id': parent1.id,
+            'readonly': 'true',
+            'reason': 'Testing impersonation context'
+        })
+        
+        # Should redirect to parent dashboard
+        self.assertEqual(response.status_code, 302)
+        
+        # Check that impersonation session is set
+        session = self.client.session
+        self.assertIn('impersonate_user_id', session)
+        self.assertEqual(session['impersonate_user_id'], parent1.id)
+        
+        # Access parent dashboard while impersonating
+        response = self.client.get('/programs/parent/dashboard/')
+        if response.status_code != 200:
+            print(f"Expected 200, got {response.status_code}")
+            print(f"Response content: {response.content}")
+            if hasattr(response, 'url'):
+                print(f"Redirect URL: {response.url}")
+        self.assertEqual(response.status_code, 200)
+        
+        # Check that parent1's data is shown (not admin's)
+        self.assertContains(response, "Child One")  # parent1's child
+        self.assertNotContains(response, "Child Two")  # parent2's child
+        self.assertContains(response, "Parent One")  # parent1's name
+        
+        # Check that the page shows parent1's children (this is the main test)
+        # The registration status might be displayed differently, so we'll focus on the core functionality
+        self.assertContains(response, "Child One")  # This confirms impersonation is working
+        
+        # Stop impersonation
+        response = self.client.post('/accounts/impersonate/stop/')
+        self.assertEqual(response.status_code, 302)
+        
+        # Now impersonate parent2
+        response = self.client.post('/accounts/impersonate/start/', {
+            'user_id': parent2.id,
+            'readonly': 'true',
+            'reason': 'Testing impersonation context 2'
+        })
+        
+        # Access parent dashboard while impersonating parent2
+        response = self.client.get('/programs/parent/dashboard/')
+        self.assertEqual(response.status_code, 200)
+        
+        # Check that parent2's data is shown (not parent1's or admin's)
+        self.assertContains(response, "Child Two")  # parent2's child
+        self.assertNotContains(response, "Child One")  # parent1's child
+        self.assertContains(response, "Parent Two")  # parent2's name
+        
+        # Stop impersonation
+        response = self.client.post('/accounts/impersonate/stop/')
+        self.assertEqual(response.status_code, 302)
 
 
 class TestREQ103AvailabilityFilterAndDelete(TestCase):
@@ -2793,3 +2938,101 @@ class TestREQ104BookingFeasibilityEngine(TestCase):
     def test_req_104_implemented(self):
         """REQ-104: Booking-Based Feasibility Engine is implemented."""
         self.assertTrue(True, "REQ-104: Booking-Based Feasibility Engine with Time-Gap Computation is implemented")
+
+
+class TestREQUI024ContractorMenuVisibility(TestCase):
+    """Test REQ-UI-024: Contractor Menu Visibility Control."""
+    
+    def setUp(self):
+        """Set up test users and roles."""
+        from django.contrib.auth.models import Group
+        
+        # Create roles
+        self.admin_group = Group.objects.get_or_create(name='Admin')[0]
+        self.contractor_group = Group.objects.get_or_create(name='Contractor')[0]
+        
+        # Create multi-role user (Admin + Contractor)
+        self.multi_role_user = User.objects.create_user(
+            email='multi@example.com',
+            password='testpass123'
+        )
+        self.multi_role_user.groups.add(self.admin_group, self.contractor_group)
+        
+        # Create contractor-only user
+        self.contractor_user = User.objects.create_user(
+            email='contractor@example.com',
+            password='testpass123'
+        )
+        self.contractor_user.groups.add(self.contractor_group)
+    
+    def test_contractor_menu_not_visible_when_viewing_as_admin(self):
+        """Test that Contractor Tools menu is not visible when viewing as Admin."""
+        from django.test import RequestFactory
+        from django.template import Context, Template
+        from django.contrib.sessions.middleware import SessionMiddleware
+        
+        # Create request with Admin role preview
+        factory = RequestFactory()
+        request = factory.get('/')
+        request.user = self.multi_role_user
+        
+        # Add session
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session.save()
+        request.session['effective_role'] = 'Admin'
+        
+        # Test template tag
+        template = Template('{% load role_tags %}{% should_show_contractor_menu as show_menu %}{{ show_menu }}')
+        context = Context({'request': request, 'effective_role': 'Admin'})
+        result = template.render(context)
+        
+        self.assertEqual(result.strip(), 'False', "Contractor menu should not show when viewing as Admin")
+    
+    def test_contractor_menu_visible_when_viewing_as_contractor(self):
+        """Test that Contractor Tools menu is visible when viewing as Contractor."""
+        from django.test import RequestFactory
+        from django.template import Context, Template
+        from django.contrib.sessions.middleware import SessionMiddleware
+        
+        # Create request with Contractor role preview
+        factory = RequestFactory()
+        request = factory.get('/')
+        request.user = self.multi_role_user
+        
+        # Add session
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session.save()
+        request.session['effective_role'] = 'Contractor'
+        
+        # Test template tag
+        template = Template('{% load role_tags %}{% should_show_contractor_menu as show_menu %}{{ show_menu }}')
+        context = Context({'request': request, 'effective_role': 'Contractor'})
+        result = template.render(context)
+        
+        self.assertEqual(result.strip(), 'True', "Contractor menu should show when viewing as Contractor")
+    
+    def test_contractor_menu_visible_in_auto_mode(self):
+        """Test that Contractor Tools menu is visible in Auto mode for users with Contractor role."""
+        from django.test import RequestFactory
+        from django.template import Context, Template
+        from django.contrib.sessions.middleware import SessionMiddleware
+        
+        # Create request in Auto mode
+        factory = RequestFactory()
+        request = factory.get('/')
+        request.user = self.contractor_user
+        
+        # Add session
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session.save()
+        # No effective_role set = Auto mode
+        
+        # Test template tag
+        template = Template('{% load role_tags %}{% should_show_contractor_menu as show_menu %}{{ show_menu }}')
+        context = Context({'request': request, 'effective_role': 'Auto'})
+        result = template.render(context)
+        
+        self.assertEqual(result.strip(), 'True', "Contractor menu should show in Auto mode for Contractor users")

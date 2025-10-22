@@ -46,7 +46,8 @@ def show_role_menu(context, role_name):
 @register.simple_tag(takes_context=True)
 def should_show_contractor_menu(context):
     """
-    Special case for Contractor menu which is shown to both Contractors and Admins.
+    Special case for Contractor menu which is shown to Contractors and Admins in Auto mode,
+    but only to Contractors when viewing as specific role.
     
     Returns:
         bool: True if contractor menu should be shown
@@ -68,6 +69,7 @@ def should_show_contractor_menu(context):
     if effective_role == 'Auto':
         return True
     
-    # If previewing a specific role, only show if that role is Contractor or Admin
-    return effective_role in ['Contractor', 'Admin']
+    # If previewing a specific role, only show if that role is Contractor
+    # (not Admin - Admins should see Admin Tools instead)
+    return effective_role == 'Contractor'
 

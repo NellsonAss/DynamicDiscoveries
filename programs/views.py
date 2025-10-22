@@ -61,20 +61,24 @@ def user_is_admin(user):
 @login_required
 def parent_dashboard(request):
     """Enhanced Parent Landing Page with comprehensive sections and calendar."""
-    logger.info(f"Parent dashboard called for user: {request.user}, is_parent: {user_is_parent(request.user)}")
-    if not user_is_parent(request.user):
-        logger.info(f"User {request.user} is not a parent, redirecting to general dashboard")
+    # Get effective user (impersonated user if impersonating, otherwise request.user)
+    from accounts.mixins import get_effective_user_and_roles
+    effective_user, effective_roles = get_effective_user_and_roles(request)
+    
+    logger.info(f"Parent dashboard called for user: {request.user}, effective_user: {effective_user}, is_parent: {user_is_parent(effective_user)}")
+    if not user_is_parent(effective_user):
+        logger.info(f"Effective user {effective_user} is not a parent, redirecting to general dashboard")
         messages.error(request, "This page is for parents. If you think this is a mistake, contact support.")
         return redirect('dashboard:dashboard')
     
     now = timezone.now()
     
-    # Get user's children (sorted by first name)
-    children = request.user.children.all().order_by('first_name')
+    # Get effective user's children (sorted by first name)
+    children = effective_user.children.all().order_by('first_name')
     
-    # Get current registrations/sign-ups for user's children
+    # Get current registrations/sign-ups for effective user's children
     current_registrations = Registration.objects.filter(
-        child__parent=request.user,
+        child__parent=effective_user,
         program_instance__end_date__gte=now,
         status__in=['pending', 'approved', 'waitlisted']
     ).select_related(
@@ -144,7 +148,7 @@ def parent_dashboard(request):
     # Get recent conversations for messages section
     from communications.models import Conversation
     recent_conversations = Conversation.objects.filter(
-        owner=request.user
+        owner=effective_user
     ).prefetch_related('messages').order_by('-updated_at')[:5]
     
     # Get all contractors for calendar filter
@@ -166,7 +170,7 @@ def parent_dashboard(request):
         'running_pending_instances': running_pending_instances,
         'available_program_types': available_program_types,
         'facilitators': facilitators,
-        'parent_name': request.user.get_full_name() or request.user.email.split('@')[0],
+        'parent_name': effective_user.get_full_name() or effective_user.email.split('@')[0],
         'recent_conversations': recent_conversations,
         # Calendar data
         'year': year,
@@ -1688,13 +1692,17 @@ def book_session(request, session_pk):
 @login_required
 def parent_bookings(request):
     """List parent's current bookings."""
-    if not user_is_parent(request.user) and not user_is_admin(request.user):
+    # Get effective user (impersonated user if impersonating, otherwise request.user)
+    from accounts.mixins import get_effective_user_and_roles
+    effective_user, effective_roles = get_effective_user_and_roles(request)
+    
+    if not user_is_parent(effective_user) and not user_is_admin(request.user):
         messages.error(request, "You don't have permission to access this page.")
         return redirect('dashboard')
     
-    # Get all bookings for parent's children
+    # Get all bookings for effective user's children
     bookings = SessionBooking.objects.filter(
-        child__parent=request.user
+        child__parent=effective_user
     ).select_related(
         'child', 'session__program_instance__buildout__program_type',
         'session__availability_program__availability__contractor'

@@ -1019,11 +1019,63 @@
       "title": "Test2",
       "description": "Test2",
       "status": "implemented"
+    },
+    {
+      "id": "REQ-UI-024",
+      "title": "Contractor Menu Visibility Control",
+      "description": "When viewing the site as Admin role, the Contractor Tools menu should not be displayed. The Contractor Tools menu should only be visible when viewing as Contractor role or in Auto mode (if user has Contractor role).",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-985",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-984",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-IMPERSONATION-USER-CONTEXT",
+      "title": "Impersonation User Context Fix",
+      "description": "When admins impersonate users, the system must display the impersonated user's data (children, registrations, messages, etc.) instead of the admin's data. Views should use get_effective_user_and_roles() to get the correct user context during impersonation.",
+      "status": "implemented",
+      "priority": "high",
+      "category": "admin_features",
+      "tags": [
+        "impersonation",
+        "user_context",
+        "admin_tools"
+      ],
+      "acceptance_criteria": [
+        "Parent dashboard shows impersonated user's children and data",
+        "Parent bookings shows impersonated user's bookings",
+        "All user-specific data displays correctly during impersonation",
+        "Admin's actual data is not shown when impersonating"
+      ],
+      "implementation_notes": "Updated parent_dashboard and parent_bookings views to use effective_user from get_effective_user_and_roles() instead of request.user directly.",
+      "created_date": "2025-01-27T20:30:00Z",
+      "updated_date": "2025-01-27T20:30:00Z"
+    },
+    {
+      "id": "REQ-983",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-982",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-10-22T13:53:50.782062",
+    "last_updated": "2025-10-22T16:03:21.913917",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

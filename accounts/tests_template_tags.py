@@ -105,7 +105,26 @@ class RoleTagsTestCase(TestCase):
         self.assertEqual(result.strip(), 'True')
     
     def test_should_show_contractor_menu_specific_role(self):
-        """Contractor menu only shows when previewing Contractor or Admin role."""
+        """Contractor menu only shows when previewing Contractor role, not Admin."""
+        # Should show when previewing as Contractor
+        request = self.get_request_with_session(self.multi_role_user, 'Contractor')
+        
+        template = Template('{% load role_tags %}{% should_show_contractor_menu as show_menu %}{{ show_menu }}')
+        context = Context({'request': request, 'effective_role': 'Contractor'})
+        result = template.render(context)
+        
+        self.assertEqual(result.strip(), 'True')
+        
+        # Should NOT show when previewing as Admin
+        request = self.get_request_with_session(self.multi_role_user, 'Admin')
+        
+        template = Template('{% load role_tags %}{% should_show_contractor_menu as show_menu %}{{ show_menu }}')
+        context = Context({'request': request, 'effective_role': 'Admin'})
+        result = template.render(context)
+        
+        self.assertEqual(result.strip(), 'False')
+        
+        # Should NOT show when previewing as Parent
         request = self.get_request_with_session(self.multi_role_user, 'Parent')
         
         template = Template('{% load role_tags %}{% should_show_contractor_menu as show_menu %}{{ show_menu }}')
