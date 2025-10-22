@@ -2139,7 +2139,6 @@ def availability_rules_index(request):
     
     # Get query parameters
     from datetime import date
-    from dateutil.relativedelta import relativedelta
     
     today = date.today()
     year = int(request.GET.get('year', today.year))
