@@ -2167,7 +2167,7 @@ def availability_rules_index(request):
     from .models import InstanceRoleAssignment
     assigned_instance_ids = InstanceRoleAssignment.objects.filter(
         contractor=request.user
-    ).values_list('instance_id', flat=True)
+    ).values_list('program_instance_id', flat=True)
     program_instances = ProgramInstance.objects.filter(
         id__in=assigned_instance_ids
     ).select_related('buildout__program_type').order_by('buildout__program_type__name', 'title')
