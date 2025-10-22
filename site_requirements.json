@@ -940,6 +940,33 @@
       ]
     },
     {
+      "id": "REQ-104",
+      "title": "Booking-Based Feasibility Engine with Time-Gap Computation",
+      "description": "Advanced feasibility system that computes which programs can fit in available time after subtracting bookings. Core algorithm merges overlapping rule windows into union, subtracts bookings to find free gaps, determines program feasibility based on duration, and finds valid start times. Month calendar enhanced to show feasible programs per day. Day details view displays visual timeline with rule windows (blue), bookings (red), free gaps (green), and booking form with dynamically populated valid start times. Booking creation updates view via HTMX. Handles all edge cases: complete overlap, partial overlap, split intervals, multiple concurrent bookings. Uses stdlib-only interval arithmetic with 15-minute minimum gaps and indexed queries for performance.",
+      "status": "implemented",
+      "priority": "high",
+      "category": "feature",
+      "created_date": "2025-10-22T00:00:00.000000",
+      "updated_date": "2025-10-22T00:00:00.000000",
+      "acceptance_criteria": [
+        "Booking a 1-hour slot within 8-hour window leaves 7 hours available in gaps",
+        "2-hour program disappears from feasible list when largest gap < 120 minutes",
+        "Multiple overlapping rules create union of time windows",
+        "Month calendar shows time ranges (e.g., '1-6p') and feasible program badges per day",
+        "Clicking day opens modal with visual timeline showing windows/bookings/gaps",
+        "Booking form only shows start times where selected program fits completely",
+        "Creating booking refreshes day details via HTMX showing updated gaps",
+        "Valid start times increment by 15 minutes within feasible ranges",
+        "Program duration pulled from ProgramBuildoutScheduling model",
+        "RuleBooking validates date/time falls within rule bounds",
+        "Timeline uses color coding: blue (rules), red (bookings), green (gaps)",
+        "Feasibility engine performance < 1ms per day, ~30ms for full month",
+        "No external scheduling libraries - pure Python interval math",
+        "Only contractor and admin can create bookings",
+        "Children dropdown populated from parent's children"
+      ]
+    },
+    {
       "id": "REQ-993",
       "title": "Test",
       "description": "Test",
@@ -950,11 +977,53 @@
       "title": "Test2",
       "description": "Test2",
       "status": "implemented"
+    },
+    {
+      "id": "REQ-104",
+      "title": "HTMX Delete Shows Immediate Banner Notification",
+      "description": "When a contractor deletes an availability entry via HTMX on the availability list page, the system must immediately display a success or error banner notification without requiring navigation to another page. The notification banner should appear in the same HTMX response that updates the list.",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-991",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-990",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-989",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-988",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-987",
+      "title": "Test",
+      "description": "Test",
+      "status": "implemented"
+    },
+    {
+      "id": "REQ-986",
+      "title": "Test2",
+      "description": "Test2",
+      "status": "implemented"
     }
   ],
   "metadata": {
     "version": "1.0",
-    "last_updated": "2025-10-22T00:14:10.357121",
+    "last_updated": "2025-10-22T13:53:50.782062",
     "description": "Dynamic Discoveries project requirements tracking"
   }
 }

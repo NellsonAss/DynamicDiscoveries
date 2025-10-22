@@ -1,0 +1,223 @@
+<div class="modal-header">
+    <h5 class="modal-title">{{ target_date|date:"F d, Y (l)" }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body">
+    {% if day_feasibility.rule_windows %}
+    
+    <!-- Timeline Visualization -->
+    <div class="timeline-section mb-4">
+        <h6 class="border-bottom pb-2">Timeline</h6>
+        
+        <div class="timeline-container">
+            <!-- Rule Windows -->
+            <div class="timeline-layer mb-2">
+                <strong class="d-block mb-1 small text-muted">Available Windows:</strong>
+                {% for window in day_feasibility.rule_windows %}
+                <div class="timeline-block rule-window">
+                    <i class="bi bi-clock"></i>
+                    {{ window.start_time|time:"g:i A" }} - {{ window.end_time|time:"g:i A" }}
+                    <span class="badge bg-light text-dark ms-1">{{ window.duration_minutes }} mins</span>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Bookings -->
+            {% if day_feasibility.bookings %}
+            <div class="timeline-layer mb-2">
+                <strong class="d-block mb-1 small text-muted">Bookings:</strong>
+                {% for booking in day_feasibility.bookings %}
+                <div class="timeline-block booking-block">
+                    <i class="bi bi-calendar-check-fill"></i>
+                    {{ booking.start_time|time:"g:i A" }} - {{ booking.end_time|time:"g:i A" }}
+                    <br>
+                    <small>{{ booking.program }} - {{ booking.child }}</small>
+                    <span class="badge bg-danger ms-1">{{ booking.duration_minutes }} mins</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <!-- Free Gaps -->
+            {% if day_feasibility.free_gaps %}
+            <div class="timeline-layer mb-3">
+                <strong class="d-block mb-1 small text-muted">Free Gaps:</strong>
+                {% for gap in day_feasibility.free_gaps %}
+                <div class="timeline-block free-gap-block">
+                    <i class="bi bi-hourglass-split"></i>
+                    {{ gap.start_time|time:"g:i A" }} - {{ gap.end_time|time:"g:i A" }}
+                    <span class="badge bg-success ms-1">{{ gap.duration_minutes }} mins free</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                No free time available - all windows are fully booked.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Feasible Programs Summary -->
+    <div class="programs-section mb-4">
+        <h6 class="border-bottom pb-2">Feasible Programs</h6>
+        {% if day_feasibility.feasible_programs %}
+        <div class="row g-2">
+            {% for prog in day_feasibility.feasible_programs %}
+            <div class="col-md-6">
+                <div class="card card-body py-2">
+                    <h6 class="mb-0">{{ prog.title }}</h6>
+                    <small class="text-muted">Duration: {{ prog.duration_minutes }} minutes</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            No programs can fit in the available free time.
+            {% if day_feasibility.free_gaps %}
+            <br><small>Largest gap: {{ day_feasibility.free_gaps.0.duration_minutes }} minutes</small>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Booking Form -->
+    {% if day_feasibility.feasible_programs and children %}
+    <div class="booking-form-section">
+        <h6 class="border-bottom pb-2">Create Booking</h6>
+        
+        <form method="post" 
+              hx-post="{% url 'programs:create_rule_booking' %}"
+              hx-target="#day-details-modal"
+              hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="date" value="{{ target_date|date:'Y-m-d' }}">
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="id_program" class="form-label">Program *</label>
+                    <select name="program_id" id="id_program" class="form-select" required>
+                        <option value="">-- Select Program --</option>
+                        {% for prog in day_feasibility.feasible_programs %}
+                        <option value="{{ prog.program_id }}" data-duration="{{ prog.duration_minutes }}">
+                            {{ prog.title }} ({{ prog.duration_minutes }} mins)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-6">
+                    <label for="id_start_time" class="form-label">Start Time *</label>
+                    <select name="start_time" id="id_start_time" class="form-select" required>
+                        <option value="">-- Select start time --</option>
+                    </select>
+                    <div class="form-text">Only times where program fits are shown</div>
+                </div>
+                
+                <div class="col-md-6">
+                    <label for="id_child" class="form-label">Child *</label>
+                    <select name="child_id" id="id_child" class="form-select" required>
+                        <option value="">-- Select Child --</option>
+                        {% for child in children %}
+                        <option value="{{ child.id }}">{{ child.first_name }} {{ child.last_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-6">
+                    <label for="id_notes" class="form-label">Notes (optional)</label>
+                    <textarea name="notes" id="id_notes" class="form-control" rows="2"></textarea>
+                </div>
+                
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-calendar-plus"></i> Create Booking
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% elif not children %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        You need to add children to your account before making bookings.
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="bi bi-calendar-x"></i>
+        No availability rules found for this date.
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.timeline-container {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.timeline-layer {
+    margin-bottom: 0.75rem;
+}
+
+.timeline-block {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rule-window {
+    border-left: 4px solid #0d6efd;
+    background: #e7f1ff;
+}
+
+.booking-block {
+    border-left: 4px solid #dc3545;
+    background: #ffe5e8;
+}
+
+.free-gap-block {
+    border-left: 4px solid #198754;
+    background: #e7f5ee;
+}
+</style>
+
+<script>
+// Update valid start times when program changes
+const programStartTimes = {{ program_start_times_json|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const programSelect = document.getElementById('id_program');
+    const startTimeSelect = document.getElementById('id_start_time');
+    
+    if (programSelect && startTimeSelect) {
+        programSelect.addEventListener('change', function() {
+            const programId = this.value;
+            startTimeSelect.innerHTML = '<option value="">-- Select start time --</option>';
+            
+            if (programId && programStartTimes[programId]) {
+                programStartTimes[programId].forEach(timeStr => {
+                    const option = document.createElement('option');
+                    option.value = timeStr;
+                    option.textContent = timeStr;
+                    startTimeSelect.appendChild(option);
+                });
+            }
+        });
+    }
+});
+</script>
+EOFDAYDETAILS
+

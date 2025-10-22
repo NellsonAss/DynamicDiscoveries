@@ -96,4 +96,7 @@ urlpatterns = [
     # Exception management
     path('contractor/availability-rules/<int:rule_pk>/exceptions/new/', views.availability_exception_create, name='availability_exception_create'),
     path('contractor/availability-exceptions/<int:pk>/delete/', views.availability_exception_delete, name='availability_exception_delete'),
+    # Day details and booking
+    path('contractor/availability-rules/day-details/', views.availability_day_details, name='availability_day_details'),
+    path('contractor/availability-rules/create-booking/', views.create_rule_booking, name='create_rule_booking'),
 ] 

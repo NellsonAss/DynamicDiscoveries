@@ -16,44 +16,64 @@
         {% for week in month_calendar %}
         <tr>
             {% for day in week %}
-            <td class="calendar-cell {% if day == 0 %}empty{% endif %}" style="min-height: 100px; vertical-align: top;">
+            <td class="calendar-cell {% if day == 0 %}empty{% endif %}" style="min-height: 120px; vertical-align: top;">
                 {% if day != 0 %}
-                    {% with current_date=year|add:"-"|add:month|add:"-"|add:day %}
-                    <div class="calendar-day-header">
+                    {% with day_key=day|stringformat:"d" %}
+                    <div class="calendar-day-header d-flex justify-content-between align-items-center">
                         <strong>{{ day }}</strong>
+                        {% for day_num, day_data in feasibility_by_day.items %}
+                            {% if day_num == day %}
+                            <button class="btn btn-sm btn-link p-0 text-decoration-none"
+                                    hx-get="{% url 'programs:availability_day_details' %}?date={{ day_data.date|date:'Y-m-d' }}"
+                                    hx-target="#day-details-modal"
+                                    hx-swap="innerHTML"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#dayDetailsModal"
+                                    title="View details for {{ day_data.date|date:'F d, Y' }}">
+                                <i class="bi bi-search text-primary" style="font-size: 0.8rem;"></i>
+                            </button>
+                            {% endif %}
+                        {% endfor %}
                     </div>
                     
-                    {% load custom_tags %}
-                    {% with date_obj=year|combine_date:month|combine_date:day %}
-                    {% if date_obj in occurrences_by_date %}
-                        <div class="occurrences-list mt-1">
-                            {% for occ in occurrences_by_date|get_item:date_obj %}
-                            <div class="occurrence-chip mb-1 p-1 bg-light border rounded small" role="listitem"
-                                 aria-label="Availability {{ occ.rule_title }} from {{ occ.start_time|time:'g:i A' }} to {{ occ.end_time|time:'g:i A' }}">
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-truncate">
-                                        <i class="bi bi-clock"></i>
-                                        {{ occ.start_time|time:"g:i A" }} - {{ occ.end_time|time:"g:i A" }}
-                                    </span>
-                                    {% if occ.is_exception %}
-                                    <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">!</span>
-                                    {% endif %}
-                                </div>
-                                {% if occ.rule_title %}
-                                <div class="text-muted small text-truncate">{{ occ.rule_title }}</div>
-                                {% endif %}
-                                {% if occ.programs_offered %}
-                                <div class="text-muted small">
-                                    <span class="badge bg-primary" style="font-size: 0.65rem;">
-                                        +{{ occ.programs_offered|length }} program{{ occ.programs_offered|length|pluralize }}
-                                    </span>
-                                </div>
-                                {% endif %}
-                            </div>
+                    <!-- Render feasibility data -->
+                    {% for day_num, day_data in feasibility_by_day.items %}
+                        {% if day_num == day %}
+                        <!-- Summary time ranges -->
+                        <div class="time-ranges mb-1">
+                            {% for range_str in day_data.summary_ranges %}
+                            <span class="badge bg-light text-dark border" style="font-size: 0.65rem;">
+                                {{ range_str }}
+                            </span>
                             {% endfor %}
                         </div>
-                    {% endif %}
-                    {% endwith %}
+                        
+                        <!-- Feasible programs -->
+                        <div class="programs-list">
+                            {% for prog in day_data.feasible_programs|slice:":3" %}
+                            <span class="badge bg-primary mb-1" style="font-size: 0.65rem;" title="{{ prog.title }} ({{ prog.duration_minutes }} mins)">
+                                {{ prog.title|truncatechars:15 }}
+                            </span>
+                            {% endfor %}
+                            
+                            {% if day_data.feasible_programs|length > 3 %}
+                            <span class="badge bg-secondary mb-1" style="font-size: 0.65rem;">
+                                +{{ day_data.feasible_programs|length|add:"-3" }}
+                            </span>
+                            {% endif %}
+                            
+                            {% if day_data.feasible_programs|length == 0 %}
+                            <div class="text-muted small" style="font-size: 0.7rem;">
+                                {% if day_data.bookings_count > 0 %}
+                                    <i class="bi bi-calendar-check"></i> Booked
+                                {% else %}
+                                    <i class="bi bi-calendar-x"></i> No slots
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                     {% endwith %}
                 {% endif %}
             </td>
@@ -65,20 +85,31 @@
 
 <style>
 .calendar-cell {
-    min-width: 100px;
-    padding: 5px;
+    min-width: 110px;
+    padding: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.calendar-cell:hover:not(.empty) {
+    background-color: #f0f8ff;
 }
 .calendar-cell.empty {
     background-color: #f8f9fa;
 }
 .calendar-day-header {
-    padding-bottom: 2px;
+    padding-bottom: 3px;
     border-bottom: 1px solid #dee2e6;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
 }
-.occurrence-chip {
-    font-size: 0.75rem;
-    line-height: 1.2;
+.time-ranges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+.programs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 </style>
 

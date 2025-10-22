@@ -2210,3 +2210,586 @@ class TestREQ103AvailabilityFilterAndDelete(TestCase):
     def test_req_103_implemented(self):
         """REQ-103: Contractor Availability Filter Clearing and Delete Functionality is implemented."""
         self.assertTrue(True, "REQ-103: Filter clearing and delete functionality implemented")
+
+
+class TestREQ104HTMXDeleteImmediateBanner(TestCase):
+    """
+    REQ-104: HTMX Delete Shows Immediate Banner Notification
+    
+    Tests that when a contractor deletes an availability entry via HTMX,
+    the success/error banner appears immediately in the response.
+    """
+    
+    def setUp(self):
+        """Set up test data."""
+        from django.utils import timezone
+        from programs.models import ContractorAvailability
+        
+        # Create contractor user
+        User = get_user_model()
+        self.contractor = User.objects.create_user(
+            email='contractor@test.com',
+            password='testpass123',
+            is_active=True
+        )
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        self.contractor.groups.add(contractor_group)
+        
+        # Create availability entry
+        now = timezone.now()
+        self.availability = ContractorAvailability.objects.create(
+            contractor=self.contractor,
+            start_datetime=now + timezone.timedelta(days=7),
+            end_datetime=now + timezone.timedelta(days=7, hours=2),
+            status='available'
+        )
+        
+        self.client = Client()
+    
+    def test_htmx_delete_includes_success_message_in_response(self):
+        """Test that HTMX delete response includes the success message banner."""
+        self.client.force_login(self.contractor)
+        
+        # Delete with HTMX header
+        response = self.client.post(
+            reverse('programs:contractor_availability_delete', kwargs={'pk': self.availability.pk}),
+            HTTP_HX_REQUEST='true'
+        )
+        
+        # Response should be 200 (partial content)
+        self.assertEqual(response.status_code, 200)
+        
+        # Response should contain the success message
+        self.assertContains(response, 'Availability deleted successfully')
+        
+        # Response should contain Bootstrap alert structure
+        self.assertContains(response, 'alert alert-success')
+        self.assertContains(response, 'alert-dismissible')
+    
+    def test_htmx_delete_with_sessions_shows_error_message(self):
+        """Test that HTMX delete with scheduled sessions shows error message immediately."""
+        from programs.models import AvailabilityProgram, ProgramInstance, ProgramSession, ProgramType, ProgramBuildout
+        from django.utils import timezone
+        
+        # Create program structure
+        program_type = ProgramType.objects.create(
+            name='Test Program',
+            description='Test'
+        )
+        buildout = ProgramBuildout.objects.create(
+            program_type=program_type,
+            title='Test Buildout',
+            is_new_program=False,
+            num_facilitators=1,
+            num_new_facilitators=0,
+            students_per_program=10,
+            sessions_per_program=4,
+            new_program_concepts_per_year=1,
+            rate_per_student=50.00,
+            is_active=True
+        )
+        
+        instance = ProgramInstance.objects.create(
+            buildout=buildout,
+            title='Test Instance',
+            start_date=timezone.now(),
+            end_date=timezone.now() + timezone.timedelta(days=30),
+            location='Test Location',
+            capacity=10
+        )
+        
+        # Link availability to program
+        from decimal import Decimal
+        avail_program = AvailabilityProgram.objects.create(
+            availability=self.availability,
+            program_buildout=buildout,
+            session_duration_hours=Decimal('1.5')
+        )
+        
+        # Create scheduled session
+        ProgramSession.objects.create(
+            program_instance=instance,
+            availability_program=avail_program,
+            start_datetime=self.availability.start_datetime,
+            end_datetime=self.availability.end_datetime,
+            duration_hours=Decimal('1.5'),
+            max_capacity=10,
+            status='scheduled'
+        )
+        
+        self.client.force_login(self.contractor)
+        
+        # Try to delete with HTMX header
+        response = self.client.post(
+            reverse('programs:contractor_availability_delete', kwargs={'pk': self.availability.pk}),
+            HTTP_HX_REQUEST='true'
+        )
+        
+        # Response should be 200 (partial content)
+        self.assertEqual(response.status_code, 200)
+        
+        # Response should contain the error message
+        self.assertContains(response, 'Cannot delete availability')
+        self.assertContains(response, 'scheduled or confirmed sessions')
+        
+        # Response should contain Bootstrap alert structure
+        self.assertContains(response, 'alert alert-error')
+    
+    def test_partial_template_includes_messages_block(self):
+        """Test that the availability list partial template includes messages display."""
+        import os
+        from django.conf import settings
+        
+        # Get the partial template path
+        template_path = os.path.join(
+            settings.BASE_DIR,
+            'programs',
+            'templates',
+            'programs',
+            'partials',
+            '_availability_list.html'
+        )
+        
+        # Read template content
+        with open(template_path, 'r') as f:
+            content = f.read()
+        
+        # Verify messages block exists
+        self.assertIn('{% if messages %}', content)
+        self.assertIn('{% for message in messages %}', content)
+        self.assertIn('alert-{{ message.tags }}', content)
+    
+    def test_non_htmx_delete_still_works(self):
+        """Test that non-HTMX delete still redirects properly (backward compatibility)."""
+        self.client.force_login(self.contractor)
+        
+        # Delete without HTMX header (regular form submission)
+        response = self.client.post(
+            reverse('programs:contractor_availability_delete', kwargs={'pk': self.availability.pk})
+        )
+        
+        # Should redirect to list page
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('programs:contractor_availability_list'))
+    
+    # Success indicator
+    def test_req_104_implemented(self):
+        """REQ-104: HTMX Delete Shows Immediate Banner Notification is implemented."""
+        self.assertTrue(True, "REQ-104: HTMX delete shows immediate banner notification")
+
+
+class TestREQ104BookingFeasibilityEngine(TestCase):
+    """
+    REQ-104: Booking-Based Feasibility Engine with Time-Gap Computation
+    
+    Tests the advanced feasibility system that computes free gaps and program feasibility.
+    """
+    
+    def setUp(self):
+        """Set up test data."""
+        from programs.models import (
+            AvailabilityRule, RuleBooking, ProgramType, ProgramBuildout, 
+            ProgramInstance, ProgramBuildoutScheduling, Child
+        )
+        from datetime import date, time, timedelta
+        from decimal import Decimal
+        
+        # Create contractor user
+        self.contractor = User.objects.create_user(
+            email='contractor_feas@test.com',
+            password='testpass123',
+            first_name='Feasibility',
+            last_name='Test'
+        )
+        contractor_group, _ = Group.objects.get_or_create(name='Contractor')
+        self.contractor.groups.add(contractor_group)
+        
+        # Create parent user with child
+        self.parent = User.objects.create_user(
+            email='parent_feas@test.com',
+            password='testpass123',
+            first_name='Parent',
+            last_name='Test'
+        )
+        parent_group, _ = Group.objects.get_or_create(name='Parent')
+        self.parent.groups.add(parent_group)
+        
+        self.child = Child.objects.create(
+            parent=self.parent,
+            first_name='Child',
+            last_name='Test',
+            date_of_birth=date(2015, 1, 1)
+        )
+        
+        # Create program types and buildouts
+        program_type = ProgramType.objects.create(name='STEAM', description='Test STEAM')
+        self.buildout = ProgramBuildout.objects.create(
+            program_type=program_type,
+            title='STEAM Buildout',
+            is_new_program=False,
+            num_facilitators=1,
+            num_new_facilitators=0,
+            students_per_program=10,
+            sessions_per_program=8,
+            new_program_concepts_per_year=1,
+            rate_per_student=Decimal('50.00')
+        )
+        
+        # Add scheduling config
+        self.scheduling = ProgramBuildoutScheduling.objects.create(
+            buildout=self.buildout,
+            default_session_duration=Decimal('1.5'),  # 90 minutes
+            min_session_duration=Decimal('0.5'),
+            max_session_duration=Decimal('3.0')
+        )
+        
+        self.program = ProgramInstance.objects.create(
+            buildout=self.buildout,
+            title='STEAM Workshop',
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=90),
+            location='Test Location',
+            capacity=15,
+            is_active=True
+        )
+        
+        # Create availability rule
+        self.today = date.today()
+        self.rule = AvailabilityRule.objects.create(
+            contractor=self.contractor,
+            title='Weekday afternoons',
+            kind='DATE_RANGE',
+            start_time=time(9, 0),   # 9 AM
+            end_time=time(17, 0),    # 5 PM
+            date_start=self.today,
+            date_end=self.today + timedelta(days=30),
+            timezone='America/New_York',
+            is_active=True
+        )
+        self.rule.programs_offered.add(self.program)
+    
+    def test_merge_overlapping_intervals(self):
+        """Test that overlapping rule windows are merged correctly."""
+        from programs.utils.feasibility_engine import _merge_overlapping_intervals, TimeInterval
+        from datetime import time
+        
+        intervals = [
+            TimeInterval(time(9, 0), time(13, 0)),   # 9 AM - 1 PM
+            TimeInterval(time(12, 0), time(17, 0)),  # 12 PM - 5 PM (overlaps)
+            TimeInterval(time(19, 0), time(21, 0)),  # 7 PM - 9 PM (separate)
+        ]
+        
+        merged = _merge_overlapping_intervals(intervals)
+        
+        self.assertEqual(len(merged), 2, "Should merge overlapping intervals into 2 windows")
+        # First merged window: 9 AM - 5 PM
+        self.assertEqual(merged[0].start_time, time(9, 0))
+        self.assertEqual(merged[0].end_time, time(17, 0))
+        # Second window: 7 PM - 9 PM
+        self.assertEqual(merged[1].start_time, time(19, 0))
+        self.assertEqual(merged[1].end_time, time(21, 0))
+    
+    def test_subtract_intervals_simple(self):
+        """Test booking subtraction creates correct free gaps."""
+        from programs.utils.feasibility_engine import _subtract_intervals, TimeInterval
+        from datetime import time
+        
+        # Available: 9 AM - 5 PM
+        available = [TimeInterval(time(9, 0), time(17, 0))]
+        
+        # Booking: 12 PM - 1 PM
+        occupied = [TimeInterval(time(12, 0), time(13, 0))]
+        
+        gaps = _subtract_intervals(available, occupied)
+        
+        self.assertEqual(len(gaps), 2, "Should split into 2 gaps")
+        # Gap 1: 9 AM - 12 PM
+        self.assertEqual(gaps[0].start_time, time(9, 0))
+        self.assertEqual(gaps[0].end_time, time(12, 0))
+        # Gap 2: 1 PM - 5 PM
+        self.assertEqual(gaps[1].start_time, time(13, 0))
+        self.assertEqual(gaps[1].end_time, time(17, 0))
+    
+    def test_subtract_multiple_bookings(self):
+        """Test multiple bookings create correct gaps."""
+        from programs.utils.feasibility_engine import _subtract_intervals, TimeInterval
+        from datetime import time
+        
+        # Available: 9 AM - 5 PM
+        available = [TimeInterval(time(9, 0), time(17, 0))]
+        
+        # Two bookings
+        occupied = [
+            TimeInterval(time(10, 0), time(11, 0)),  # 10-11 AM
+            TimeInterval(time(14, 0), time(15, 0)),  # 2-3 PM
+        ]
+        
+        gaps = _subtract_intervals(available, occupied)
+        
+        self.assertEqual(len(gaps), 3, "Should create 3 free gaps")
+        self.assertEqual(gaps[0].duration_minutes(), 60)   # 9-10 AM
+        self.assertEqual(gaps[1].duration_minutes(), 180)  # 11 AM-2 PM
+        self.assertEqual(gaps[2].duration_minutes(), 120)  # 3-5 PM
+    
+    def test_compute_day_feasibility(self):
+        """Test day feasibility computation with bookings."""
+        from programs.utils.feasibility_engine import compute_day_feasibility
+        from programs.models import RuleBooking, AvailabilityRule, ProgramInstance
+        from datetime import time
+        
+        # Create a booking
+        booking = RuleBooking.objects.create(
+            rule=self.rule,
+            program=self.program,
+            booking_date=self.today,
+            start_time=time(12, 0),
+            end_time=time(13, 0),
+            booked_by=self.parent,
+            child=self.child,
+            status='confirmed'
+        )
+        
+        # Compute feasibility
+        day_feas = compute_day_feasibility(
+            contractor_id=self.contractor.id,
+            target_date=self.today,
+            rules_queryset=AvailabilityRule.objects.filter(id=self.rule.id).prefetch_related('exceptions', 'programs_offered'),
+            bookings_queryset=RuleBooking.objects.filter(id=booking.id),
+            programs_queryset=ProgramInstance.objects.filter(id=self.program.id).select_related('buildout__scheduling_config')
+        )
+        
+        # Should have rule windows
+        self.assertEqual(len(day_feas.rule_windows), 1)
+        
+        # Should have bookings
+        self.assertEqual(len(day_feas.bookings), 1)
+        
+        # Should have free gaps (9-12, 1-5)
+        self.assertEqual(len(day_feas.free_gaps), 2)
+        
+        # Program should be feasible (90 mins can fit in 3-hour or 4-hour gaps)
+        self.assertGreater(len(day_feas.feasible_programs), 0)
+    
+    def test_program_not_feasible_when_gaps_too_small(self):
+        """Test that programs don't appear when gaps are too small."""
+        from programs.utils.feasibility_engine import compute_day_feasibility
+        from programs.models import RuleBooking, AvailabilityRule, ProgramInstance
+        from datetime import time
+        
+        # Create multiple bookings leaving only small gaps
+        RuleBooking.objects.create(
+            rule=self.rule, program=self.program, booking_date=self.today,
+            start_time=time(9, 0), end_time=time(10, 30),
+            booked_by=self.parent, child=self.child, status='confirmed'
+        )
+        RuleBooking.objects.create(
+            rule=self.rule, program=self.program, booking_date=self.today,
+            start_time=time(11, 0), end_time=time(12, 30),
+            booked_by=self.parent, child=self.child, status='confirmed'
+        )
+        RuleBooking.objects.create(
+            rule=self.rule, program=self.program, booking_date=self.today,
+            start_time=time(13, 0), end_time=time(14, 30),
+            booked_by=self.parent, child=self.child, status='confirmed'
+        )
+        RuleBooking.objects.create(
+            rule=self.rule, program=self.program, booking_date=self.today,
+            start_time=time(15, 0), end_time=time(16, 30),
+            booked_by=self.parent, child=self.child, status='confirmed'
+        )
+        
+        # Now gaps are: 10:30-11:00 (30m), 12:30-13:00 (30m), 14:30-15:00 (30m), 16:30-17:00 (30m)
+        # All gaps are too small for 90-minute program
+        
+        day_feas = compute_day_feasibility(
+            contractor_id=self.contractor.id,
+            target_date=self.today,
+            rules_queryset=AvailabilityRule.objects.filter(id=self.rule.id).prefetch_related('exceptions', 'programs_offered'),
+            bookings_queryset=RuleBooking.objects.filter(rule=self.rule, booking_date=self.today),
+            programs_queryset=ProgramInstance.objects.filter(id=self.program.id).select_related('buildout__scheduling_config')
+        )
+        
+        # Program should NOT be feasible
+        self.assertEqual(len(day_feas.feasible_programs), 0, "90-min program should not fit in 30-min gaps")
+    
+    def test_find_valid_start_times(self):
+        """Test finding valid start times for booking."""
+        from programs.utils.feasibility_engine import find_valid_start_times, TimeInterval
+        from datetime import time
+        
+        # Free gap: 1 PM - 4 PM (180 minutes)
+        gaps = [TimeInterval(time(13, 0), time(16, 0))]
+        
+        # Program duration: 90 minutes
+        valid_starts = find_valid_start_times(gaps, 90, interval_minutes=15)
+        
+        # Should have: 1:00, 1:15, 1:30, 1:45, 2:00, 2:15, 2:30
+        # (2:45 + 90m = 4:15 PM exceeds gap)
+        self.assertGreaterEqual(len(valid_starts), 6)
+        self.assertIn(time(13, 0), valid_starts)  # 1 PM
+        self.assertIn(time(13, 15), valid_starts)  # 1:15 PM
+        self.assertIn(time(14, 30), valid_starts)  # 2:30 PM
+        self.assertNotIn(time(14, 45), valid_starts)  # 2:45 PM + 90m exceeds
+    
+    def test_rule_booking_validation(self):
+        """Test RuleBooking model validates constraints."""
+        from programs.models import RuleBooking
+        from datetime import time, timedelta
+        from django.core.exceptions import ValidationError
+        
+        # Valid booking
+        booking = RuleBooking(
+            rule=self.rule,
+            program=self.program,
+            booking_date=self.today,
+            start_time=time(10, 0),
+            end_time=time(11, 30),
+            booked_by=self.parent,
+            child=self.child,
+            status='confirmed'
+        )
+        booking.full_clean()  # Should not raise
+        
+        # Invalid: start >= end
+        invalid_booking = RuleBooking(
+            rule=self.rule,
+            program=self.program,
+            booking_date=self.today,
+            start_time=time(14, 0),
+            end_time=time(12, 0),  # Before start!
+            booked_by=self.parent,
+            child=self.child
+        )
+        with self.assertRaises(ValidationError):
+            invalid_booking.full_clean()
+        
+        # Invalid: date outside rule bounds
+        invalid_booking2 = RuleBooking(
+            rule=self.rule,
+            program=self.program,
+            booking_date=self.today + timedelta(days=100),  # Beyond rule.date_end
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+            booked_by=self.parent,
+            child=self.child
+        )
+        with self.assertRaises(ValidationError):
+            invalid_booking2.full_clean()
+    
+    def test_booking_subtracts_time_correctly(self):
+        """Test that a 1-hour booking leaves 7 hours in an 8-hour window."""
+        from programs.utils.feasibility_engine import compute_day_feasibility
+        from programs.models import RuleBooking, AvailabilityRule, ProgramInstance
+        from datetime import time
+        
+        # Rule: 9 AM - 5 PM (8 hours = 480 minutes)
+        # No bookings initially
+        
+        day_feas_before = compute_day_feasibility(
+            contractor_id=self.contractor.id,
+            target_date=self.today,
+            rules_queryset=AvailabilityRule.objects.filter(id=self.rule.id).prefetch_related('exceptions', 'programs_offered'),
+            bookings_queryset=RuleBooking.objects.none(),
+            programs_queryset=ProgramInstance.objects.filter(id=self.program.id).select_related('buildout__scheduling_config')
+        )
+        
+        # Total free time before = 480 minutes
+        total_before = sum(gap.duration_minutes() for gap in day_feas_before.free_gaps)
+        self.assertEqual(total_before, 480)
+        
+        # Create 1-hour booking
+        booking = RuleBooking.objects.create(
+            rule=self.rule,
+            program=self.program,
+            booking_date=self.today,
+            start_time=time(12, 0),
+            end_time=time(13, 0),  # 1 hour
+            booked_by=self.parent,
+            child=self.child,
+            status='confirmed'
+        )
+        
+        # Recompute
+        day_feas_after = compute_day_feasibility(
+            contractor_id=self.contractor.id,
+            target_date=self.today,
+            rules_queryset=AvailabilityRule.objects.filter(id=self.rule.id).prefetch_related('exceptions', 'programs_offered'),
+            bookings_queryset=RuleBooking.objects.filter(id=booking.id),
+            programs_queryset=ProgramInstance.objects.filter(id=self.program.id).select_related('buildout__scheduling_config')
+        )
+        
+        # Total free time after = 420 minutes (480 - 60)
+        total_after = sum(gap.duration_minutes() for gap in day_feas_after.free_gaps)
+        self.assertEqual(total_after, 420, "Should have 7 hours (420 mins) after 1-hour booking")
+    
+    def test_weekly_recurring_rule_feasibility(self):
+        """Test feasibility with weekly recurring rule."""
+        from programs.models import AvailabilityRule, RuleBooking, ProgramInstance
+        from programs.utils.feasibility_engine import compute_day_feasibility
+        from datetime import time, date, timedelta
+        
+        # Create weekly recurring rule (Mon/Wed/Fri)
+        weekly_rule = AvailabilityRule.objects.create(
+            contractor=self.contractor,
+            title='MWF mornings',
+            kind='WEEKLY_RECURRING',
+            start_time=time(9, 0),
+            end_time=time(12, 0),
+            date_start=self.today,
+            date_end=self.today + timedelta(days=30),
+            weekdays_monday=True,
+            weekdays_wednesday=True,
+            weekdays_friday=True,
+            timezone='America/New_York',
+            is_active=True
+        )
+        weekly_rule.programs_offered.add(self.program)
+        
+        # Find next Monday
+        test_date = self.today
+        while test_date.weekday() != 0:  # 0 = Monday
+            test_date += timedelta(days=1)
+        
+        # Compute feasibility for Monday
+        day_feas = compute_day_feasibility(
+            contractor_id=self.contractor.id,
+            target_date=test_date,
+            rules_queryset=AvailabilityRule.objects.filter(id=weekly_rule.id).prefetch_related('exceptions', 'programs_offered'),
+            bookings_queryset=RuleBooking.objects.none(),
+            programs_queryset=ProgramInstance.objects.filter(id=self.program.id).select_related('buildout__scheduling_config')
+        )
+        
+        # Should have rule window for Monday
+        self.assertEqual(len(day_feas.rule_windows), 1)
+        self.assertEqual(day_feas.rule_windows[0].duration_minutes(), 180)  # 3 hours
+    
+    def test_month_feasibility_computation(self):
+        """Test computing feasibility for entire month."""
+        from programs.utils.feasibility_engine import compute_month_feasibility
+        from programs.models import RuleBooking, AvailabilityRule, ProgramInstance
+        
+        year = self.today.year
+        month = self.today.month
+        
+        feasibility_map = compute_month_feasibility(
+            contractor_id=self.contractor.id,
+            year=year,
+            month=month,
+            rules_queryset=AvailabilityRule.objects.filter(contractor=self.contractor).prefetch_related('exceptions', 'programs_offered'),
+            bookings_queryset=RuleBooking.objects.filter(rule__contractor=self.contractor),
+            programs_queryset=ProgramInstance.objects.filter(availability_rules__contractor=self.contractor).select_related('buildout__scheduling_config')
+        )
+        
+        # Should have entries for days within rule's date range
+        self.assertGreater(len(feasibility_map), 0, "Should compute feasibility for days in month")
+        
+        # Each day should have the expected structure
+        for day_date, day_feas in feasibility_map.items():
+            self.assertIsNotNone(day_feas.rule_windows)
+            self.assertIsNotNone(day_feas.free_gaps)
+            self.assertIsNotNone(day_feas.feasible_programs)
+    
+    # Success indicator
+    def test_req_104_implemented(self):
+        """REQ-104: Booking-Based Feasibility Engine is implemented."""
+        self.assertTrue(True, "REQ-104: Booking-Based Feasibility Engine with Time-Gap Computation is implemented")

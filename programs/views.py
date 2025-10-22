@@ -2278,14 +2278,14 @@ def availability_rules_index(request):
 
 @login_required
 def availability_rules_calendar_partial(request):
-    """HTMX partial: Render calendar grid with dynamic occurrences."""
+    """HTMX partial: Render calendar grid with feasibility analysis."""
     if not user_is_contractor(request.user) and not user_is_admin(request.user):
         return HttpResponse("Permission denied", status=403)
     
     from datetime import date
     from calendar import monthrange
-    from .utils.occurrence_generator import generate_occurrences_for_rules
-    from .models import ContractorDayOffRequest
+    from .utils.feasibility_engine import compute_month_feasibility
+    from .models import ContractorDayOffRequest, RuleBooking
     
     year = int(request.GET.get('year', date.today().year))
     month = int(request.GET.get('month', date.today().month))
@@ -2297,7 +2297,8 @@ def availability_rules_calendar_partial(request):
         contractor=request.user
     ).prefetch_related(
         'exceptions',
-        'programs_offered__buildout__program_type'
+        'programs_offered__buildout__program_type',
+        'programs_offered__buildout__scheduling_config'
     )
     
     if not show_inactive:
@@ -2306,38 +2307,50 @@ def availability_rules_calendar_partial(request):
     if program_instance_ids:
         rules_qs = rules_qs.filter(programs_offered__id__in=program_instance_ids).distinct()
     
-    # Calculate date range for the month
-    first_day = date(year, month, 1)
-    last_day_num = monthrange(year, month)[1]
-    last_day = date(year, month, last_day_num)
+    # Get bookings for this month
+    bookings_qs = RuleBooking.objects.filter(
+        rule__contractor=request.user,
+        status__in=['confirmed', 'pending']
+    ).select_related('program', 'child', 'booked_by')
     
-    # Generate occurrences
-    time_off_qs = ContractorDayOffRequest.objects.filter(contractor=request.user)
-    occurrences = generate_occurrences_for_rules(
-        rules_qs,
-        first_day,
-        last_day,
-        include_time_off=True,
-        time_off_queryset=time_off_qs
+    # Get all programs from rules (for feasibility checking)
+    programs_qs = ProgramInstance.objects.filter(
+        availability_rules__contractor=request.user,
+        is_active=True
+    ).distinct().select_related('buildout__scheduling_config', 'buildout__program_type')
+    
+    # Compute feasibility for the entire month
+    feasibility_map = compute_month_feasibility(
+        contractor_id=request.user.id,
+        year=year,
+        month=month,
+        rules_queryset=rules_qs,
+        bookings_queryset=bookings_qs,
+        programs_queryset=programs_qs
     )
     
-    # Build calendar grid (using calendar_utils if available, or custom)
+    # Build calendar grid
     import calendar as cal
     month_calendar = cal.monthcalendar(year, month)
     
-    # Group occurrences by date
-    occurrences_by_date = {}
-    for occ in occurrences:
-        if occ.date not in occurrences_by_date:
-            occurrences_by_date[occ.date] = []
-        occurrences_by_date[occ.date].append(occ)
+    # Convert feasibility_map to template-friendly format (keyed by day number)
+    feasibility_by_day = {}
+    for day_date, day_feas in feasibility_map.items():
+        if day_date.year == year and day_date.month == month:
+            feasibility_by_day[day_date.day] = {
+                'date': day_date,
+                'summary_ranges': day_feas.summary_ranges,
+                'feasible_programs': day_feas.feasible_programs,
+                'bookings_count': len(day_feas.bookings),
+                'free_gaps_count': len(day_feas.free_gaps),
+            }
     
     context = {
         'year': year,
         'month': month,
         'month_name': cal.month_name[month],
         'month_calendar': month_calendar,
-        'occurrences_by_date': occurrences_by_date,
+        'feasibility_by_day': feasibility_by_day,
         'show_inactive': show_inactive,
         'program_instance_ids': program_instance_ids,
     }
@@ -2574,3 +2587,188 @@ def availability_exception_delete(request, pk):
     # Return updated exceptions list partial
     context = {'rule': rule}
     return render(request, 'programs/availability_rules/_exceptions_list.html', context)
+
+
+@login_required
+def availability_day_details(request):
+    """
+    Show detailed timeline for a specific day with booking capability.
+    
+    Displays:
+    - Rule windows as blocks
+    - Existing bookings as solid segments
+    - Free gaps highlighted
+    - Booking form with valid start times only
+    """
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    from datetime import datetime, date
+    from .utils.feasibility_engine import compute_day_feasibility, find_valid_start_times
+    
+    # Parse date from query string
+    date_str = request.GET.get('date')
+    if not date_str:
+        year = int(request.GET.get('year'))
+        month = int(request.GET.get('month'))
+        day = int(request.GET.get('day'))
+        target_date = date(year, month, day)
+    else:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    
+    # Get active rules for this contractor
+    rules_qs = AvailabilityRule.objects.filter(
+        contractor=request.user,
+        is_active=True
+    ).prefetch_related('exceptions', 'programs_offered__buildout__scheduling_config')
+    
+    # Get bookings for this specific day
+    bookings_qs = RuleBooking.objects.filter(
+        rule__contractor=request.user,
+        booking_date=target_date,
+        status__in=['confirmed', 'pending']
+    ).select_related('program', 'child', 'booked_by')
+    
+    # Get programs this contractor offers
+    programs_qs = ProgramInstance.objects.filter(
+        availability_rules__contractor=request.user,
+        is_active=True
+    ).distinct().select_related('buildout__scheduling_config', 'buildout__program_type')
+    
+    # Compute feasibility for this day
+    day_feasibility = compute_day_feasibility(
+        contractor_id=request.user.id,
+        target_date=target_date,
+        rules_queryset=rules_qs,
+        bookings_queryset=bookings_qs,
+        programs_queryset=programs_qs
+    )
+    
+    # For booking form: compute valid start times for each feasible program
+    program_start_times = {}
+    for prog in day_feasibility.feasible_programs:
+        valid_starts = find_valid_start_times(
+            free_gaps=day_feasibility.free_gaps,
+            duration_minutes=prog['duration_minutes'],
+            interval_minutes=15
+        )
+        # Convert time objects to strings for JSON
+        program_start_times[prog['program_id']] = [
+            t.strftime('%H:%M') for t in valid_starts
+        ]
+    
+    # Get contractor's children for booking form
+    children = request.user.children.all()
+    
+    context = {
+        'target_date': target_date,
+        'day_feasibility': day_feasibility,
+        'program_start_times': program_start_times,
+        'program_start_times_json': json.dumps(program_start_times),
+        'children': children,
+    }
+    
+    return render(request, 'programs/availability_rules/_day_details.html', context)
+
+
+@login_required
+@require_POST
+def create_rule_booking(request):
+    """Create a new booking within an availability rule and return updated day details."""
+    if not user_is_contractor(request.user) and not user_is_admin(request.user):
+        return HttpResponse("Permission denied", status=403)
+    
+    from datetime import datetime, timedelta
+    
+    # Parse form data
+    date_str = request.POST.get('date')
+    booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    start_time_str = request.POST.get('start_time')
+    program_id = request.POST.get('program_id')
+    child_id = request.POST.get('child_id')
+    notes = request.POST.get('notes', '')
+    
+    # Find the rule that applies to this date
+    rules = AvailabilityRule.objects.filter(
+        contractor=request.user,
+        is_active=True,
+        date_start__lte=booking_date,
+        date_end__gte=booking_date
+    ).prefetch_related('programs_offered')
+    
+    # Find applicable rule (first match)
+    applicable_rule = None
+    for r in rules:
+        if r.kind == 'DATE_RANGE':
+            applicable_rule = r
+            break
+        elif r.kind == 'WEEKLY_RECURRING':
+            if booking_date.weekday() in r.get_weekdays_list():
+                applicable_rule = r
+                break
+    
+    if not applicable_rule:
+        messages.error(request, "No availability rule found for this date.")
+        # Return updated day details
+        request.GET = request.GET.copy()
+        request.GET['date'] = date_str
+        return availability_day_details(request)
+    
+    # Get program and calculate end time
+    try:
+        program = ProgramInstance.objects.select_related(
+            'buildout__scheduling_config'
+        ).get(id=program_id)
+    except ProgramInstance.DoesNotExist:
+        messages.error(request, "Program not found.")
+        request.GET = request.GET.copy()
+        request.GET['date'] = date_str
+        return availability_day_details(request)
+    
+    # Calculate end time based on program duration
+    if hasattr(program.buildout, 'scheduling_config'):
+        duration_hours = float(program.buildout.scheduling_config.default_session_duration)
+    else:
+        duration_hours = 1.0  # Default
+    
+    duration_mins = int(duration_hours * 60)
+    
+    start_time = datetime.strptime(start_time_str, '%H:%M').time()
+    start_dt = datetime.combine(booking_date, start_time)
+    end_dt = start_dt + timedelta(minutes=duration_mins)
+    end_time = end_dt.time()
+    
+    # Validate child belongs to user
+    try:
+        child = request.user.children.get(id=child_id)
+    except:
+        messages.error(request, "Invalid child selection.")
+        request.GET = request.GET.copy()
+        request.GET['date'] = date_str
+        return availability_day_details(request)
+    
+    # Create booking
+    try:
+        booking = RuleBooking.objects.create(
+            rule=applicable_rule,
+            program=program,
+            booking_date=booking_date,
+            start_time=start_time,
+            end_time=end_time,
+            booked_by=request.user,
+            child=child,
+            status='confirmed',
+            notes=notes
+        )
+        
+        messages.success(
+            request,
+            f"Booking created! {program.title} for {child.first_name} at {start_time.strftime('%I:%M %p')}"
+        )
+    except Exception as e:
+        messages.error(request, f"Error creating booking: {str(e)}")
+    
+    # Return updated day details
+    request.GET = request.GET.copy()
+    request.GET['date'] = date_str
+    return availability_day_details(request)
