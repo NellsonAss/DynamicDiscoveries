@@ -1187,117 +1187,28 @@ def program_type_buildouts(request, program_type_pk):
 @login_required
 def contractor_availability_list(request):
     """
-    List contractor's availability slots with calendar and filtering.
+    Redirect to the new availability rules system.
     
-    Shows:
-    - Grouped list (Active, Future, Past)
-    - Calendar month view
-    - Filters by Program Instance
-    - Archive functionality
+    This maintains backward compatibility while transitioning to the new
+    rule-based availability system with dynamic occurrences and feasibility.
     """
     if not user_is_contractor(request.user) and not user_is_admin(request.user):
         messages.error(request, "You don't have permission to access this page.")
         return redirect('dashboard')
     
-    now = timezone.now()
-    
-    # Auto-inactivate past availability
-    ContractorAvailability.objects.filter(
-        end_datetime__lt=now,
-        is_active=True
-    ).update(is_active=False)
-    
-    # Get filters from request
-    program_buildout_ids = request.GET.getlist('program_buildout_id')
-    year = int(request.GET.get('year', now.year))
-    month = int(request.GET.get('month', now.month))
-    
-    # Base queryset: non-archived availability for this contractor
-    base_qs = ContractorAvailability.objects.filter(
-        contractor=request.user,
-        is_archived=False
-    ).select_related('contractor').prefetch_related(
-        'program_offerings__program_buildout__program_type',
-        'program_offerings__sessions'
-    )
-    
-    # Apply program buildout filter if provided
-    if program_buildout_ids:
-        base_qs = base_qs.filter(
-            program_offerings__program_buildout__id__in=program_buildout_ids
-        ).distinct()
-    
-    # Get all program buildouts this contractor has availability for (for filter dropdown)
-    from django.db.models import Q
-    contractor_buildouts = ProgramBuildout.objects.filter(
-        availability_offerings__availability__contractor=request.user,
-        availability_offerings__availability__is_archived=False
-    ).distinct().order_by('title')
-    
-    context = {
-        'year': year,
-        'month': month,
-        'program_buildout_ids': program_buildout_ids,
-        'contractor_buildouts': contractor_buildouts,
-        'can_add': True,
-    }
-    
-    return render(request, 'programs/contractor_availability_list.html', context)
+    # Redirect to the new availability rules system
+    return redirect('programs:availability_rules_index')
 
 
 @login_required
 def contractor_availability_create(request):
-    """Create new availability slot for contractor."""
+    """Redirect to the new availability rules creation."""
     if not user_is_contractor(request.user) and not user_is_admin(request.user):
         messages.error(request, "You don't have permission to access this page.")
         return redirect('dashboard')
-    # Enforce onboarding gate
-    if user_is_contractor(request.user) and not user_is_admin(request.user):
-        try:
-            from people.models import Contractor
-            contractor = Contractor.objects.filter(user=request.user).first()
-            if not contractor or contractor.needs_onboarding:
-                return HttpResponse("Onboarding required", status=403)
-        except Exception:
-            return HttpResponse("Onboarding required", status=403)
     
-    if request.method == 'POST':
-        form = ContractorAvailabilityForm(request.POST)
-        if form.is_valid():
-            # Set contractor on form instance before saving
-            form.instance.contractor = request.user
-            
-            # Handle different availability types
-            availability_type = form.cleaned_data.get('availability_type')
-            
-            # Save with commit=True to create all instances (single, range, or recurring)
-            availability = form.save(commit=True)
-            
-            if availability_type == 'single':
-                messages.success(request, "Availability slot created successfully!")
-                return redirect('programs:contractor_availability_detail', pk=availability.pk)
-            elif availability_type == 'range':
-                start_date = form.cleaned_data.get('start_date')
-                end_date = form.cleaned_data.get('end_date')
-                days_count = (end_date - start_date).days + 1
-                messages.success(request, f"Created {days_count} availability slots from {start_date} to {end_date}!")
-                return redirect('programs:contractor_availability_list')
-            elif availability_type == 'recurring':
-                weekdays = form.cleaned_data.get('recurring_weekdays')
-                until_date = form.cleaned_data.get('recurring_until')
-                weekday_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-                selected_days = [weekday_names[int(day)] for day in weekdays]
-                messages.success(request, f"Created recurring availability for {', '.join(selected_days)} until {until_date}!")
-                return redirect('programs:contractor_availability_list')
-    else:
-        form = ContractorAvailabilityForm()
-    
-    context = {
-        'form': form,
-        'title': 'Set New Availability',
-    }
-    
-    return render(request, 'programs/contractor_availability_form.html', context)
+    # Redirect to the new availability rules creation
+    return redirect('programs:availability_rule_create')
 
 
 @login_required
