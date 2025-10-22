@@ -1363,7 +1363,7 @@ class AvailabilityRuleForm(forms.ModelForm):
             from .models import InstanceRoleAssignment
             assigned_instance_ids = InstanceRoleAssignment.objects.filter(
                 contractor=contractor
-            ).values_list('instance_id', flat=True)
+            ).values_list('program_instance_id', flat=True)
             self.fields['programs_offered'].queryset = ProgramInstance.objects.filter(
                 id__in=assigned_instance_ids,
                 start_date__isnull=False
